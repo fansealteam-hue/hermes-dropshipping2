@@ -18,11 +18,16 @@ function fmtVariant(v, idx) {
   return `${idx + 1}\\. *${escMd(v.label)}* — ${v.costEur.toFixed(2)} €  \\(stock: ${v.stock}\\)`;
 }
 
+const TEMU_SHIPPING_FEE = parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99");
+
 function fmtSaleAlert(s, productTitle, variantLabel, variantOptions = "") {
   const priceStr = s.salePriceEur != null ? escMd(s.salePriceEur.toFixed(2)) : "?";
   const costStr  = s.costEur != null ? escMd(s.costEur.toFixed(2)) : null;
-  const margin   = s.salePriceEur != null && s.costEur != null
-    ? ` \\(marge : ${escMd((s.salePriceEur - s.costEur).toFixed(2))} €\\)`
+  const netMargin = s.salePriceEur != null && s.costEur != null
+    ? s.salePriceEur - s.costEur - TEMU_SHIPPING_FEE
+    : null;
+  const margin   = netMargin != null
+    ? ` \\(marge nette : *${escMd(netMargin.toFixed(2))} €*\\)`
     : "";
   return [
     "🔔 *VENTE CONFIRMÉE*",

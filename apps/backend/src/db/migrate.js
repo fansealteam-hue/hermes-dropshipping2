@@ -14,6 +14,11 @@ function runMigrations(db) {
   const ins = db.prepare("INSERT OR IGNORE INTO seller_accounts (account_id, channel, label, active, created_at) VALUES (?, 'leboncoin', ?, 1, datetime('now'))");
   ins.run("lbc_compte_a", "Compte LBC Alpha");
   ins.run("lbc_compte_b", "Compte LBC Beta");
+
+  // Incremental column additions (idempotent — ignore "duplicate column" errors)
+  const addColumn = (sql) => { try { db.exec(sql); } catch (e) { if (!e.message.includes("duplicate column")) throw e; } };
+  addColumn("ALTER TABLE listings ADD COLUMN delivery_option TEXT");
+  addColumn("ALTER TABLE listings ADD COLUMN delivery_fee_eur_cents INTEGER NOT NULL DEFAULT 0");
 }
 
 if (require.main === module) {

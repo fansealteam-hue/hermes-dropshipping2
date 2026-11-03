@@ -1,12 +1,12 @@
 const db = require("../db/db");
 const { randomUUID } = require("crypto");
-const { validatePrice } = require("./pricing");
+const { validatePrice, DELIVERY_OTHER_FEE } = require("./pricing");
 
 /**
  * Create a listing draft and optionally enqueue publication.
  * Claude 3 implements the actual Leboncoin connector.
  */
-function createListing({ temuItemId, variantId, accountId, priceEur, scheduledAt }) {
+function createListing({ temuItemId, variantId, accountId, priceEur, scheduledAt, deliveryOption }) {
   const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(variantId);
   if (!variant) throw { code: "VARIANT_NOT_FOUND", message: `Variante ${variantId} introuvable` };
 
@@ -20,7 +20,11 @@ function createListing({ temuItemId, variantId, accountId, priceEur, scheduledAt
   const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ? AND active = 1").get(accountId);
   if (!account) throw { code: "ACCOUNT_NOT_FOUND", message: `Compte ${accountId} introuvable ou inactif` };
 
-  const priceCheck = validatePrice(variant.cost_eur_cents / 100, priceEur);
+  // +3€ livraison "autre" inclus dans le prix affiché
+  const deliveryFeeCents = deliveryOption === "autre" ? Math.round(DELIVERY_OTHER_FEE * 100) : 0;
+  const finalPriceEur = priceEur + deliveryFeeCents / 100;
+
+  const priceCheck = validatePrice(variant.cost_eur_cents / 100, finalPriceEur);
   if (!priceCheck.valid) throw { code: "INVALID_PRICE", message: priceCheck.reason };
 
   const listingId = `lst_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -29,18 +33,21 @@ function createListing({ temuItemId, variantId, accountId, priceEur, scheduledAt
   const stmt = db.prepare(`
     INSERT INTO listings
       (listing_id, channel, account_id, temu_item_id, variant_id, title, description,
-       price_eur_cents, cost_eur_cents, media_urls, status, scheduled_at, created_at, updated_at)
-    VALUES (?, 'leboncoin', ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?)
+       price_eur_cents, cost_eur_cents, media_urls, status, scheduled_at,
+       delivery_option, delivery_fee_eur_cents, created_at, updated_at)
+    VALUES (?, 'leboncoin', ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
     listingId, accountId, temuItemId, variantId,
     product.title + " — " + variant.label,
-    Math.round(priceEur * 100),
+    Math.round(finalPriceEur * 100),
     variant.cost_eur_cents,
     variant.image_urls,
     scheduledAt ? "scheduled" : "draft",
     scheduledAt ?? null,
+    deliveryOption ?? null,
+    deliveryFeeCents,
     now, now
   );
 
@@ -107,6 +114,8 @@ function rowToListing(row) {
     scheduledAt: row.scheduled_at ?? undefined,
     publishedAt: row.published_at ?? undefined,
     leboncoinAdId: row.leboncoin_ad_id ?? undefined,
+    deliveryOption: row.delivery_option ?? undefined,
+    deliveryFeeEur: (row.delivery_fee_eur_cents ?? 0) / 100,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
