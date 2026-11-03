@@ -12,6 +12,11 @@ app.use(express.json());
 
 // API routes
 app.use("/api", require("./routes/api"));
+app.use("/admin", require("./routes/admin"));
+
+// Serve local media files
+const MEDIA_DIR = process.env.MEDIA_DIR ?? require("path").join(__dirname, "../../data/media");
+app.use("/media", require("express").static(MEDIA_DIR));
 
 // Health check (no auth)
 app.get("/health", (req, res) => res.json({ ok: true }));
@@ -20,7 +25,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 const queue = require("./jobs/queue");
 require("./jobs/handlers"); // register handlers
 
-setInterval(() => queue.tick(), parseInt(process.env.JOB_INTERVAL_MS ?? "5000"));
+setInterval(() => queue.tick(), parseInt(process.env.JOB_INTERVAL_MS ?? "5000")).unref();
 
 // On startup, re-queue unsent alerts (survive restart)
 const db = require("./db/db");
@@ -46,8 +51,11 @@ function requeuePendingAlerts() {
 
 requeuePendingAlerts();
 
-app.listen(PORT, () => {
-  console.log(`[backend] Hermès API running on http://localhost:${PORT}`);
-});
+// Only start listening when run directly (not when imported by tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[backend] Hermès API running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

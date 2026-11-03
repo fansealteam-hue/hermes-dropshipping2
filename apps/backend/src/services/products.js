@@ -62,55 +62,31 @@ function buildProductResponse(row, variantRows) {
 }
 
 /**
- * STUB — Claude 2 replaces this with real Temu scraping.
- * For dev/test, returns a fictitious perceuse product.
+ * Fetch from Temu — real scraper for production, fixture for tests.
  */
 async function fetchFromTemu(url) {
-  // Extract item ID from URL (rough heuristic)
-  const m = url.match(/goods-detail\.html.*?goods_id=(\d+)/);
-  const itemId = m?.[1] ?? `MOCK-${Date.now()}`;
-
-  // Perceuse test fixture
+  // Test fixture (avoids real network in tests)
   if (url.includes("perceuse") || url.includes("drill") || url.includes("MOCK") || url.includes("test")) {
     return {
       temuItemId: "TEMU-DRILL-001",
       title: "Perceuse sans fil 18V",
       warehouseStatus: "local",
       variants: [
-        {
-          variantId: "VAR-DRILL-SOLO",
-          sku: "DR18V-SOLO",
-          label: "Perceuse seule",
-          costEur: 15.00,
-          stock: 42,
-          imageUrls: [
-            "https://img.temu.com/drill/1.jpg",
-            "https://img.temu.com/drill/2.jpg",
-          ],
-        },
-        {
-          variantId: "VAR-DRILL-PACK",
-          sku: "DR18V-PACK",
-          label: "Pack avec batterie",
-          costEur: 22.00,
-          stock: 18,
-          imageUrls: [
-            "https://img.temu.com/drill/pack1.jpg",
-            "https://img.temu.com/drill/pack2.jpg",
-            "https://img.temu.com/drill/pack3.jpg",
-          ],
-        },
+        { variantId: "VAR-DRILL-SOLO", sku: "DR18V-SOLO", label: "Perceuse seule", costEur: 15.00, stock: 42,
+          imageUrls: ["https://img.temu.com/drill/1.jpg", "https://img.temu.com/drill/2.jpg"] },
+        { variantId: "VAR-DRILL-PACK", sku: "DR18V-PACK", label: "Pack avec batterie", costEur: 22.00, stock: 18,
+          imageUrls: ["https://img.temu.com/drill/pack1.jpg", "https://img.temu.com/drill/pack2.jpg", "https://img.temu.com/drill/pack3.jpg"] },
       ],
     };
   }
 
-  // Generic stub for non-test URLs
-  return {
-    temuItemId: `TEMU-${itemId}`,
-    title: "Produit Temu",
-    warehouseStatus: "unknown",
-    variants: [],
-  };
+  // Real scraper (Claude 2)
+  const { scrapeTemu } = require("./temu-scraper");
+  const result = await scrapeTemu(url);
+  if (!result || !result.temuItemId) {
+    throw { code: "SCRAPE_FAILED", message: "Impossible d'extraire le produit Temu" };
+  }
+  return result;
 }
 
 module.exports = { fetchProduct };

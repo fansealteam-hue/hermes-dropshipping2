@@ -2,9 +2,9 @@
   "name": "@hermes/telegram",
   "version": "0.1.0",
   "scripts": {
-    "start": "node dist/bot.js",
-    "dev": "npx ts-node src/bot.ts",
-    "build": "tsc",
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js",
+    "build": "echo 'No build step (JS runtime)'",
     "test": "node --test src/__tests__/*.test.mjs"
   },
   "dependencies": {
