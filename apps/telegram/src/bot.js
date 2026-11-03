@@ -57,14 +57,13 @@ bot.on("message:text", async ctx => {
   if (state === "awaiting_temu_link") { ctx.session.state = "idle"; return handleTemuUrl(ctx, text); }
   if (state === "awaiting_order_ref")  { ctx.session.state = "idle"; const [id, ref] = text.split(" "); return handleOrderRef(ctx, id, ref); }
   if (state === "awaiting_tracking")   { ctx.session.state = "idle"; const [id, carrier, num] = text.split(" "); return handleTracking(ctx, id, carrier, num); }
-  if (state === "awaiting_tracking_inline") {
+  if (state === "awaiting_tracking_number") {
     ctx.session.state = "idle";
     const saleId = ctx.session.pendingTrackingSaleId;
+    const carrier = ctx.session.pendingCarrier ?? "Autre";
     ctx.session.pendingTrackingSaleId = undefined;
-    const parts = text.trim().split(/\s+/);
-    const carrier = parts[0];
-    const num = parts.slice(1).join(" ");
-    return handleTracking(ctx, saleId, carrier, num);
+    ctx.session.pendingCarrier = undefined;
+    return handleTracking(ctx, saleId, carrier, text.trim());
   }
 });
 
@@ -375,16 +374,46 @@ bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
   await ctx.answerCallbackQuery("✅ Commande enregistrée !");
 });
 
-// ─── Bouton "Ajouter suivi" → demande transporteur + numéro ──────────────────
+// ─── Bouton "Ajouter suivi" → choix du transporteur ─────────────────────────
+
+const CARRIERS = [
+  ["📮 Colissimo",     "Colissimo"],
+  ["🌍 Mondial Relay", "MondialRelay"],
+  ["⚡ Chronopost",    "Chronopost"],
+  ["📦 Colis Privé",   "ColisPrivé"],
+  ["🏪 Relais Colis",  "RelaisColis"],
+  ["✏️ Autre",         "Autre"],
+];
 
 bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("add_tracking:", "");
-  ctx.session.state = "awaiting_tracking_inline";
+
+  const kb = new InlineKeyboard();
+  for (const [label, code] of CARRIERS) {
+    kb.text(label, `carrier:${saleId}:${code}`).row();
+  }
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply("🚚 *Choisissez le transporteur :*", {
+    parse_mode: "MarkdownV2",
+    reply_markup: kb,
+  });
+  await ctx.answerCallbackQuery();
+});
+
+// ─── Sélection transporteur → demande juste le numéro ────────────────────────
+
+bot.callbackQuery(/^carrier:(.+):(.+)$/, async ctx => {
+  const [, saleId, carrier] = ctx.callbackQuery.data.match(/^carrier:(.+):(.+)$/);
+  ctx.session.state = "awaiting_tracking_number";
   ctx.session.pendingTrackingSaleId = saleId;
+  ctx.session.pendingCarrier = carrier;
+
+  const carrierLabel = CARRIERS.find(([, c]) => c === carrier)?.[0] ?? carrier;
 
   await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
   await ctx.reply(
-    `📬 Envoyez : \`<transporteur> <numéro>\`\n_Ex : LaPoste 1Z12345_`,
+    `${carrierLabel} sélectionné\\.\n\n📬 Envoyez le *numéro de suivi* :`,
     { parse_mode: "MarkdownV2" }
   );
   await ctx.answerCallbackQuery();
