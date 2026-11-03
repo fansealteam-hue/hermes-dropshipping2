@@ -1,5 +1,6 @@
 /**
- * Pricing service — multipliers x3/x4/x10, +3€ livraison autre.
+ * Pricing service — multiplicateurs adaptatifs + frais Temu intégrés.
+ * Coût réel = prix Temu + frais livraison Temu (défaut 2.99€).
  * All amounts in EUR (float at API boundary, cents in DB).
  */
 
@@ -11,6 +12,8 @@ const MULTIPLIERS = {
 
 const MIN_MARGIN_EUR     = parseFloat(process.env.MIN_MARGIN_EUR ?? "5.0");
 const DELIVERY_OTHER_FEE = parseFloat(process.env.DELIVERY_OTHER_FEE ?? "3.0");
+// Frais de livraison Temu (coût réel = prix produit + cette valeur)
+const TEMU_SHIPPING_FEE  = parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99");
 
 /**
  * Smart multiplier based on cost — always guarantees minimum x3 benefit.
@@ -30,22 +33,30 @@ function smartMultiplier(costEur) {
   return 2.0;
 }
 
-/** Single suggested price — multiplicateur intelligent selon le coût */
-function suggestPrice(costEur, { deliveryOther = false } = {}) {
-  const mult = smartMultiplier(costEur);
-  const raw = costEur * mult;
-  const withMin = Math.max(raw, costEur + MIN_MARGIN_EUR);
+/**
+ * Prix suggéré — intègre les frais Temu dans le coût réel.
+ * @param {number} costEur       Prix produit Temu (hors livraison)
+ * @param {object} opts
+ * @param {boolean} opts.deliveryOther  +3€ si livraison "autre" Leboncoin
+ * @param {number}  opts.temuShipping   Frais livraison Temu (défaut 2.99€)
+ */
+function suggestPrice(costEur, { deliveryOther = false, temuShipping = TEMU_SHIPPING_FEE } = {}) {
+  const totalCost = costEur + temuShipping;          // coût réel
+  const mult = smartMultiplier(totalCost);
+  const raw = totalCost * mult;
+  const withMin = Math.max(raw, totalCost + MIN_MARGIN_EUR);
   const base = Math.floor(withMin) + 0.99;
   return deliveryOther ? +(base + DELIVERY_OTHER_FEE).toFixed(2) : base;
 }
 
 /**
- * Return all three price strategies with smart base + fast/premium options.
- * @returns {{ standard, fast, premium }}
+ * Toutes les stratégies de prix avec frais Temu intégrés.
+ * @returns {{ standard, fast, premium }} — chacun avec priceEur, marginEur, marginPct
  */
-function suggestPriceStrategy(costEur, { deliveryOther = false } = {}) {
+function suggestPriceStrategy(costEur, { deliveryOther = false, temuShipping = TEMU_SHIPPING_FEE } = {}) {
   const fee = deliveryOther ? DELIVERY_OTHER_FEE : 0;
-  const mult = smartMultiplier(costEur);
+  const totalCost = costEur + temuShipping;          // coût réel
+  const mult = smartMultiplier(totalCost);
 
   const strategies = {
     standard: mult,
@@ -55,14 +66,15 @@ function suggestPriceStrategy(costEur, { deliveryOther = false } = {}) {
 
   return Object.fromEntries(
     Object.entries(strategies).map(([key, m]) => {
-      const raw = costEur * m;
-      const withMin = Math.max(raw, costEur + MIN_MARGIN_EUR);
+      const raw = totalCost * m;
+      const withMin = Math.max(raw, totalCost + MIN_MARGIN_EUR);
       const priceEur = +(Math.floor(withMin) + 0.99 + fee).toFixed(2);
       return [key, {
         priceEur,
         multiplier: m,
-        marginEur: +(priceEur - costEur).toFixed(2),
-        marginPct: +(((priceEur - costEur) / priceEur) * 100).toFixed(1),
+        totalCostEur: +totalCost.toFixed(2),
+        marginEur: +(priceEur - totalCost).toFixed(2),
+        marginPct: +(((priceEur - totalCost) / priceEur) * 100).toFixed(1),
         deliveryFeeIncluded: fee > 0,
       }];
     })
@@ -85,4 +97,4 @@ function margin(costEur, priceEur) {
   };
 }
 
-module.exports = { suggestPrice, suggestPriceStrategy, validatePrice, margin, MULTIPLIERS, DELIVERY_OTHER_FEE };
+module.exports = { suggestPrice, suggestPriceStrategy, validatePrice, margin, MULTIPLIERS, DELIVERY_OTHER_FEE, TEMU_SHIPPING_FEE };
