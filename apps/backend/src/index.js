@@ -51,6 +51,26 @@ function requeuePendingAlerts() {
 
 requeuePendingAlerts();
 
+// Schedule daily reprice_check job (runs at next :00 then every 24h)
+function scheduleRepriceCheck() {
+  const REPRICE_INTERVAL_H = parseInt(process.env.REPRICE_INTERVAL_H ?? "24");
+  const key = "reprice_check:daily";
+  const existing = db.prepare("SELECT 1 FROM jobs WHERE idempotency_key = ? AND status = 'pending'").get(key);
+  if (!existing) {
+    const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    db.prepare(
+      "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,datetime('now'),datetime('now'))"
+    ).run(jobId, "reprice_check", "{}", "pending", key);
+  }
+  // Re-schedule next check after interval
+  setTimeout(() => {
+    db.prepare("DELETE FROM jobs WHERE idempotency_key = ?").run(key);
+    scheduleRepriceCheck();
+  }, REPRICE_INTERVAL_H * 60 * 60 * 1000).unref();
+}
+
+if (process.env.NODE_ENV !== "test") scheduleRepriceCheck();
+
 // Only start listening when run directly (not when imported by tests)
 if (require.main === module) {
   app.listen(PORT, () => {

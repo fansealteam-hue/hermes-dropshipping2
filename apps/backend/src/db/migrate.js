@@ -19,6 +19,8 @@ function runMigrations(db) {
   const addColumn = (sql) => { try { db.exec(sql); } catch (e) { if (!e.message.includes("duplicate column")) throw e; } };
   addColumn("ALTER TABLE listings ADD COLUMN delivery_option TEXT");
   addColumn("ALTER TABLE listings ADD COLUMN delivery_fee_eur_cents INTEGER NOT NULL DEFAULT 0");
+  addColumn("ALTER TABLE listings ADD COLUMN repricing_count INTEGER NOT NULL DEFAULT 0");
+  addColumn("ALTER TABLE listings ADD COLUMN last_repriced_at TEXT");
 }
 
 if (require.main === module) {

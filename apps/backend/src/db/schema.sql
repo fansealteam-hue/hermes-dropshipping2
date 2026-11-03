@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS listings (
   channel_active      INTEGER NOT NULL DEFAULT 1,  -- 0 = channel retired (e.g. Vinted)
   delivery_option     TEXT,  -- 'autre' | 'mondial_relay' | 'colissimo' | null
   delivery_fee_eur_cents INTEGER NOT NULL DEFAULT 0,  -- +300 when delivery_option='autre'
+  repricing_count     INTEGER NOT NULL DEFAULT 0,    -- nb of times price was lowered
+  last_repriced_at    TEXT,                          -- ISO timestamp of last reprice
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL
 );

@@ -353,8 +353,138 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
   }
 }
 
+// ─── Repricing : baisse de prix + refresh photos/titre semaine 2 ─────────────
+
+async function handleRepriceCheck(_, job) {
+  const { getListingsDueForReprice, computeRepriceAction, applyReprice, archiveListing } = require("../services/repricing");
+  const listings = getListingsDueForReprice();
+
+  for (const listing of listings) {
+    const { action, newPriceEur } = computeRepriceAction(listing);
+    const isMock = process.env.NODE_ENV === "test";
+
+    if (action === "archive") {
+      archiveListing(listing.listing_id);
+      if (!isMock && listing.leboncoin_ad_id) {
+        // Enqueue LBC removal
+        const { randomUUID } = require("crypto");
+        const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+        db.prepare(
+          "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, account_id, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))"
+        ).run(jobId, "cancel_sale_lbc", JSON.stringify({ listingId: listing.listing_id }), "pending", listing.account_id, `archive:${listing.listing_id}`);
+      }
+      console.log(`[reprice] ${listing.listing_id} → archivé (marge insuffisante)`);
+      continue;
+    }
+
+    // Appliquer la baisse de prix en DB
+    applyReprice(listing.listing_id, newPriceEur);
+
+    if (!isMock && listing.leboncoin_ad_id) {
+      // Mettre à jour le prix sur LBC via Playwright
+      let browser;
+      try {
+        const { chromium } = require("playwright");
+        const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(listing.account_id);
+        browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+        const sessionPath = `${SESSIONS_DIR}/${listing.account_id}.json`;
+        const fs = require("fs");
+        const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
+        const context = await browser.newContext({ storageState });
+        const page = await context.newPage();
+        await page.goto(`https://www.leboncoin.fr/mes-annonces/${listing.leboncoin_ad_id}/modifier`, { waitUntil: "domcontentloaded" });
+        const priceInput = await page.$('[data-testid="price"]').catch(() => null);
+        if (priceInput) {
+          await priceInput.fill(String(newPriceEur));
+          await page.click('[data-testid="submit-listing"]').catch(() => null);
+        }
+        if (account) {
+          const newState = await context.storageState();
+          fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+          fs.writeFileSync(sessionPath, JSON.stringify(newState));
+        }
+      } catch (e) {
+        console.warn(`[reprice] Playwright price update failed for ${listing.listing_id}: ${e.message}`);
+      } finally {
+        await browser?.close();
+      }
+    }
+
+    // Semaine 2+ : nouvelles photos + titre/description
+    if (action === "reprice_refresh") {
+      const { randomUUID } = require("crypto");
+      const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      db.prepare(
+        "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, account_id, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))"
+      ).run(jobId, "refresh_listing_media", JSON.stringify({ listingId: listing.listing_id }), "pending", listing.account_id, `refresh:${listing.listing_id}:${listing.repricing_count ?? 0}`);
+      console.log(`[reprice] ${listing.listing_id} → prix ${newPriceEur}€ + refresh photos enqueué`);
+    } else {
+      console.log(`[reprice] ${listing.listing_id} → prix ${newPriceEur}€`);
+    }
+  }
+
+  return { checked: listings.length };
+}
+
+async function handleRefreshListingMedia({ listingId }, job) {
+  const listing = db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(listingId);
+  if (!listing) return;
+
+  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(listing.temu_item_id);
+  const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(listing.variant_id);
+  if (!product || !variant) return;
+
+  const isMock = process.env.NODE_ENV === "test";
+  const now = new Date().toISOString();
+
+  // Nouvelles photos IA
+  if (!isMock && process.env.OPENAI_API_KEY) {
+    try {
+      const { enhancePhotos } = require("../services/photo-enhancer");
+      const imageUrls = JSON.parse(variant.image_urls ?? "[]");
+      // Forcer la regeneration en supprimant le cache
+      const fs = require("fs");
+      const path = require("path");
+      const MEDIA_DIR = process.env.MEDIA_DIR ?? path.join(__dirname, "../../../data/media");
+      const cached = path.join(MEDIA_DIR, `${listing.temu_item_id}_${listing.variant_id}_0.jpg`);
+      if (fs.existsSync(cached)) fs.unlinkSync(cached);
+      const newPaths = await enhancePhotos(imageUrls, listing.temu_item_id, listing.variant_id, product.title);
+      db.prepare("UPDATE listings SET media_urls = ?, updated_at = ? WHERE listing_id = ?")
+        .run(JSON.stringify(newPaths), now, listingId);
+    } catch (e) {
+      console.warn(`[refresh] photo regen failed: ${e.message}`);
+    }
+  }
+
+  // Nouveau titre + description IA
+  if (!isMock && process.env.ANTHROPIC_API_KEY) {
+    try {
+      const { generateDescription } = require("../services/description-generator");
+      const specs = product.specs ? JSON.parse(product.specs) : {};
+      const { title, description } = await generateDescription({ ...specs, title: product.title, costEur: listing.cost_eur_cents / 100 });
+      db.prepare("UPDATE listings SET title = ?, description = ?, updated_at = ? WHERE listing_id = ?")
+        .run(title, description, now, listingId);
+    } catch (e) {
+      console.warn(`[refresh] description regen failed: ${e.message}`);
+    }
+  }
+
+  // Republier sur LBC avec nouveau titre/description/photos
+  if (!isMock && listing.leboncoin_ad_id) {
+    const { randomUUID } = require("crypto");
+    const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    db.prepare(
+      "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, account_id, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))"
+    ).run(jobId, "publish_listing", JSON.stringify({ listingId }), "pending", listing.account_id, `republish:${listingId}:${now}`);
+  }
+
+  return { listingId, refreshed: true };
+}
+
 queue.register("publish_listing", handlePublishListing);
 queue.register("send_alert", handleSendAlertWithValidation);
 queue.register("sync_tracking", handleSyncTracking);
 queue.register("mark_listing_sold", handleMarkListingSold);
 queue.register("cancel_sale_lbc", handleCancelSaleLbc);
+queue.register("reprice_check", handleRepriceCheck);
+queue.register("refresh_listing_media", handleRefreshListingMedia);
