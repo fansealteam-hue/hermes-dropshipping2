@@ -113,6 +113,39 @@ router.get("/listings/:id", (req, res) => {
   res.json({ ok: true, data: l });
 });
 
+// All listings with product title + sale info (for dashboard)
+router.get("/listings", (req, res) => {
+  const { status, accountId, limit = 200, offset = 0 } = req.query;
+  let where = "WHERE 1=1";
+  const params = [];
+  if (status)    { where += " AND l.status = ?";     params.push(status) }
+  if (accountId) { where += " AND l.account_id = ?"; params.push(accountId) }
+  params.push(parseInt(limit), parseInt(offset));
+
+  const rows = db.prepare(`
+    SELECT
+      l.listing_id, l.account_id, l.temu_item_id, l.variant_id,
+      l.title, l.price_eur_cents, l.cost_eur_cents,
+      l.delivery_fee_eur_cents, l.delivery_option,
+      l.status, l.published_at, l.created_at,
+      l.repricing_count, l.leboncoin_ad_id,
+      p.title AS product_title,
+      s.sale_id, s.sale_price_eur_cents, s.confirmed_at AS sold_at,
+      s.status AS sale_status
+    FROM listings l
+    LEFT JOIN products p ON p.temu_item_id = l.temu_item_id
+    LEFT JOIN sales s ON s.listing_id = l.listing_id
+      AND s.status NOT IN ('cancelled')
+    ${where}
+    ORDER BY l.created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params);
+
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM listings l ${where.replace(/LIMIT.*/, '')}`).get(...params.slice(0, -2))?.n ?? 0;
+
+  res.json({ ok: true, data: rows, total });
+});
+
 // ─── Sales ────────────────────────────────────────────────────────────────────
 
 router.get("/sales", (req, res) => {
