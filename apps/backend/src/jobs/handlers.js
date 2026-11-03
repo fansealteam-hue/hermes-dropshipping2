@@ -228,6 +228,7 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
   if (isMock) {
     db.prepare("UPDATE listings SET status = 'sold', updated_at = ? WHERE listing_id = ?")
       .run(new Date().toISOString(), listingId);
+    _enqueueRepublishSold(listing);
     return { listingId, marked: true };
   }
 
@@ -255,6 +256,10 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
     const newState = await context.storageState();
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.writeFileSync(sessionPath, JSON.stringify(newState));
+
+    // Auto-republier avec nouvelles photos
+    _enqueueRepublishSold(listing);
+
     return { listingId, marked: true };
   } finally {
     await browser?.close();
@@ -481,6 +486,79 @@ async function handleRefreshListingMedia({ listingId }, job) {
   return { listingId, refreshed: true };
 }
 
+// ─── Auto-republication après vente (nouvelles photos, même produit) ─────────
+
+/**
+ * Quand un article est vendu, crée un nouveau listing draft pour le même produit/variante
+ * et force la regénération des photos (supprime le cache) pour avoir un nouveau fond.
+ * Respecte la limite journalière DAILY_LISTING_MAX.
+ */
+function _enqueueRepublishSold(soldListing) {
+  const DAILY_MAX = parseInt(process.env.DAILY_LISTING_MAX ?? "0"); // 0 = illimité
+  if (DAILY_MAX > 0) {
+    const { countPublishedToday } = require("../services/repricing");
+    if (countPublishedToday() >= DAILY_MAX) {
+      console.log(`[republish] Limite journalière atteinte (${DAILY_MAX}) — republication reportée`);
+      return;
+    }
+  }
+
+  const { randomUUID } = require("crypto");
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const key = `republish_sold:${soldListing.listing_id}`;
+
+  // Job de refresh photos d'abord (force regen), puis publish_listing sera enqueué par handleRefreshListingMedia
+  db.prepare(
+    "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, account_id, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))"
+  ).run(
+    jobId,
+    "republish_sold",
+    JSON.stringify({ temuItemId: soldListing.temu_item_id, variantId: soldListing.variant_id, accountId: soldListing.account_id, sourcePriceCents: soldListing.price_eur_cents, deliveryOption: soldListing.delivery_option, deliveryFeeCents: soldListing.delivery_fee_eur_cents ?? 0 }),
+    "pending",
+    soldListing.account_id,
+    key
+  );
+  console.log(`[republish] Annonce vendue ${soldListing.listing_id} → republication programmée`);
+}
+
+async function handleRepublishSold({ temuItemId, variantId, accountId, sourcePriceCents, deliveryOption, deliveryFeeCents }, job) {
+  const isMock = process.env.NODE_ENV === "test";
+  const { randomUUID } = require("crypto");
+  const fs = require("fs");
+  const path = require("path");
+
+  // Forcer la regénération des photos (supprimer le cache de la photo principale)
+  if (!isMock) {
+    const MEDIA_DIR = process.env.MEDIA_DIR ?? path.join(__dirname, "../../../data/media");
+    const cached = path.join(MEDIA_DIR, `${temuItemId}_${variantId}_0.jpg`);
+    if (fs.existsSync(cached)) fs.unlinkSync(cached);
+    // Supprimer aussi les angles IA
+    for (const suf of ["ai1", "ai2"]) {
+      const p = path.join(MEDIA_DIR, `${temuItemId}_${variantId}_${suf}.jpg`);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
+
+  // Créer un nouveau listing draft avec le même prix
+  const { createListing } = require("../services/listings");
+  const priceEur = (sourcePriceCents - (deliveryFeeCents ?? 0)) / 100;
+
+  try {
+    const newListing = createListing({
+      temuItemId,
+      variantId,
+      accountId,
+      priceEur,
+      deliveryOption: deliveryOption ?? undefined,
+    });
+    console.log(`[republish] Nouveau listing créé : ${newListing.listingId}`);
+    return { newListingId: newListing.listingId };
+  } catch (e) {
+    console.warn(`[republish] createListing failed: ${e.message}`);
+    return { error: e.message };
+  }
+}
+
 queue.register("publish_listing", handlePublishListing);
 queue.register("send_alert", handleSendAlertWithValidation);
 queue.register("sync_tracking", handleSyncTracking);
@@ -488,3 +566,4 @@ queue.register("mark_listing_sold", handleMarkListingSold);
 queue.register("cancel_sale_lbc", handleCancelSaleLbc);
 queue.register("reprice_check", handleRepriceCheck);
 queue.register("refresh_listing_media", handleRefreshListingMedia);
+queue.register("republish_sold", handleRepublishSold);
