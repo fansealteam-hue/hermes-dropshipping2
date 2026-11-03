@@ -64,6 +64,14 @@ app.patch("/api/sales/:id/tracking", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/sales/${req.params.id}/tracking`, "PATCH", req.body)
 );
 
+app.get("/api/finance", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/finance?${new URLSearchParams(req.query).toString()}`)
+);
+
+app.post("/api/sales/:id/sync-tracking", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/sales/${req.params.id}/sync-tracking`, "POST")
+);
+
 // ─── SPA fallback ────────────────────────────────────────────────────────────
 app.get("*", (req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))

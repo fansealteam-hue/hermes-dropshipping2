@@ -143,6 +143,101 @@ router.get("/dashboard", (req, res) => {
   });
 });
 
+// ─── Dashboard financier (Claude B) ──────────────────────────────────────────
+
+router.get("/finance", (req, res) => {
+  const period = req.query.period ?? "30d";
+  const days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+  // Revenus et coûts
+  const totals = db.prepare(`
+    SELECT
+      COUNT(*) as total_sales,
+      SUM(sale_price_eur_cents) as revenue_cents,
+      SUM(cost_eur_cents) as cost_cents,
+      SUM(actual_cost_eur_cents) as actual_cost_cents,
+      SUM(sale_price_eur_cents - cost_eur_cents) as gross_margin_cents
+    FROM sales
+    WHERE confirmed_at >= ? AND status != 'closed'
+  `).get(since);
+
+  // Par statut
+  const byStatus = db.prepare(`
+    SELECT status, COUNT(*) as count, SUM(sale_price_eur_cents) as revenue_cents
+    FROM sales WHERE confirmed_at >= ?
+    GROUP BY status
+  `).all(since);
+
+  // Évolution journalière (revenus)
+  const daily = db.prepare(`
+    SELECT
+      date(confirmed_at) as day,
+      COUNT(*) as sales,
+      SUM(sale_price_eur_cents) as revenue_cents,
+      SUM(sale_price_eur_cents - cost_eur_cents) as margin_cents
+    FROM sales
+    WHERE confirmed_at >= ? AND status != 'closed'
+    GROUP BY date(confirmed_at)
+    ORDER BY day ASC
+  `).all(since);
+
+  // Top produits
+  const topProducts = db.prepare(`
+    SELECT
+      s.temu_item_id,
+      p.title,
+      COUNT(*) as sales_count,
+      SUM(s.sale_price_eur_cents) as revenue_cents,
+      SUM(s.sale_price_eur_cents - s.cost_eur_cents) as margin_cents
+    FROM sales s
+    LEFT JOIN products p ON p.temu_item_id = s.temu_item_id
+    WHERE s.confirmed_at >= ? AND s.status != 'closed'
+    GROUP BY s.temu_item_id
+    ORDER BY revenue_cents DESC
+    LIMIT 10
+  `).all(since);
+
+  // Jobs en erreur
+  const failedJobs = db.prepare(
+    "SELECT operation, COUNT(*) as count FROM jobs WHERE status IN ('failed','verify') GROUP BY operation"
+  ).all();
+
+  const r = totals ?? {};
+  const revenueEur = (r.revenue_cents ?? 0) / 100;
+  const costEur = (r.cost_cents ?? 0) / 100;
+  const marginEur = (r.gross_margin_cents ?? 0) / 100;
+
+  res.json({
+    ok: true,
+    data: {
+      period,
+      summary: {
+        totalSales: r.total_sales ?? 0,
+        revenueEur,
+        costEur,
+        marginEur,
+        marginPct: revenueEur > 0 ? Math.round((marginEur / revenueEur) * 100) : 0,
+      },
+      byStatus: byStatus.map(s => ({ status: s.status, count: s.count, revenueEur: s.revenue_cents / 100 })),
+      daily: daily.map(d => ({
+        day: d.day,
+        sales: d.sales,
+        revenueEur: d.revenue_cents / 100,
+        marginEur: d.margin_cents / 100,
+      })),
+      topProducts: topProducts.map(p => ({
+        temuItemId: p.temu_item_id,
+        title: p.title ?? p.temu_item_id,
+        salesCount: p.sales_count,
+        revenueEur: p.revenue_cents / 100,
+        marginEur: p.margin_cents / 100,
+      })),
+      failedJobs,
+    },
+  });
+});
+
 // ─── Sync tracking to Leboncoin (Claude B) ────────────────────────────────────
 
 router.post("/sales/:id/sync-tracking", (req, res) => {
