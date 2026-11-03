@@ -2,6 +2,8 @@ const router = require("express").Router();
 const { fetchProduct } = require("../services/products");
 const { createListing, getListing } = require("../services/listings");
 const { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking } = require("../services/sales");
+const { generateReply } = require("../services/auto-responder");
+const { evaluateOffer } = require("../services/negotiation");
 const db = require("../db/db");
 
 // ─── Auth (internal — same VPS, or bearer token) ──────────────────────────────
@@ -139,6 +141,71 @@ router.get("/dashboard", (req, res) => {
       })),
     },
   });
+});
+
+// ─── Sync tracking to Leboncoin (Claude B) ────────────────────────────────────
+
+router.post("/sales/:id/sync-tracking", (req, res) => {
+  const sale = getSale(req.params.id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+  if (!sale.trackingNumber) return res.status(422).json({ ok: false, error: "Numéro de suivi manquant" });
+
+  // Enqueue sync_tracking job (processed by handleSyncTracking in handlers.js)
+  const { randomUUID } = require("crypto");
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const key = `tracking:${sale.saleId}:${sale.trackingNumber}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'sync_tracking', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(jobId, JSON.stringify({ saleId: sale.saleId, trackingNumber: sale.trackingNumber, trackingCarrier: sale.trackingCarrier }), key);
+
+  res.json({ ok: true, data: { jobId, status: "enqueued" } });
+});
+
+// ─── Auto-responder (Claude B) ────────────────────────────────────────────────
+
+router.post("/messages/reply", async (req, res) => {
+  const { buyerMessage, listingId } = req.body ?? {};
+  if (!buyerMessage || !listingId) {
+    return res.status(400).json({ ok: false, error: "buyerMessage et listingId requis" });
+  }
+  const listing = db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(listingId);
+  if (!listing) return res.status(404).json({ ok: false, error: "Listing introuvable" });
+
+  const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(listing.variant_id);
+  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(listing.temu_item_id);
+
+  try {
+    const result = await generateReply({
+      buyerMessage,
+      listingPriceEur: listing.price_eur_cents / 100,
+      productTitle: product?.title ?? listing.temu_item_id,
+      variantLabel: variant?.label ?? listing.variant_id,
+    });
+    res.json({ ok: true, data: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─── Negotiation (Claude B) ───────────────────────────────────────────────────
+
+router.post("/negotiate", (req, res) => {
+  const { listingId, offerEur } = req.body ?? {};
+  if (!listingId || !offerEur) {
+    return res.status(400).json({ ok: false, error: "listingId et offerEur requis" });
+  }
+  const listing = db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(listingId);
+  if (!listing) return res.status(404).json({ ok: false, error: "Listing introuvable" });
+
+  try {
+    const result = evaluateOffer(listing.price_eur_cents / 100, parseFloat(offerEur));
+    const { buildReply } = require("../services/negotiation");
+    const reply = buildReply(result.decision, result.counterPriceEur, listing.price_eur_cents / 100);
+    res.json({ ok: true, data: { ...result, reply } });
+  } catch (e) {
+    res.status(422).json({ ok: false, error: e.message });
+  }
 });
 
 // ─── Hermès webhook (events from Hermès task runner) ─────────────────────────
