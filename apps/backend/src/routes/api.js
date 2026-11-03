@@ -44,6 +44,57 @@ router.get("/accounts/leboncoin", (req, res) => {
   res.json({ ok: true, data: accounts.map(a => ({ accountId: a.account_id, label: a.label })) });
 });
 
+// ─── Stats par compte (dashboard) ────────────────────────────────────────────
+
+router.get("/accounts/stats", (req, res) => {
+  const TEMU_SHIPPING_FEE_CENTS = Math.round(parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99") * 100);
+
+  const accounts = db.prepare("SELECT account_id, label, active FROM seller_accounts WHERE channel = 'leboncoin'").all();
+
+  const salesByAccount = db.prepare(`
+    SELECT
+      account_id,
+      COUNT(*) as total_sales,
+      SUM(sale_price_eur_cents) as revenue_cents,
+      SUM(cost_eur_cents) as cost_cents
+    FROM sales
+    WHERE status NOT IN ('cancelled', 'closed')
+    GROUP BY account_id
+  `).all();
+  const salesMap = Object.fromEntries(salesByAccount.map(r => [r.account_id, r]));
+
+  const listingsByAccount = db.prepare(`
+    SELECT account_id,
+      COUNT(*) FILTER (WHERE status = 'published') as active_count,
+      COUNT(*) FILTER (WHERE status = 'archived') as archived_count
+    FROM listings
+    GROUP BY account_id
+  `).all();
+  const listingsMap = Object.fromEntries(listingsByAccount.map(r => [r.account_id, r]));
+
+  const data = accounts.map(a => {
+    const s = salesMap[a.account_id] ?? {};
+    const l = listingsMap[a.account_id] ?? {};
+    const revCents = s.revenue_cents ?? 0;
+    const costCents = s.cost_cents ?? 0;
+    const totalSales = s.total_sales ?? 0;
+    const netMarginCents = revCents - costCents - (totalSales * TEMU_SHIPPING_FEE_CENTS);
+    return {
+      accountId: a.account_id,
+      label: a.label,
+      active: a.active === 1,
+      totalSales,
+      revenueEur: revCents / 100,
+      costEur: costCents / 100,
+      netMarginEur: netMarginCents / 100,
+      activeListings: l.active_count ?? 0,
+      archivedListings: l.archived_count ?? 0,
+    };
+  });
+
+  res.json({ ok: true, data });
+});
+
 // ─── Listings ────────────────────────────────────────────────────────────────
 
 router.post("/listings", (req, res) => {

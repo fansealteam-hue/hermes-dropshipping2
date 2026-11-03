@@ -63,11 +63,15 @@ async function handlePublishListing({ listingId }, job) {
     const currentUrl = page.url();
     if (currentUrl.includes("login") || currentUrl.includes("connexion")) {
       await _pauseAccount(account.account_id, "session_expired");
-      throw Object.assign(new Error("Session expiree — compte pause"), { code: "SESSION_EXPIRED" });
+      await browser.close();
+      browser = null;
+      return await _rotateAccount(listingId, listing.account_id, "SESSION_EXPIRED");
     }
     if (await page.$('[data-testid="captcha"]').catch(() => null)) {
       await _pauseAccount(account.account_id, "captcha");
-      throw Object.assign(new Error("CAPTCHA detecte — compte pause"), { code: "CAPTCHA" });
+      await browser.close();
+      browser = null;
+      return await _rotateAccount(listingId, listing.account_id, "CAPTCHA");
     }
 
     await page.fill('[data-testid="subject"]', listing.title);
@@ -117,6 +121,39 @@ async function _pauseAccount(accountId, reason) {
   queue.pauseAccount(accountId);
   db.prepare("UPDATE seller_accounts SET active = 0 WHERE account_id = ?").run(accountId);
   console.warn(`[lbc] Compte ${accountId} pause : ${reason}`);
+}
+
+/**
+ * Rotation de compte : quand un compte est bloqué (SESSION_EXPIRED / CAPTCHA),
+ * tente de re-publier sur un autre compte actif.
+ * Si aucun compte disponible → archive le listing.
+ */
+async function _rotateAccount(listingId, failedAccountId, reason) {
+  const { archiveListing } = require("../services/repricing");
+  const { randomUUID } = require("crypto");
+
+  const fallback = db.prepare(
+    "SELECT * FROM seller_accounts WHERE channel = 'leboncoin' AND active = 1 AND account_id != ? LIMIT 1"
+  ).get(failedAccountId);
+
+  if (!fallback) {
+    archiveListing(listingId);
+    console.warn(`[lbc] Aucun compte de remplacement disponible — ${listingId} archivé (${reason})`);
+    return { listingId, status: "archived", reason };
+  }
+
+  // Réassigner le listing au compte de remplacement
+  db.prepare("UPDATE listings SET account_id = ?, updated_at = ? WHERE listing_id = ?")
+    .run(fallback.account_id, new Date().toISOString(), listingId);
+
+  // Re-enqueue la publication sur le nouveau compte
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(
+    "INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, account_id, idempotency_key, run_at, created_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))"
+  ).run(jobId, "publish_listing", JSON.stringify({ listingId }), "pending", fallback.account_id, `rotate:${listingId}:${fallback.account_id}`);
+
+  console.warn(`[lbc] ${listingId} rotaté de ${failedAccountId} → ${fallback.account_id} (${reason})`);
+  return { listingId, rotatedTo: fallback.account_id, status: "requeued" };
 }
 
 /**
