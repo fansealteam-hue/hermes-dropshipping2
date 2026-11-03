@@ -19,4 +19,7 @@ module.exports = {
   addTracking: (id, data) => apiFetch(`/api/sales/${id}/tracking`, "PATCH", data),
   getSale: id => apiFetch(`/api/sales/${id}`),
   getActiveSales: () => apiFetch("/api/sales"),
+  syncTracking: saleId => apiFetch(`/api/sales/${saleId}/sync-tracking`, "POST"),
+  autoReply: (listingId, buyerMessage) => apiFetch("/api/messages/reply", "POST", { listingId, buyerMessage }),
+  negotiate: (listingId, offerEur) => apiFetch("/api/negotiate", "POST", { listingId, offerEur }),
 };

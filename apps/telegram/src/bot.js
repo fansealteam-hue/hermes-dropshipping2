@@ -253,18 +253,69 @@ async function handleTracking(ctx, saleId, carrier, tracking) {
   if (!saleId || !tracking) return ctx.reply("❌ Format : `/suivi <id_vente> <transporteur> <numéro>`", { parse_mode: "MarkdownV2" });
   const res = await api.addTracking(saleId, { orderRef: "", trackingNumber: tracking, trackingCarrier: carrier });
   if (!res.ok || !res.data) return ctx.reply(`❌ ${msg.escMd(res.error ?? "")}`, { parse_mode: "MarkdownV2" });
-  return ctx.reply(msg.fmtTrackingAdded(res.data), { parse_mode: "MarkdownV2" });
+
+  // Auto-transmission du suivi à l'acheteur Leboncoin via le job queue
+  const syncRes = await api.syncTracking(saleId);
+  const syncStatus = syncRes?.ok
+    ? "✅ Transmis automatiquement à l'acheteur Leboncoin\\."
+    : "⚠️ Transmission automatique échouée — à envoyer manuellement sur Leboncoin\\.";
+
+  return ctx.reply(
+    msg.fmtTrackingAdded(res.data) + "\n\n" + syncStatus,
+    { parse_mode: "MarkdownV2" }
+  );
 }
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 
 bot.catch(err => console.error("[bot]", err.message));
 
-// ─── Sale alert (called by job queue) ────────────────────────────────────────
+// ─── Sale alert with COMMANDER / ANNULER buttons (Claude B) ─────────────────
 
 async function sendSaleAlert(chatId, { sale, productTitle, variantLabel }) {
-  await bot.api.sendMessage(chatId, msg.fmtSaleAlert(sale, productTitle, variantLabel), { parse_mode: "MarkdownV2" });
+  const text = msg.fmtSaleAlert(sale, productTitle, variantLabel);
+  const kb = new InlineKeyboard()
+    .text("🛒 COMMANDER", `order_sale:${sale.saleId}`)
+    .text("❌ ANNULER", `cancel_sale:${sale.saleId}`);
+  await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
 }
+
+// ─── COMMANDER callback ───────────────────────────────────────────────────────
+
+bot.callbackQuery(/^order_sale:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("order_sale:", "");
+  const res = await api.getSale(saleId);
+
+  if (!res.ok || !res.data) {
+    await ctx.answerCallbackQuery("Vente introuvable");
+    return;
+  }
+
+  const sale = res.data;
+  const info = [
+    "📦 *Informations acheteur*",
+    sale.buyerName ? `Nom : ${msg.escMd(sale.buyerName)}` : "",
+    sale.deliveryAddress ? `Adresse : ${msg.escMd(sale.deliveryAddress)}` : "",
+    `Prix payé : ${sale.salePriceEur?.toFixed(2)} €`,
+    `Lien fournisseur : ${msg.escMd(sale.supplierUrl ?? "")}`,
+    "",
+    `Enregistrez la commande avec /commande ${msg.escMd(saleId)} REF`,
+  ].filter(Boolean).join("\n");
+
+  await ctx.editMessageText(info, { parse_mode: "MarkdownV2" });
+  await ctx.answerCallbackQuery("Informations affichées");
+});
+
+// ─── ANNULER callback ─────────────────────────────────────────────────────────
+
+bot.callbackQuery(/^cancel_sale:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("cancel_sale:", "");
+  await ctx.editMessageText(
+    `❌ Vente \`${msg.escMd(saleId.slice(0, 10))}\` annulée par l'opérateur\\.`,
+    { parse_mode: "MarkdownV2" }
+  );
+  await ctx.answerCallbackQuery("Vente annulée");
+});
 
 module.exports = { bot, sendSaleAlert };
 
