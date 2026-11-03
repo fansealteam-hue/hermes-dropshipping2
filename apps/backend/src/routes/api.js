@@ -501,17 +501,20 @@ router.post("/hermes/event", (req, res) => {
 
 router.post("/listings/bump-all", (req, res) => {
   const rows = db.prepare(
-    "SELECT id FROM listings WHERE status = 'active' AND account_id IS NOT NULL"
+    "SELECT listing_id FROM listings WHERE status = 'active' AND account_id IS NOT NULL"
   ).all();
   let jobsCreated = 0;
   for (const row of rows) {
+    const key = `bump_listing:${row.listing_id}`;
     const existing = db.prepare(
-      "SELECT 1 FROM jobs WHERE type = 'bump_listing' AND ref_id = ? AND status = 'pending'"
-    ).get(row.id);
+      "SELECT 1 FROM jobs WHERE idempotency_key = ? AND status = 'pending'"
+    ).get(key);
     if (!existing) {
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       db.prepare(
-        "INSERT INTO jobs (type, ref_id, status, created_at) VALUES ('bump_listing',?,  'pending', datetime('now'))"
-      ).run(row.id);
+        `INSERT INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+         VALUES (?, 'bump_listing', ?, 'pending', ?, datetime('now'), datetime('now'))`
+      ).run(jobId, JSON.stringify({ listingId: row.listing_id }), key);
       jobsCreated++;
     }
   }
@@ -521,16 +524,21 @@ router.post("/listings/bump-all", (req, res) => {
 // ─── Sync all accounts ────────────────────────────────────────────────────────
 
 router.post("/accounts/sync-all", (req, res) => {
-  const accounts = db.prepare("SELECT id FROM leboncoin_accounts WHERE active = 1").all();
+  const accounts = db.prepare(
+    "SELECT account_id FROM seller_accounts WHERE active = 1"
+  ).all();
   let jobsCreated = 0;
   for (const acc of accounts) {
+    const key = `sync_account:${acc.account_id}`;
     const existing = db.prepare(
-      "SELECT 1 FROM jobs WHERE type = 'sync_account' AND ref_id = ? AND status = 'pending'"
-    ).get(acc.id);
+      "SELECT 1 FROM jobs WHERE idempotency_key = ? AND status = 'pending'"
+    ).get(key);
     if (!existing) {
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       db.prepare(
-        "INSERT INTO jobs (type, ref_id, status, created_at) VALUES ('sync_account', ?, 'pending', datetime('now'))"
-      ).run(acc.id);
+        `INSERT INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+         VALUES (?, 'sync_account', ?, 'pending', ?, datetime('now'), datetime('now'))`
+      ).run(jobId, JSON.stringify({ accountId: acc.account_id }), key);
       jobsCreated++;
     }
   }
@@ -554,8 +562,18 @@ router.get("/agents/status", (req, res) => {
 // ─── Unread messages ──────────────────────────────────────────────────────────
 
 router.get("/messages/unread", (req, res) => {
+  // table créée à la migration si absente
+  db.prepare(`CREATE TABLE IF NOT EXISTS lbc_messages (
+    id          TEXT PRIMARY KEY,
+    listing_id  TEXT,
+    sender_name TEXT,
+    preview     TEXT,
+    full_text   TEXT,
+    read        INTEGER NOT NULL DEFAULT 0,
+    received_at TEXT NOT NULL
+  )`).run();
   const rows = db.prepare(
-    "SELECT id, sender_name AS senderName, preview, received_at FROM messages WHERE read = 0 ORDER BY received_at DESC LIMIT 20"
+    "SELECT id, sender_name AS senderName, preview, received_at FROM lbc_messages WHERE read = 0 ORDER BY received_at DESC LIMIT 20"
   ).all();
   res.json({ ok: true, data: rows });
 });
