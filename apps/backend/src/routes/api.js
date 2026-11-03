@@ -497,4 +497,67 @@ router.post("/hermes/event", (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Bump all listings ────────────────────────────────────────────────────────
+
+router.post("/listings/bump-all", (req, res) => {
+  const rows = db.prepare(
+    "SELECT id FROM listings WHERE status = 'active' AND account_id IS NOT NULL"
+  ).all();
+  let jobsCreated = 0;
+  for (const row of rows) {
+    const existing = db.prepare(
+      "SELECT 1 FROM jobs WHERE type = 'bump_listing' AND ref_id = ? AND status = 'pending'"
+    ).get(row.id);
+    if (!existing) {
+      db.prepare(
+        "INSERT INTO jobs (type, ref_id, status, created_at) VALUES ('bump_listing',?,  'pending', datetime('now'))"
+      ).run(row.id);
+      jobsCreated++;
+    }
+  }
+  res.json({ ok: true, data: { jobsCreated } });
+});
+
+// ─── Sync all accounts ────────────────────────────────────────────────────────
+
+router.post("/accounts/sync-all", (req, res) => {
+  const accounts = db.prepare("SELECT id FROM leboncoin_accounts WHERE active = 1").all();
+  let jobsCreated = 0;
+  for (const acc of accounts) {
+    const existing = db.prepare(
+      "SELECT 1 FROM jobs WHERE type = 'sync_account' AND ref_id = ? AND status = 'pending'"
+    ).get(acc.id);
+    if (!existing) {
+      db.prepare(
+        "INSERT INTO jobs (type, ref_id, status, created_at) VALUES ('sync_account', ?, 'pending', datetime('now'))"
+      ).run(acc.id);
+      jobsCreated++;
+    }
+  }
+  res.json({ ok: true, data: { jobsCreated } });
+});
+
+// ─── Agents status ────────────────────────────────────────────────────────────
+
+router.get("/agents/status", (req, res) => {
+  const pending   = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'").get().n;
+  const running   = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'running'").get().n;
+  const done24h   = db.prepare(
+    "SELECT COUNT(*) AS n FROM jobs WHERE status = 'done' AND created_at >= datetime('now', '-24 hours')"
+  ).get().n;
+  const failed24h = db.prepare(
+    "SELECT COUNT(*) AS n FROM jobs WHERE status = 'failed' AND created_at >= datetime('now', '-24 hours')"
+  ).get().n;
+  res.json({ ok: true, data: { pending, running, done24h, failed24h } });
+});
+
+// ─── Unread messages ──────────────────────────────────────────────────────────
+
+router.get("/messages/unread", (req, res) => {
+  const rows = db.prepare(
+    "SELECT id, sender_name AS senderName, preview, received_at FROM messages WHERE read = 0 ORDER BY received_at DESC LIMIT 20"
+  ).all();
+  res.json({ ok: true, data: rows });
+});
+
 module.exports = router;
