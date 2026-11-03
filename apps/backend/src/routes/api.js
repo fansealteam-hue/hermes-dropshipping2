@@ -304,6 +304,35 @@ router.post("/negotiate", (req, res) => {
   }
 });
 
+// ─── Annuler vente (NON bouton Telegram) ─────────────────────────────────────
+
+router.post("/sales/:id/cancel", (req, res) => {
+  const sale = getSale(req.params.id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+
+  const { randomUUID } = require("crypto");
+  // Marquer annulée en DB
+  db.prepare("UPDATE sales SET status = 'cancelled', updated_at = datetime('now') WHERE sale_id = ?").run(sale.saleId);
+
+  // Job pour envoyer message LBC à l'acheteur + annuler sur LBC
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'cancel_sale_lbc', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(jobId, JSON.stringify({ saleId: sale.saleId, listingId: sale.listingId }), `cancel:${sale.saleId}`);
+
+  res.json({ ok: true, data: { jobId, status: "enqueued" } });
+});
+
+// ─── Confirmer disponibilité (OUI bouton Telegram) ───────────────────────────
+
+router.post("/sales/:id/confirm-available", (req, res) => {
+  const sale = getSale(req.params.id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+  // Déjà confirmed — rien à faire côté DB, juste ack
+  res.json({ ok: true });
+});
+
 // ─── Hermès webhook (events from Hermès task runner) ─────────────────────────
 
 router.post("/hermes/event", (req, res) => {

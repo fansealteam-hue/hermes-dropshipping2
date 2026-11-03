@@ -292,7 +292,65 @@ async function handleSendAlertWithValidation({ saleId }, job) {
   }
 }
 
+// ─── Annulation LBC : message acheteur + retrait annonce ──────────────────────
+
+async function handleCancelSaleLbc({ saleId, listingId }, job) {
+  const sale = db.prepare("SELECT * FROM sales WHERE sale_id = ?").get(saleId);
+  if (!sale) return;
+
+  const listing = listingId ? db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(listingId) : null;
+  const account = listing
+    ? db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(listing.account_id)
+    : null;
+  const isMock = process.env.NODE_ENV === "test" || (account?.credentials_ref ?? "").startsWith("mock_");
+
+  if (isMock) {
+    if (listing) {
+      db.prepare("UPDATE listings SET status = 'cancelled', updated_at = ? WHERE listing_id = ?")
+        .run(new Date().toISOString(), listingId);
+    }
+    return { saleId, cancelled: true };
+  }
+
+  let browser;
+  try {
+    const { chromium } = require("playwright");
+    const fs = require("fs");
+    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+    const sessionPath = `${__dirname}/../../../data/sessions/${account.account_id}.json`;
+    const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
+    const context = await browser.newContext({ storageState });
+    const page = await context.newPage();
+
+    // Envoyer message à l'acheteur dans la conversation LBC
+    if (listing?.leboncoin_ad_id) {
+      await page.goto(`https://www.leboncoin.fr/messagerie/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });
+      const cancelMsg = "Bonjour, je suis désolé(e) mais cet article n'est plus disponible à la vente. Je vous présente mes excuses pour la gêne occasionnée.";
+      await page.fill('[data-testid="message-input"]', cancelMsg);
+      await page.click('[data-testid="send-message"]');
+
+      // Supprimer l'annonce
+      await page.goto(`https://www.leboncoin.fr/mes-annonces/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });
+      const deleteBtn = await page.$('[data-testid="delete-listing"], [data-testid="mark-as-sold"]').catch(() => null);
+      if (deleteBtn) await deleteBtn.click();
+    }
+
+    if (listing) {
+      db.prepare("UPDATE listings SET status = 'cancelled', updated_at = ? WHERE listing_id = ?")
+        .run(new Date().toISOString(), listingId);
+    }
+
+    const newState = await context.storageState();
+    fs.mkdirSync(`${__dirname}/../../../data/sessions`, { recursive: true });
+    fs.writeFileSync(sessionPath, JSON.stringify(newState));
+    return { saleId, cancelled: true };
+  } finally {
+    await browser?.close();
+  }
+}
+
 queue.register("publish_listing", handlePublishListing);
 queue.register("send_alert", handleSendAlertWithValidation);
 queue.register("sync_tracking", handleSyncTracking);
 queue.register("mark_listing_sold", handleMarkListingSold);
+queue.register("cancel_sale_lbc", handleCancelSaleLbc);

@@ -57,6 +57,15 @@ bot.on("message:text", async ctx => {
   if (state === "awaiting_temu_link") { ctx.session.state = "idle"; return handleTemuUrl(ctx, text); }
   if (state === "awaiting_order_ref")  { ctx.session.state = "idle"; const [id, ref] = text.split(" "); return handleOrderRef(ctx, id, ref); }
   if (state === "awaiting_tracking")   { ctx.session.state = "idle"; const [id, carrier, num] = text.split(" "); return handleTracking(ctx, id, carrier, num); }
+  if (state === "awaiting_tracking_inline") {
+    ctx.session.state = "idle";
+    const saleId = ctx.session.pendingTrackingSaleId;
+    ctx.session.pendingTrackingSaleId = undefined;
+    const parts = text.trim().split(/\s+/);
+    const carrier = parts[0];
+    const num = parts.slice(1).join(" ");
+    return handleTracking(ctx, saleId, carrier, num);
+  }
 });
 
 // ─── Temu URL handler ────────────────────────────────────────────────────────
@@ -270,97 +279,110 @@ async function handleTracking(ctx, saleId, carrier, tracking) {
 
 bot.catch(err => console.error("[bot]", err.message));
 
-// ─── Sale alert with COMMANDER / ANNULER buttons (Claude B) ─────────────────
+// ─── Sale alert : photo + OUI DISPONIBLE / NON PLUS DISPO ────────────────────
 
 async function sendSaleAlert(chatId, { sale, productTitle, variantLabel, imageUrls = [], variantOptions = "" }) {
   const text = msg.fmtSaleAlert(sale, productTitle, variantLabel, variantOptions);
   const kb = new InlineKeyboard()
-    .text("🛒 COMMANDER", `order_sale:${sale.saleId}`).row()
-    .text("❌ ANNULER VENTE", `cancel_sale:${sale.saleId}`);
+    .text("✅ OUI, disponible", `avail_yes:${sale.saleId}`).row()
+    .text("❌ NON, plus dispo", `avail_no:${sale.saleId}`);
 
-  // Envoyer la première photo du produit si disponible
   const photoUrl = imageUrls?.[0];
   if (photoUrl) {
     try {
-      await bot.api.sendPhoto(chatId, photoUrl, {
-        caption: text,
-        parse_mode: "MarkdownV2",
-        reply_markup: kb,
-      });
+      await bot.api.sendPhoto(chatId, photoUrl, { caption: text, parse_mode: "MarkdownV2", reply_markup: kb });
       return;
-    } catch (_) {
-      // Photo inaccessible → fallback texte
-    }
+    } catch (_) { /* fallback texte */ }
   }
   await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
 }
 
-// ─── COMMANDER → affiche infos acheteur + bouton VALIDER PAIEMENT ─────────────
+// ─── OUI → infos acheteur + lien Temu + VALIDER ──────────────────────────────
 
-bot.callbackQuery(/^order_sale:(.+)$/, async ctx => {
-  const saleId = ctx.callbackQuery.data.replace("order_sale:", "");
+bot.callbackQuery(/^avail_yes:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("avail_yes:", "");
   const res = await api.getSale(saleId);
-
-  if (!res.ok || !res.data) {
-    await ctx.answerCallbackQuery("Vente introuvable");
-    return;
-  }
+  if (!res.ok || !res.data) { await ctx.answerCallbackQuery("Vente introuvable"); return; }
 
   const sale = res.data;
   const info = [
-    "📦 *Informations acheteur*",
-    sale.buyerName ? `Nom : ${msg.escMd(sale.buyerName)}` : "",
-    sale.deliveryAddress ? `Adresse livraison : ${msg.escMd(sale.deliveryAddress)}` : "",
-    `Prix payé : *${msg.escMd(sale.salePriceEur?.toFixed(2))} €*`,
-    `Coût fournisseur estimé : ${msg.escMd(sale.costEur?.toFixed(2))} €`,
-    `Lien fournisseur : ${msg.escMd(sale.supplierUrl ?? "")}`,
+    "✅ *Article disponible — infos acheteur*",
     "",
-    "👇 Validez pour procéder au paiement fournisseur",
+    sale.buyerName        ? `👤 Acheteur : ${msg.escMd(sale.buyerName)}` : "",
+    sale.deliveryAddress  ? `📍 Adresse : ${msg.escMd(sale.deliveryAddress)}` : "",
+    `💰 Prix payé : *${msg.escMd((sale.salePriceEur ?? 0).toFixed(2))} €*`,
+    sale.costEur != null  ? `Coût estimé : ${msg.escMd(sale.costEur.toFixed(2))} €` : "",
+    "",
+    "🛒 *Lien fournisseur à commander :*",
+    msg.escMd(sale.supplierUrl ?? ""),
+    "",
+    "👇 Validez après avoir passé la commande Temu",
   ].filter(Boolean).join("\n");
 
   const kb = new InlineKeyboard()
-    .text("✅ VALIDER — procéder au paiement", `confirm_payment:${saleId}`).row()
-    .text("❌ Annuler", `cancel_sale:${saleId}`);
+    .text("✅ VALIDER — j'ai commandé", `confirm_payment:${saleId}`).row()
+    .text("❌ Finalement annuler", `avail_no:${saleId}`);
 
-  await ctx.editMessageText(info, { parse_mode: "MarkdownV2", reply_markup: kb });
-  await ctx.answerCallbackQuery();
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(info, { parse_mode: "MarkdownV2", reply_markup: kb });
+  await ctx.answerCallbackQuery("Article disponible ✅");
 });
 
-// ─── VALIDER PAIEMENT → push confirmation + instructions ────────────────────
+// ─── NON → annulation LBC + message acheteur + confirmation Telegram ─────────
+
+bot.callbackQuery(/^avail_no:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("avail_no:", "");
+  await ctx.answerCallbackQuery("Annulation en cours…");
+
+  const res = await api.cancelSale(saleId);
+  const okText = res?.ok
+    ? "✅ Annulation envoyée à l'acheteur sur Leboncoin \\(message automatique\\)\\."
+    : "⚠️ Annulation enregistrée, message LBC à envoyer manuellement\\.";
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(
+    `❌ *Vente annulée*\n\n${okText}`,
+    { parse_mode: "MarkdownV2" }
+  );
+});
+
+// ─── VALIDER → instructions suivi + bouton inline ────────────────────────────
 
 bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("confirm_payment:", "");
   const res = await api.getSale(saleId);
-
-  if (!res.ok || !res.data) {
-    await ctx.answerCallbackQuery("Vente introuvable");
-    return;
-  }
+  if (!res.ok || !res.data) { await ctx.answerCallbackQuery("Vente introuvable"); return; }
 
   const sale = res.data;
   const lines = [
-    "✅ *Commande validée — procédez au paiement*",
+    "✅ *Commande validée \\!*",
     "",
-    `🔗 ${msg.escMd(sale.supplierUrl ?? "Lien fournisseur manquant")}`,
+    `🔗 ${msg.escMd(sale.supplierUrl ?? "Lien manquant")}`,
     "",
-    "Après avoir commandé :",
-    `1\\. Référence commande → /commande ${msg.escMd(saleId)} REF`,
-    `2\\. Numéro de suivi → /suivi ${msg.escMd(saleId)} Transporteur NUMERO`,
+    "Dès que vous avez le numéro de suivi, appuyez sur le bouton ci\\-dessous\\.",
   ].join("\n");
 
-  await ctx.editMessageText(lines, { parse_mode: "MarkdownV2" });
-  await ctx.answerCallbackQuery("✅ Procédez au paiement !");
+  const kb = new InlineKeyboard()
+    .text("📦 Ajouter le numéro de suivi", `add_tracking:${saleId}`);
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(lines, { parse_mode: "MarkdownV2", reply_markup: kb });
+  await ctx.answerCallbackQuery("✅ Commande enregistrée !");
 });
 
-// ─── ANNULER VENTE callback ───────────────────────────────────────────────────
+// ─── Bouton "Ajouter suivi" → demande transporteur + numéro ──────────────────
 
-bot.callbackQuery(/^cancel_sale:(.+)$/, async ctx => {
-  const saleId = ctx.callbackQuery.data.replace("cancel_sale:", "");
-  await ctx.editMessageText(
-    `❌ Vente \`${msg.escMd(saleId.slice(0, 10))}\` annulée par l'opérateur\\.`,
+bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("add_tracking:", "");
+  ctx.session.state = "awaiting_tracking_inline";
+  ctx.session.pendingTrackingSaleId = saleId;
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(
+    `📬 Envoyez : \`<transporteur> <numéro>\`\n_Ex : LaPoste 1Z12345_`,
     { parse_mode: "MarkdownV2" }
   );
-  await ctx.answerCallbackQuery("Vente annulée");
+  await ctx.answerCallbackQuery();
 });
 
 module.exports = { bot, sendSaleAlert };

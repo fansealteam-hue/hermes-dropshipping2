@@ -22,4 +22,6 @@ module.exports = {
   syncTracking: saleId => apiFetch(`/api/sales/${saleId}/sync-tracking`, "POST"),
   autoReply: (listingId, buyerMessage) => apiFetch("/api/messages/reply", "POST", { listingId, buyerMessage }),
   negotiate: (listingId, offerEur) => apiFetch("/api/negotiate", "POST", { listingId, offerEur }),
+  cancelSale: saleId => apiFetch(`/api/sales/${saleId}/cancel`, "POST"),
+  confirmAvailable: saleId => apiFetch(`/api/sales/${saleId}/confirm-available`, "POST"),
 };
