@@ -49,11 +49,17 @@ async function downloadAndEnhance(url, itemId, variantId, index, productTitle) {
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const buffer = Buffer.from(await resp.arrayBuffer());
 
-  // Mode IA : régénère comme photo de particulier
-  if (process.env.OPENAI_API_KEY && process.env.NODE_ENV !== "test") {
+  // Mode IA (première image seulement) : génère 3 angles, sauvegarde tous
+  if (process.env.OPENAI_API_KEY && process.env.NODE_ENV !== "test" && index === 0) {
     try {
-      const aiBuffer = await regenerateAsSellerPhoto(buffer, productTitle, index);
-      fs.writeFileSync(outPath, aiBuffer);
+      const aiBuffers = await regenerateAsSellerPhotos(buffer, productTitle);
+      // Sauvegarde les 3 angles : _0.jpg, _ai1.jpg, _ai2.jpg
+      fs.writeFileSync(outPath, aiBuffers[0]);
+      const suffixes = ["ai1", "ai2"];
+      for (let i = 0; i < suffixes.length; i++) {
+        const extraPath = path.join(MEDIA_DIR, `${itemId}_${variantId}_${suffixes[i]}.jpg`);
+        fs.writeFileSync(extraPath, aiBuffers[i + 1]);
+      }
       return `/media/${filename}`;
     } catch (e) {
       console.warn(`[photo-enhancer] IA failed, fallback sharp: ${e.message}`);
@@ -65,65 +71,64 @@ async function downloadAndEnhance(url, itemId, variantId, index, productTitle) {
   return `/media/${filename}`;
 }
 
+// Angles de prise de vue pour les 3 photos régénérées
+const ANGLES = [
+  { label: "vue de face",        hint: "cadrage frontal centré, produit bien visible" },
+  { label: "vue de trois-quarts", hint: "angle légèrement de côté, donne du volume" },
+  { label: "vue de détail",       hint: "zoom sur la partie principale ou un détail clé" },
+];
+
 /**
- * Régénère l'image via OpenAI image edit API.
- * Résultat : photo naturaliste "prise par un particulier chez lui".
+ * Régénère 3 photos via gpt-image-1 (OpenAI omni) —
+ * même fond naturel, 3 angles différents.
+ * Retourne un tableau de 3 Buffers JPEG.
  */
-async function regenerateAsSellerPhoto(imageBuffer, productTitle, index) {
+async function regenerateAsSellerPhotos(imageBuffer, productTitle) {
   const { default: OpenAI } = require("openai");
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  // Convertit en PNG pour l'API OpenAI (requis pour image edit)
-  const pngBuffer = await sharp(imageBuffer)
-    .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
-    .png()
-    .toBuffer();
-
-  // On n'envoie que la première photo à régénérer (plus naturelle)
-  // Les autres sont traitées avec sharp pour économiser les crédits
-  if (index > 0) {
-    return await sharpEnhanceToBuffer(imageBuffer);
-  }
-
-  const prompt = buildSellerPhotoPrompt(productTitle);
-
-  // Appel OpenAI Images API — génération à partir d'un prompt + image source
-  const response = await client.images.generate({
-    model: "dall-e-3",
-    prompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard",
-    style: "natural",
-  });
-
-  const imageUrl = response.data[0]?.url;
-  if (!imageUrl) throw new Error("OpenAI: pas d'URL dans la réponse");
-
-  const imgResp = await fetch(imageUrl, { signal: AbortSignal.timeout(30000) });
-  if (!imgResp.ok) throw new Error(`OpenAI image download: ${imgResp.status}`);
-  const imgBuffer = Buffer.from(await imgResp.arrayBuffer());
-
-  // Recompresse en JPEG pour économiser l'espace
-  return await sharp(imgBuffer).jpeg({ quality: 88, progressive: true }).toBuffer();
-}
-
-/**
- * Construit un prompt réaliste selon le titre du produit.
- * Style : photo prise par un vendeur particulier sur Leboncoin.
- */
-function buildSellerPhotoPrompt(productTitle) {
   const product = productTitle || "produit";
-  return [
-    `Photo réaliste d'un(e) ${product} posé(e) sur une surface naturelle`,
-    `(table en bois, parquet, canapé ou sol carrelé).`,
-    `Lumière naturelle d'intérieur, légèrement chaleureuse.`,
-    `Style photo prise par un particulier pour vendre sur Leboncoin —`,
-    `cadrage simple, fond neutre de maison, pas de studio, pas de fond blanc uniforme.`,
-    `L'objet occupe 70% du cadre, bien visible et net.`,
-    `Pas de texte, pas de watermark, pas de logo.`,
-    `Photographie réaliste, haute résolution.`,
-  ].join(" ");
+
+  // Lance les 3 générations en parallèle
+  const generations = await Promise.all(
+    ANGLES.map(({ label, hint }) => {
+      const prompt = [
+        `Photo réaliste d'un(e) ${product}, ${label}.`,
+        hint + ".",
+        `Posé(e) sur une table en bois ou sol d'intérieur, lumière naturelle chaleureuse.`,
+        `Style photo de particulier pour vendre sur Leboncoin — fond de maison neutre,`,
+        `pas de studio, pas de fond blanc. Produit net et bien éclairé.`,
+        `Pas de texte, watermark ou logo. Photographie réaliste haute résolution.`,
+      ].join(" ");
+
+      return client.images.generate({
+        model: "gpt-image-1",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "medium",
+      });
+    })
+  );
+
+  // Récupère et recompresse chaque image
+  const buffers = await Promise.all(
+    generations.map(async (resp) => {
+      // gpt-image-1 retourne b64_json ou url selon la config
+      const item = resp.data[0];
+      let rawBuffer;
+      if (item.b64_json) {
+        rawBuffer = Buffer.from(item.b64_json, "base64");
+      } else {
+        const r = await fetch(item.url, { signal: AbortSignal.timeout(30000) });
+        if (!r.ok) throw new Error(`download failed: ${r.status}`);
+        rawBuffer = Buffer.from(await r.arrayBuffer());
+      }
+      return sharp(rawBuffer).jpeg({ quality: 88, progressive: true }).toBuffer();
+    })
+  );
+
+  return buffers; // [frontBuffer, threeQuarterBuffer, detailBuffer]
 }
 
 /** Sharp enhancement — fallback ou photos supplémentaires */
