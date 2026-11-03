@@ -74,10 +74,13 @@ function parseTemuApiResponse(data, itemId, url) {
         imageUrls: extractImages(data),
       }];
 
+  const specs = extractSpecs(data);
+
   return {
     temuItemId: String(itemId),
     title,
     warehouseStatus,
+    specs,
     variants: variants.filter(v => v.costEur > 0),
   };
 }
@@ -92,6 +95,35 @@ function parseSkuToVariant(sku) {
     stock: sku.sku_inventory ?? sku.stock ?? 0,
     imageUrls: sku.thumb_url ? [sku.thumb_url] : [],
   };
+}
+
+/** Extract full technical specs from Temu product data */
+function extractSpecs(data) {
+  const specs = {};
+
+  // From goods_attrs array: [{attr_name, attr_value}]
+  const attrs = data.goods_attrs ?? data.attrs ?? data.attributes ?? [];
+  for (const a of attrs) {
+    const key = (a.attr_name ?? a.name ?? "").toLowerCase();
+    const val = a.attr_value ?? a.value ?? "";
+    if (!key || !val) continue;
+    if (key.includes("batterie") || key.includes("battery")) specs.battery = val;
+    else if (key.includes("poids") || key.includes("weight")) specs.weight = val;
+    else if (key.includes("taille") || key.includes("size") || key.includes("dimension")) specs.dimensions = val;
+    else if (key.includes("couleur") || key.includes("color")) specs.color = val;
+    else if (key.includes("matière") || key.includes("material")) specs.material = val;
+    else if (key.includes("tension") || key.includes("voltage")) specs.voltage = val;
+    else if (key.includes("puissance") || key.includes("power")) specs.power = val;
+    else specs[key] = val;
+  }
+
+  // Also check top-level fields
+  if (!specs.weight && data.weight) specs.weight = `${data.weight}g`;
+  if (!specs.dimensions && data.length && data.width) {
+    specs.dimensions = `${data.length}×${data.width}×${data.height ?? "?"}cm`;
+  }
+
+  return specs;
 }
 
 function detectWarehouse(data) {
