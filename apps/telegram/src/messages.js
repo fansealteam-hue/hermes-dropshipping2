@@ -18,17 +18,28 @@ function fmtVariant(v, idx) {
   return `${idx + 1}\\. *${escMd(v.label)}* — ${v.costEur.toFixed(2)} €  \\(stock: ${v.stock}\\)`;
 }
 
-function fmtSaleAlert(s, productTitle, variantLabel) {
+function fmtSaleAlert(s, productTitle, variantLabel, variantOptions = "") {
+  const priceStr = s.salePriceEur != null ? escMd(s.salePriceEur.toFixed(2)) : "?";
+  const costStr  = s.costEur != null ? escMd(s.costEur.toFixed(2)) : null;
+  const margin   = s.salePriceEur != null && s.costEur != null
+    ? ` \\(marge : ${escMd((s.salePriceEur - s.costEur).toFixed(2))} €\\)`
+    : "";
   return [
     "🔔 *VENTE CONFIRMÉE*",
-    `Compte : \`${s.accountId}\``,
-    `Produit : ${escMd(productTitle)} — ${escMd(variantLabel)}`,
-    `Prix de vente : ${s.salePriceEur.toFixed(2)} €`,
-    `Lien fournisseur : ${s.supplierUrl}`,
-    s.buyerName ? `Acheteur : ${escMd(s.buyerName)}` : "",
-    s.deliveryAddress ? `Adresse : ${escMd(s.deliveryAddress)}` : "",
     "",
-    "Effectuez l'achat fournisseur puis transmettez la référence avec /commande",
+    `📦 *${escMd(productTitle)}*`,
+    `Variante : ${escMd(variantLabel)}`,
+    variantOptions ? `Composition : ${escMd(variantOptions)}` : "",
+    "",
+    `💰 Prix vendu : *${priceStr} €*${margin}`,
+    costStr ? `Coût fournisseur : ${costStr} €` : "",
+    `Compte LBC : \`${escMd(s.accountId)}\``,
+    "",
+    "🛒 Lien fournisseur :",
+    escMd(s.supplierUrl ?? ""),
+    "",
+    s.buyerName ? `👤 Acheteur : ${escMd(s.buyerName)}` : "",
+    s.deliveryAddress ? `📍 Adresse : ${escMd(s.deliveryAddress)}` : "",
   ].filter(Boolean).join("\n");
 }
 

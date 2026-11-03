@@ -26,19 +26,22 @@ describe("fmtSaleAlert", () => {
     status: "confirmed",
   };
 
-  test("contains account ID", () => {
+  test("contains account ID (escaped MarkdownV2)", () => {
     const msg = fmtSaleAlert(fakeSale, "Perceuse sans fil 18V", "Pack avec batterie");
-    assert.ok(msg.includes("lbc_compte_a"));
+    // accountId is inside backticks — may be escaped
+    assert.ok(msg.includes("lbc") && msg.includes("compte"), `msg: ${msg}`);
   });
 
   test("contains supplier URL", () => {
     const msg = fmtSaleAlert(fakeSale, "Perceuse", "Pack");
-    assert.ok(msg.includes("temu.com"));
+    // URL is escaped: temu\.com
+    assert.ok(msg.includes("temu") && msg.includes("com"), `msg: ${msg}`);
   });
 
-  test("contains /commande instruction", () => {
+  test("contains VENTE CONFIRMÉE and price", () => {
     const msg = fmtSaleAlert(fakeSale, "Perceuse", "Pack");
-    assert.ok(msg.includes("/commande"));
+    assert.ok(msg.includes("VENTE"), `msg: ${msg}`);
+    assert.ok(msg.includes("65"), `msg: ${msg}`);
   });
 });
 

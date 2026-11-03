@@ -271,11 +271,18 @@ async function handleSendAlertWithValidation({ saleId }, job) {
   try {
     const botModule = require("../../telegram/src/bot.js");
     const chatIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").filter(Boolean).map(Number);
+
+    // Photos et composition de la variante
+    const imageUrls = JSON.parse(variant?.image_urls ?? "[]");
+    const variantOptions = variant?.label ?? "";
+
     for (const chatId of chatIds) {
       await botModule.sendSaleAlert(chatId, {
         sale,
         productTitle: product?.title ?? sale.temuItemId,
         variantLabel: variant?.label ?? sale.variantId,
+        imageUrls,
+        variantOptions,
       });
     }
     db.prepare("UPDATE sales SET alert_sent = 1 WHERE sale_id = ?").run(saleId);

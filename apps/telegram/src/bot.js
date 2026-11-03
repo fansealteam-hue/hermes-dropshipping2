@@ -272,11 +272,26 @@ bot.catch(err => console.error("[bot]", err.message));
 
 // ─── Sale alert with COMMANDER / ANNULER buttons (Claude B) ─────────────────
 
-async function sendSaleAlert(chatId, { sale, productTitle, variantLabel }) {
-  const text = msg.fmtSaleAlert(sale, productTitle, variantLabel);
+async function sendSaleAlert(chatId, { sale, productTitle, variantLabel, imageUrls = [], variantOptions = "" }) {
+  const text = msg.fmtSaleAlert(sale, productTitle, variantLabel, variantOptions);
   const kb = new InlineKeyboard()
     .text("🛒 COMMANDER", `order_sale:${sale.saleId}`).row()
     .text("❌ ANNULER VENTE", `cancel_sale:${sale.saleId}`);
+
+  // Envoyer la première photo du produit si disponible
+  const photoUrl = imageUrls?.[0];
+  if (photoUrl) {
+    try {
+      await bot.api.sendPhoto(chatId, photoUrl, {
+        caption: text,
+        parse_mode: "MarkdownV2",
+        reply_markup: kb,
+      });
+      return;
+    } catch (_) {
+      // Photo inaccessible → fallback texte
+    }
+  }
   await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
 }
 
