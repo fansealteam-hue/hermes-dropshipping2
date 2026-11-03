@@ -27,22 +27,28 @@ async function generateDescription(product, variantLabel) {
   }
 
   const specsText = formatSpecsForPrompt(product.specs ?? {});
-  const prompt = `Tu es un expert en vente sur Leboncoin France. Génère un titre et une description optimisés pour cette annonce.
+  // Format appris depuis annonces Leboncoin réelles :
+  // - Titre naturel sans tiret ni majuscules excessives (ex: "Table d'appoint ronde deux plateaux bois blanc neuf")
+  // - Description commence par "Bonjour, je vends..." — ton naturel et conversationnel
+  // - Infos clés structurées : Matière, Couleur, Dimensions, État
+  const prompt = `Tu es un vendeur particulier sur Leboncoin France. Génère un titre et une description naturels.
 
 Produit : ${product.title}
 Variante : ${variantLabel}
-Specs : ${specsText}
-État : Neuf sous emballage (expédié depuis entrepôt ${product.warehouseStatus === "local" ? "Europe" : "Chine"})
+Specs techniques : ${specsText}
+État : Neuf sous emballage
+Livraison : Colissimo suivi (entrepôt ${product.warehouseStatus === "local" ? "Europe" : "Asie"})
 
-Règles :
-- Titre : max 70 caractères, format "[Produit] [spec principale] — Neuf"
-- Description : 400-600 caractères
-  * Accroche percutante (1 ligne)
-  * Specs clés : ${Object.keys(product.specs ?? {}).slice(0, 4).join(", ") || "taille, poids, couleur"}
-  * État et livraison (Colissimo suivi ou Mondial Relay)
-  * Finir par : "Prix ferme. Sérieux uniquement."
-- Aucune faute d'orthographe
-- Ton : direct, honnête, professionnel
+Règles strictes :
+- Titre : max 70 caractères, style naturel comme "Perceuse sans fil 18V pack batterie neuf" (pas de majuscules inutiles, pas de tiret)
+- Description : 400-500 caractères, commencer par "Bonjour, je vends..."
+  * Décrire le produit naturellement (2-3 phrases)
+  * Mentionner : ${Object.entries(product.specs ?? {}).slice(0, 3).map(([k,v]) => `${k}: ${v}`).join(", ") || "les specs principales"}
+  * "Article neuf, jamais utilisé."
+  * "Expédition Colissimo suivi sous 48h."
+  * Finir par : "Prix ferme."
+- Ton : naturel, honnête, comme un vrai particulier
+- Aucune faute
 
 Réponds en JSON : {"title": "...", "description": "..."}`;
 
@@ -74,15 +80,16 @@ function generateDescriptionSync(product, variantLabel) {
 
   const title = `${product.title}${variantLabel ? ` — ${variantLabel}` : ""} — Neuf`.slice(0, 70);
 
+  // Style Leboncoin réel : ton naturel et conversationnel
+  const specLine = specParts.length ? `${specParts.join(", ")}.` : "";
   const description = [
-    `✅ ${product.title} — NEUF sous emballage`,
+    `Bonjour, je vends ${product.title.toLowerCase()}${variantLabel ? ` (${variantLabel})` : ""}.`,
     "",
-    `📦 Variante : ${variantLabel}`,
-    specParts.length ? `🔧 Caractéristiques : ${specParts.join(" | ")}` : "",
-    `🏭 Stock : entrepôt ${product.warehouseStatus === "local" ? "Europe (livraison rapide)" : "Asie"}`,
+    specLine,
+    `Article neuf, jamais utilisé, encore sous emballage d'origine.`,
+    `Expédition Colissimo suivi sous 48h depuis entrepôt ${product.warehouseStatus === "local" ? "Europe" : "Asie"}.`,
     "",
-    `🚚 Expédition Colissimo suivi sous 48h`,
-    `💰 Prix ferme. Sérieux uniquement.`,
+    `Prix ferme.`,
   ].filter(Boolean).join("\n").slice(0, 600);
 
   return { listingTitle: title, listingDescription: description };
