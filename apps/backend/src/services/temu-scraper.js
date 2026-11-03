@@ -6,7 +6,7 @@
 const { chromium } = require("playwright");
 const { randomUUID } = require("crypto");
 
-const BROWSER_PATH = "/opt/pw-browsers/chromium";
+const BROWSER_PATH = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium";
 const SCRAPE_TIMEOUT_MS = parseInt(process.env.TEMU_SCRAPE_TIMEOUT_MS ?? "20000");
 
 /**

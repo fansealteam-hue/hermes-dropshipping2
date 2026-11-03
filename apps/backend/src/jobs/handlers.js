@@ -1,10 +1,14 @@
 /**
  * Job handlers — Claude 3 (publish/tracking) and Claude 4 (alert).
  */
+const path = require("path");
 const queue = require("./queue");
 const { getSale } = require("../services/sales");
 const { updateListingStatus } = require("../services/listings");
 const db = require("../db/db");
+
+const SESSIONS_DIR = process.env.SESSIONS_DIR
+  ?? path.join(__dirname, "../../../data/sessions");
 
 // --- Leboncoin connector (Claude 3) ------------------------------------------
 
@@ -49,7 +53,7 @@ async function handlePublishListing({ listingId }, job) {
       headless: true,
     });
 
-    const sessionPath = `${__dirname}/../../../data/sessions/${account.account_id}.json`;
+    const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
     const page = await context.newPage();
@@ -96,7 +100,7 @@ async function handlePublishListing({ listingId }, job) {
 
     const leboncoinAdId = adIdMatch[1];
     const newState = await context.storageState();
-    fs.mkdirSync(`${__dirname}/../../../data/sessions`, { recursive: true });
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.writeFileSync(sessionPath, JSON.stringify(newState));
 
     await updateListingStatus(listingId, "published", {
@@ -152,7 +156,7 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
       headless: true,
     });
 
-    const sessionPath = `${__dirname}/../../../data/sessions/${sale.account_id}.json`;
+    const sessionPath = `${SESSIONS_DIR}/${sale.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
     const page = await context.newPage();
@@ -164,7 +168,7 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
     await page.click('[data-testid="send-message"]');
 
     const newState = await context.storageState();
-    const sessionDir = `${__dirname}/../../../data/sessions`;
+    const sessionDir = SESSIONS_DIR;
     fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(sessionPath, JSON.stringify(newState));
 
@@ -233,7 +237,7 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
     const { chromium } = require("playwright");
     const fs = require("fs");
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
-    const sessionPath = `${__dirname}/../../../data/sessions/${account.account_id}.json`;
+    const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
     const page = await context.newPage();
@@ -249,7 +253,7 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
       .run(new Date().toISOString(), listingId);
 
     const newState = await context.storageState();
-    fs.mkdirSync(`${__dirname}/../../../data/sessions`, { recursive: true });
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.writeFileSync(sessionPath, JSON.stringify(newState));
     return { listingId, marked: true };
   } finally {
@@ -317,7 +321,7 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
     const { chromium } = require("playwright");
     const fs = require("fs");
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
-    const sessionPath = `${__dirname}/../../../data/sessions/${account.account_id}.json`;
+    const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
     const page = await context.newPage();
@@ -341,7 +345,7 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
     }
 
     const newState = await context.storageState();
-    fs.mkdirSync(`${__dirname}/../../../data/sessions`, { recursive: true });
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.writeFileSync(sessionPath, JSON.stringify(newState));
     return { saleId, cancelled: true };
   } finally {
