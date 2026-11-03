@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hermès</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1c1f2e;
+      --border: #2d3148;
+      --accent: #5b6af9;
+      --accent-dim: #3b4bc9;
+      --text: #e8eaf6;
+      --text-muted: #8a8fb5;
+      --success: #48c78e;
+      --warn: #f0a830;
+      --error: #f14668;
+      --radius: 10px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* Layout */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 100; }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    header .status { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); }
+
+    nav { display: flex; gap: 2px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; }
+    nav button { background: transparent; border: none; color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+    nav button.active { background: var(--accent); color: #fff; }
+
+    main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .card h3 { font-size: 0.9rem; margin-bottom: 8px; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 99px; }
+    .badge.draft { background: #2d3148; color: var(--text-muted); }
+    .badge.scheduled { background: #1e3a5f; color: #5bc4f9; }
+    .badge.published { background: #1a3d2e; color: var(--success); }
+    .badge.sold { background: #2d2013; color: var(--warn); }
+    .badge.action { background: #3d1a1a; color: var(--error); }
+
+    /* Form elements */
+    input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: 9px 12px; font-size: 0.9rem; margin-top: 4px; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 10px; }
+    button.primary { background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 10px 18px; cursor: pointer; font-size: 0.9rem; width: 100%; margin-top: 12px; }
+    button.primary:hover { background: var(--accent-dim); }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 8px 14px; cursor: pointer; font-size: 0.85rem; }
+
+    /* Stats row */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
+    .stat .n { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+    .stat .l { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* List items */
+    .list-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .list-item:last-child { border-bottom: none; }
+    .list-item .meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* Stepper */
+    .steps { display: flex; gap: 0; margin-bottom: 16px; }
+    .step { flex: 1; text-align: center; font-size: 0.7rem; color: var(--text-muted); padding: 6px 2px; border-bottom: 2px solid var(--border); }
+    .step.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .step.done { color: var(--success); border-bottom-color: var(--success); }
+
+    /* Variant grid */
+    .variants { display: grid; gap: 8px; margin-top: 10px; }
+    .variant-card { border: 2px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; }
+    .variant-card:hover, .variant-card.selected { border-color: var(--accent); background: rgba(91,106,249,.08); }
+    .variant-card .price { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #222; border: 1px solid var(--border); border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999; }
+    #toast.show { opacity: 1; }
+
+    /* Spinner */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="font-size:1.4rem">🏛</span>
+    <h1>Hermès</h1>
+    <span class="status" id="conn-status">Connexion…</span>
+  </header>
+
+  <nav>
+    <button class="active" onclick="showPage('dashboard', this)">Tableau de bord</button>
+    <button onclick="showPage('new-listing', this)">Nouvelle annonce</button>
+    <button onclick="showPage('sales', this)">Ventes</button>
+    <button onclick="showPage('tracking', this)">Suivi</button>
+  </nav>
+
+  <main>
+    <!-- ── DASHBOARD ── -->
+    <section id="page-dashboard" class="page active">
+      <div class="stats">
+        <div class="stat"><div class="n" id="stat-listings">—</div><div class="l">Annonces actives</div></div>
+        <div class="stat"><div class="n" id="stat-sales">—</div><div class="l">Ventes</div></div>
+        <div class="stat"><div class="n" id="stat-actions">—</div><div class="l">À faire</div></div>
+      </div>
+
+      <div class="card" id="dash-actions" style="display:none">
+        <h3>⚠️ Actions requises</h3>
+        <div id="dash-actions-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>🕐 Activité récente</h3>
+        <div id="dash-activity"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ── NEW LISTING ── -->
+    <section id="page-new-listing" class="page">
+      <div class="steps">
+        <div class="step active" id="step-0">Lien</div>
+        <div class="step" id="step-1">Variante</div>
+        <div class="step" id="step-2">Prix</div>
+        <div class="step" id="step-3">Compte</div>
+        <div class="step" id="step-4">Programme</div>
+      </div>
+
+      <!-- Step 0: Temu URL -->
+      <div id="nlStep0">
+        <div class="card">
+          <label>Lien produit Temu</label>
+          <input type="url" id="nl-url" placeholder="https://www.temu.com/…" />
+          <button class="primary" onclick="nlFetchProduct()">Analyser ▶</button>
+        </div>
+      </div>
+
+      <!-- Step 1: Variant -->
+      <div id="nlStep1" style="display:none">
+        <div class="card">
+          <h3 id="nl-product-title"></h3>
+          <div class="variants" id="nl-variants"></div>
+          <button class="primary" onclick="nlSelectVariant()" style="margin-top:10px">Choisir cette variante ▶</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Price -->
+      <div id="nlStep2" style="display:none">
+        <div class="card">
+          <h3 id="nl-variant-label"></h3>
+          <label>Coût fournisseur</label>
+          <input type="number" id="nl-cost" readonly style="color:var(--text-muted)" />
+          <label>Prix de vente (€)</label>
+          <input type="number" id="nl-price" step="0.01" />
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px" id="nl-margin"></div>
+          <button class="primary" onclick="nlConfirmPrice()">Confirmer le prix ▶</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Account -->
+      <div id="nlStep3" style="display:none">
+        <div class="card">
+          <label>Compte Leboncoin</label>
+          <select id="nl-account"></select>
+          <button class="primary" onclick="nlSelectAccount()">Choisir ▶</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Schedule -->
+      <div id="nlStep4" style="display:none">
+        <div class="card">
+          <label>Publication</label>
+          <select id="nl-when">
+            <option value="now">Maintenant</option>
+            <option value="1h">Dans 1 heure</option>
+            <option value="tomorrow">Demain 9h</option>
+            <option value="custom">Date personnalisée</option>
+          </select>
+          <input type="datetime-local" id="nl-custom-date" style="display:none;margin-top:8px" />
+          <button class="primary" onclick="nlPublish()">Créer l'annonce ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SALES ── -->
+    <section id="page-sales" class="page">
+      <div class="card">
+        <h3>Ventes actives</h3>
+        <div id="sales-list"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ── TRACKING ── -->
+    <section id="page-tracking" class="page">
+      <div class="card">
+        <label>ID vente</label>
+        <input type="text" id="tr-sale-id" placeholder="sale_…" />
+        <label>Référence commande fournisseur</label>
+        <input type="text" id="tr-order-ref" placeholder="ORD-123456" />
+        <label>Transporteur</label>
+        <input type="text" id="tr-carrier" placeholder="Colis Privé, La Poste…" />
+        <label>Numéro de suivi</label>
+        <input type="text" id="tr-number" placeholder="CP1234567890FR" />
+        <button class="primary" onclick="submitTracking()">Enregistrer le suivi</button>
+      </div>
+      <div id="tr-result"></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    // ─── Auth token ───────────────────────────────────────────────────────────
+    const TOKEN = new URLSearchParams(location.search).get("token") ?? localStorage.getItem("hermes_token") ?? "";
+    if (TOKEN) localStorage.setItem("hermes_token", TOKEN);
+
+    const headers = () => ({ "Content-Type": "application/json", "x-hermes-token": TOKEN });
+
+    // ─── Toast ────────────────────────────────────────────────────────────────
+    function toast(msg, type = "info") {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.borderColor = type === "error" ? "var(--error)" : type === "success" ? "var(--success)" : "var(--border)";
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 3000);
+    }
+
+    // ─── Navigation ───────────────────────────────────────────────────────────
+    function showPage(name, btn) {
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+      document.getElementById("page-" + name).classList.add("active");
+      btn.classList.add("active");
+      if (name === "dashboard") loadDashboard();
+      if (name === "sales") loadSales();
+    }
+
+    // ─── API helper ───────────────────────────────────────────────────────────
+    async function api(path, method = "GET", body = null) {
+      const opts = { method, headers: headers() };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(path, opts);
+      return r.json();
+    }
+
+    // ─── Dashboard ────────────────────────────────────────────────────────────
+    async function loadDashboard() {
+      try {
+        const d = await api("/api/dashboard");
+        if (!d.ok) throw new Error(d.error);
+        document.getElementById("stat-listings").textContent = d.data.pendingListings.length;
+        document.getElementById("stat-sales").textContent = d.data.activeSales.length;
+        document.getElementById("stat-actions").textContent = d.data.salesNeedingAction.length;
+
+        if (d.data.salesNeedingAction.length) {
+          document.getElementById("dash-actions").style.display = "";
+          document.getElementById("dash-actions-list").innerHTML = d.data.salesNeedingAction
+            .map(s => `<div class="list-item"><div><strong>${s.saleId.slice(0,8)}</strong><div class="meta">${s.manualActionNote ?? "Action requise"}</div></div><span class="badge action">⚠️</span></div>`)
+            .join("");
+        }
+
+        const activity = d.data.recentActivity ?? [];
+        document.getElementById("dash-activity").innerHTML = activity.length
+          ? activity.map(a => `<div class="list-item"><div>${a.description}<div class="meta">${new Date(a.timestamp).toLocaleString("fr-FR")}</div></div></div>`).join("")
+          : "<span style='color:var(--text-muted)'>Aucune activité récente</span>";
+
+        document.getElementById("conn-status").textContent = "✅ Connecté";
+      } catch (e) {
+        document.getElementById("conn-status").textContent = "❌ Hors ligne";
+        document.getElementById("dash-activity").innerHTML = `<span style='color:var(--error)'>${e.message}</span>`;
+      }
+    }
+
+    // ─── Sales ────────────────────────────────────────────────────────────────
+    async function loadSales() {
+      try {
+        const d = await api("/api/sales?status=active");
+        if (!d.ok || !d.data) throw new Error(d.error ?? "Erreur");
+        const list = document.getElementById("sales-list");
+        list.innerHTML = d.data.length
+          ? d.data.map(s => `
+            <div class="list-item">
+              <div>
+                <strong>${s.saleId.slice(0,10)}…</strong>
+                <div class="meta">Compte ${s.accountId} • ${s.salePriceEur?.toFixed(2)} €</div>
+                ${s.trackingNumber ? `<div class="meta">📦 ${s.trackingCarrier ?? ""} ${s.trackingNumber}</div>` : ""}
+                ${s.manualActionRequired ? `<div class="meta" style="color:var(--error)">⚠️ ${s.manualActionNote ?? ""}</div>` : ""}
+              </div>
+              <span class="badge ${s.leboncoinDeliveryConfirmed ? "published" : s.manualActionRequired ? "action" : "scheduled"}">
+                ${s.leboncoinDeliveryConfirmed ? "Livré ✅" : s.manualActionRequired ? "Action ⚠️" : s.status}
+              </span>
+            </div>`).join("")
+          : "<span style='color:var(--text-muted)'>Aucune vente active</span>";
+      } catch (e) {
+        document.getElementById("sales-list").innerHTML = `<span style='color:var(--error)'>${e.message}</span>`;
+      }
+    }
+
+    // ─── New listing flow ─────────────────────────────────────────────────────
+    let nlProduct = null;
+    let nlVariant = null;
+    let nlSelectedVariantId = null;
+
+    function nlSetStep(n) {
+      for (let i = 0; i <= 4; i++) {
+        const s = document.getElementById("nlStep" + i);
+        const btn = document.getElementById("step-" + i);
+        s.style.display = i === n ? "" : "none";
+        btn.className = "step" + (i < n ? " done" : i === n ? " active" : "");
+      }
+    }
+
+    async function nlFetchProduct() {
+      const url = document.getElementById("nl-url").value.trim();
+      if (!url) { toast("Entrez un lien Temu", "error"); return; }
+      toast("Analyse en cours…");
+      const d = await api("/api/products/fetch", "POST", { temuUrl: url });
+      if (!d.ok || !d.data) { toast(d.error ?? "Erreur", "error"); return; }
+      nlProduct = d.data;
+      if (nlProduct.warehouseStatus !== "local") {
+        toast("❌ Produit inéligible (entrepôt non local)", "error");
+        return;
+      }
+      document.getElementById("nl-product-title").textContent = nlProduct.title;
+      const vc = document.getElementById("nl-variants");
+      vc.innerHTML = nlProduct.variants.map(v => `
+        <div class="variant-card" data-id="${v.variantId}" onclick="nlPickVariant('${v.variantId}')">
+          <strong>${v.label}</strong>
+          <div class="price">${v.costEur.toFixed(2)} € • stock: ${v.stock}</div>
+        </div>`).join("");
+      nlSetStep(1);
+    }
+
+    function nlPickVariant(id) {
+      document.querySelectorAll(".variant-card").forEach(c => c.classList.toggle("selected", c.dataset.id === id));
+      nlSelectedVariantId = id;
+    }
+
+    function nlSelectVariant() {
+      if (!nlSelectedVariantId) { toast("Sélectionnez une variante", "error"); return; }
+      nlVariant = nlProduct.variants.find(v => v.variantId === nlSelectedVariantId);
+      document.getElementById("nl-variant-label").textContent = nlVariant.label;
+      document.getElementById("nl-cost").value = nlVariant.costEur.toFixed(2);
+      const suggested = (Math.floor(nlVariant.costEur * 3) + 0.99).toFixed(2);
+      document.getElementById("nl-price").value = suggested;
+      updateMargin();
+      nlSetStep(2);
+    }
+
+    function updateMargin() {
+      const cost = parseFloat(document.getElementById("nl-cost").value);
+      const price = parseFloat(document.getElementById("nl-price").value);
+      const margin = price - cost;
+      document.getElementById("nl-margin").textContent = `Marge estimée : ${margin.toFixed(2)} € (${((margin/price)*100).toFixed(0)}%)`;
+    }
+    document.getElementById("nl-price").addEventListener("input", updateMargin);
+
+    async function nlConfirmPrice() {
+      const price = parseFloat(document.getElementById("nl-price").value);
+      if (isNaN(price) || price <= 0) { toast("Prix invalide", "error"); return; }
+      const d = await api("/api/accounts/leboncoin");
+      if (!d.ok || !d.data?.length) { toast("Impossible de charger les comptes", "error"); return; }
+      const sel = document.getElementById("nl-account");
+      sel.innerHTML = d.data.map(a => `<option value="${a.accountId}">${a.label}</option>`).join("");
+      nlSetStep(3);
+    }
+
+    function nlSelectAccount() {
+      nlSetStep(4);
+    }
+
+    document.getElementById("nl-when").addEventListener("change", function() {
+      document.getElementById("nl-custom-date").style.display = this.value === "custom" ? "" : "none";
+    });
+
+    async function nlPublish() {
+      const when = document.getElementById("nl-when").value;
+      const price = parseFloat(document.getElementById("nl-price").value);
+      const accountId = document.getElementById("nl-account").value;
+
+      let scheduledAt;
+      if (when === "1h") scheduledAt = new Date(Date.now() + 3600000).toISOString();
+      else if (when === "tomorrow") { const d = new Date(); d.setDate(d.getDate()+1); d.setHours(9,0,0,0); scheduledAt = d.toISOString(); }
+      else if (when === "custom") scheduledAt = new Date(document.getElementById("nl-custom-date").value).toISOString();
+
+      const body = {
+        temuItemId: nlProduct.temuItemId,
+        variantId: nlSelectedVariantId,
+        accountId,
+        priceEur: price,
+        ...(scheduledAt ? { scheduledAt } : {}),
+      };
+
+      const d = await api("/api/listings", "POST", body);
+      if (!d.ok || !d.data) { toast(d.error ?? "Erreur création annonce", "error"); return; }
+      toast("✅ Annonce créée !", "success");
+      nlSetStep(0);
+      nlProduct = null; nlVariant = null; nlSelectedVariantId = null;
+      document.getElementById("nl-url").value = "";
+    }
+
+    // ─── Tracking ─────────────────────────────────────────────────────────────
+    async function submitTracking() {
+      const saleId = document.getElementById("tr-sale-id").value.trim();
+      const orderRef = document.getElementById("tr-order-ref").value.trim();
+      const carrier = document.getElementById("tr-carrier").value.trim();
+      const number = document.getElementById("tr-number").value.trim();
+      if (!saleId) { toast("ID vente requis", "error"); return; }
+
+      const d = await api(`/api/sales/${saleId}/tracking`, "PATCH", {
+        orderRef,
+        trackingNumber: number,
+        trackingCarrier: carrier,
+      });
+
+      const result = document.getElementById("tr-result");
+      if (!d.ok || !d.data) {
+        result.innerHTML = `<div class="card" style="border-color:var(--error)">❌ ${d.error ?? "Erreur"}</div>`;
+        return;
+      }
+      const s = d.data;
+      const delivery = s.leboncoinDeliveryConfirmed
+        ? "✅ Réception confirmée Leboncoin"
+        : s.manualActionRequired
+        ? `⚠️ Action manuelle : ${s.manualActionNote ?? ""}`
+        : "⏳ En attente Leboncoin";
+      result.innerHTML = `<div class="card" style="border-color:var(--success)">
+        <h3>📬 Suivi enregistré</h3>
+        <p style="margin-top:6px;font-size:.85rem">${delivery}</p>
+      </div>`;
+      toast("Suivi enregistré ✅", "success");
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    loadDashboard();
+  </script>
+</body>
+</html>

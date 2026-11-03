@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Hermès Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #1c1f2e);
+      --text: var(--tg-theme-text-color, #e8eaf6);
+      --hint: var(--tg-theme-hint-color, #8a8fb5);
+      --link: var(--tg-theme-link-color, #5b6af9);
+      --button: var(--tg-theme-button-color, #5b6af9);
+      --button-text: var(--tg-theme-button-text-color, #fff);
+      --secondary-bg: var(--tg-theme-secondary-bg-color, #0f1117);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; min-height: 100vh; padding: 0 0 80px; }
+
+    .section { padding: 12px 16px; }
+    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin-bottom: 8px; }
+
+    .card { background: var(--secondary-bg); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat { background: var(--secondary-bg); border-radius: 10px; padding: 10px; text-align: center; }
+    .stat .n { font-size: 1.8rem; font-weight: 700; color: var(--link); }
+    .stat .l { font-size: 0.65rem; color: var(--hint); margin-top: 2px; }
+
+    .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .item:last-child { border-bottom: none; }
+    .item .meta { font-size: 0.75rem; color: var(--hint); margin-top: 2px; }
+    .badge { font-size: 0.65rem; padding: 2px 7px; border-radius: 99px; background: rgba(91,106,249,.2); color: var(--link); }
+    .badge.warn { background: rgba(240,168,48,.2); color: #f0a830; }
+    .badge.ok { background: rgba(72,199,142,.2); color: #48c78e; }
+
+    tg-main-button { /* handled by SDK */ }
+
+    input, select {
+      width: 100%; background: var(--secondary-bg); border: none; border-radius: 8px;
+      color: var(--text); padding: 10px 12px; font-size: 0.95rem; margin-top: 6px;
+      outline: none;
+    }
+    label { font-size: 0.8rem; color: var(--hint); display: block; margin-top: 12px; }
+
+    .tg-btn {
+      display: block; width: 100%; background: var(--button); color: var(--button-text);
+      border: none; border-radius: 10px; padding: 13px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; margin-top: 14px; text-align: center;
+    }
+
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--link); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .tab { flex: 1; text-align: center; padding: 10px 4px; font-size: 0.8rem; color: var(--hint); cursor: pointer; border-bottom: 2px solid transparent; }
+    .tab.active { color: var(--link); border-bottom-color: var(--link); }
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('dashboard', this)">Accueil</div>
+    <div class="tab" onclick="showTab('new', this)">Nouveau</div>
+    <div class="tab" onclick="showTab('sales', this)">Ventes</div>
+    <div class="tab" onclick="showTab('tracking', this)">Suivi</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="page active">
+    <div class="section">
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="s-listings">—</div><div class="l">Annonces</div></div>
+        <div class="stat"><div class="n" id="s-sales">—</div><div class="l">Ventes</div></div>
+        <div class="stat"><div class="n" id="s-actions">—</div><div class="l">À faire</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">⚠️ Actions requises</div>
+      <div id="d-actions" class="card"><span style="color:var(--hint)">Chargement…</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Activité récente</div>
+      <div id="d-activity" class="card"><span style="color:var(--hint)">Chargement…</span></div>
+    </div>
+  </div>
+
+  <!-- NEW LISTING -->
+  <div id="tab-new" class="page">
+    <div class="section">
+      <div class="section-title">Nouvelle annonce</div>
+      <div class="card">
+        <label>Lien Temu</label>
+        <input type="url" id="n-url" placeholder="https://www.temu.com/…" />
+        <button class="tg-btn" onclick="nlFetch()">Analyser</button>
+      </div>
+      <div id="n-result"></div>
+    </div>
+  </div>
+
+  <!-- SALES -->
+  <div id="tab-sales" class="page">
+    <div class="section">
+      <div class="section-title">Ventes actives</div>
+      <div id="s-list" class="card"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- TRACKING -->
+  <div id="tab-tracking" class="page">
+    <div class="section">
+      <div class="section-title">Ajouter un suivi</div>
+      <div class="card">
+        <label>ID vente</label>
+        <input id="t-sale" type="text" placeholder="sale_…" />
+        <label>Référence commande</label>
+        <input id="t-ref" type="text" placeholder="ORD-123456" />
+        <label>Transporteur</label>
+        <input id="t-carrier" type="text" placeholder="La Poste, Colis Privé…" />
+        <label>Numéro de suivi</label>
+        <input id="t-num" type="text" placeholder="CP1234567890FR" />
+        <button class="tg-btn" onclick="submitTracking()">Enregistrer</button>
+      </div>
+      <div id="t-result"></div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const API = ""; // same origin when served by the web app
+    const TOKEN = tg.initData ? "" : (localStorage.getItem("hermes_token") ?? "");
+
+    function hdrs() {
+      const h = { "Content-Type": "application/json" };
+      if (TOKEN) h["x-hermes-token"] = TOKEN;
+      if (tg.initData) h["x-tg-init-data"] = tg.initData;
+      return h;
+    }
+
+    async function api(path, method = "GET", body = null) {
+      const opts = { method, headers: hdrs() };
+      if (body) opts.body = JSON.stringify(body);
+      try {
+        const r = await fetch(API + path, opts);
+        return r.json();
+      } catch (e) {
+        return { ok: false, error: String(e) };
+      }
+    }
+
+    function showTab(name, el) {
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.getElementById("tab-" + name).classList.add("active");
+      el.classList.add("active");
+      if (name === "dashboard") loadDashboard();
+      if (name === "sales") loadSales();
+    }
+
+    async function loadDashboard() {
+      const d = await api("/api/dashboard");
+      if (!d.ok || !d.data) return;
+      document.getElementById("s-listings").textContent = d.data.pendingListings.length;
+      document.getElementById("s-sales").textContent = d.data.activeSales.length;
+      document.getElementById("s-actions").textContent = d.data.salesNeedingAction.length;
+
+      document.getElementById("d-actions").innerHTML = d.data.salesNeedingAction.length
+        ? d.data.salesNeedingAction.map(s =>
+          `<div class="item"><div>${s.saleId.slice(0,10)}<div class="meta">${s.manualActionNote ?? ""}</div></div><span class="badge warn">⚠️</span></div>`
+        ).join("")
+        : '<span style="color:var(--hint)">Aucune action requise</span>';
+
+      document.getElementById("d-activity").innerHTML = d.data.recentActivity.length
+        ? d.data.recentActivity.slice(0,5).map(a =>
+          `<div class="item"><div>${a.description}<div class="meta">${new Date(a.timestamp).toLocaleString("fr-FR")}</div></div></div>`
+        ).join("")
+        : '<span style="color:var(--hint)">Aucune activité</span>';
+    }
+
+    async function loadSales() {
+      const d = await api("/api/sales");
+      document.getElementById("s-list").innerHTML = d.ok && d.data?.length
+        ? d.data.map(s => `
+          <div class="item">
+            <div>${s.saleId.slice(0,10)}<div class="meta">${s.accountId} · ${s.salePriceEur?.toFixed(2)} €</div>
+            ${s.trackingNumber ? `<div class="meta">📦 ${s.trackingNumber}</div>` : ""}</div>
+            <span class="badge ${s.leboncoinDeliveryConfirmed ? "ok" : s.manualActionRequired ? "warn" : ""}">
+              ${s.leboncoinDeliveryConfirmed ? "✅" : s.manualActionRequired ? "⚠️" : s.status}
+            </span>
+          </div>`).join("")
+        : '<span style="color:var(--hint)">Aucune vente active</span>';
+    }
+
+    // ── New listing ────────────────────────────────────────────────────────────
+    let nlProduct = null;
+    let nlVariantId = null;
+
+    async function nlFetch() {
+      const url = document.getElementById("n-url").value.trim();
+      if (!url) { tg.showAlert("Entrez un lien Temu"); return; }
+      tg.MainButton.setText("Analyse en cours…").show().showProgress(true);
+      const d = await api("/api/products/fetch", "POST", { temuUrl: url });
+      tg.MainButton.hideProgress().hide();
+
+      if (!d.ok || !d.data) { tg.showAlert(d.error ?? "Erreur"); return; }
+      if (d.data.warehouseStatus !== "local") { tg.showAlert("Produit inéligible (entrepôt non local)"); return; }
+
+      nlProduct = d.data;
+      document.getElementById("n-result").innerHTML = `
+        <div class="card">
+          <strong>${nlProduct.title}</strong>
+          <div style="margin-top:8px">
+            ${nlProduct.variants.map(v => `
+              <div class="item" onclick="nlPick('${v.variantId}')" id="vcard-${v.variantId}" style="cursor:pointer">
+                <div>${v.label}<div class="meta">${v.costEur.toFixed(2)} € · stock ${v.stock}</div></div>
+                <span id="vcheck-${v.variantId}">○</span>
+              </div>`).join("")}
+          </div>
+          <button class="tg-btn" onclick="nlNext()">Continuer</button>
+        </div>`;
+    }
+
+    function nlPick(id) {
+      document.querySelectorAll('[id^="vcheck-"]').forEach(el => el.textContent = "○");
+      document.getElementById("vcheck-" + id).textContent = "✓";
+      nlVariantId = id;
+    }
+
+    async function nlNext() {
+      if (!nlVariantId) { tg.showAlert("Choisissez une variante"); return; }
+      const v = nlProduct.variants.find(x => x.variantId === nlVariantId);
+      const suggested = (Math.floor(v.costEur * 3) + 0.99).toFixed(2);
+      const accts = await api("/api/accounts/leboncoin");
+      const account = accts.data?.[0]?.accountId ?? "";
+
+      tg.showConfirm(
+        `Prix suggéré : ${suggested} €\nCompte : ${accts.data?.[0]?.label ?? account}\nConfirmer ?`,
+        async (ok) => {
+          if (!ok) return;
+          const d = await api("/api/listings", "POST", {
+            temuItemId: nlProduct.temuItemId,
+            variantId: nlVariantId,
+            accountId: account,
+            priceEur: parseFloat(suggested),
+          });
+          tg.showAlert(d.ok ? "✅ Annonce créée !" : d.error ?? "Erreur");
+          if (d.ok) { document.getElementById("n-result").innerHTML = ""; document.getElementById("n-url").value = ""; }
+        }
+      );
+    }
+
+    async function submitTracking() {
+      const saleId = document.getElementById("t-sale").value.trim();
+      const orderRef = document.getElementById("t-ref").value.trim();
+      const carrier = document.getElementById("t-carrier").value.trim();
+      const num = document.getElementById("t-num").value.trim();
+      if (!saleId) { tg.showAlert("ID vente requis"); return; }
+      const d = await api(`/api/sales/${saleId}/tracking`, "PATCH", { orderRef, trackingNumber: num, trackingCarrier: carrier });
+      document.getElementById("t-result").innerHTML = d.ok
+        ? `<div class="card"><span class="badge ok">✅ Suivi enregistré</span></div>`
+        : `<div class="card"><span class="badge warn">❌ ${d.error}</span></div>`;
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

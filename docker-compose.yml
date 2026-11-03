@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - hermes_data:/data/hermes
+    env_file: .env
+    environment:
+      - DB_PATH=/data/hermes/hermes.db
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env
+    environment:
+      - API_BASE_URL=http://backend:3001
+      - NODE_ENV=production
+    depends_on:
+      - backend
+
+  telegram:
+    build:
+      context: .
+      dockerfile: apps/telegram/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - API_BASE_URL=http://backend:3001
+      - NODE_ENV=production
+    depends_on:
+      - backend
+
+volumes:
+  hermes_data:
+    driver: local
