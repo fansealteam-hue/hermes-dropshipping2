@@ -24,8 +24,8 @@ const PERCEUSE = {
 };
 
 describe("Pricing — strategies", () => {
-  test("suggestPrice x3 standard", () => {
-    assert.equal(suggestPrice(22), 66.99); // floor(22*3)+0.99 = 66.99
+  test("suggestPrice adaptatif x2.5 pour 22€", () => {
+    assert.equal(suggestPrice(22), 55.99); // floor(22*2.5)+0.99 = 55.99 (15€<cost<40€ → x2.5)
   });
 
   test("suggestPrice avec livraison autre +3€", () => {
@@ -57,9 +57,19 @@ describe("Pricing — strategies", () => {
   });
 
   test("margin calcul", () => {
-    const m = margin(22, 65.99);
-    assert.ok(m.absolute > 40);
-    assert.ok(m.percent > 60);
+    const m = margin(22, 55.99);
+    assert.ok(m.absolute > 30);
+    assert.ok(m.percent > 50);
+  });
+
+  test("petit produit <15€ → x3 minimum", () => {
+    // 10€ × 3 = 30 → 30.99
+    assert.equal(suggestPrice(10), 30.99);
+  });
+
+  test("produit cher >80€ → x1.5", () => {
+    // 100€ × 1.5 = 150 → 150.99
+    assert.equal(suggestPrice(100), 150.99);
   });
 });
 
