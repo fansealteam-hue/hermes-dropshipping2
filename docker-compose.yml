@@ -14,12 +14,16 @@ services:
     environment:
       - DB_PATH=/data/hermes/hermes.db
       - NODE_ENV=production
+      - CHROMIUM_PATH=/usr/bin/chromium
+    # Playwright needs no-sandbox in container
+    security_opt:
+      - seccomp:unconfined
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
   web:
     build:
@@ -33,7 +37,8 @@ services:
       - API_BASE_URL=http://backend:3001
       - NODE_ENV=production
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   telegram:
     build:
@@ -45,7 +50,8 @@ services:
       - API_BASE_URL=http://backend:3001
       - NODE_ENV=production
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   hermes_data:
