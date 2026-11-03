@@ -140,4 +140,37 @@ describe("HTTP API — perceuse intégration", () => {
     });
     assert.equal(d.ok, true);
   });
+
+  test("GET /api/listings — returns rows with total", async () => {
+    const d = await req("GET", "/api/listings");
+    assert.equal(d.ok, true);
+    assert.ok(Array.isArray(d.data));
+    assert.ok(typeof d.total === "number");
+    assert.ok(d.data.length >= 1);
+  });
+
+  test("GET /api/listings?status=draft — filter works", async () => {
+    const d = await req("GET", "/api/listings?status=draft");
+    assert.equal(d.ok, true);
+    for (const row of d.data) assert.equal(row.status, "draft");
+  });
+
+  test("GET /api/listings — limit/offset clamped (limit=0 → 1)", async () => {
+    const d = await req("GET", "/api/listings?limit=0&offset=-5");
+    assert.equal(d.ok, true);
+    assert.ok(Array.isArray(d.data));
+  });
+
+  test("GET /api/accounts/stats — returns per-account stats", async () => {
+    const d = await req("GET", "/api/accounts/stats");
+    assert.equal(d.ok, true);
+    assert.ok(Array.isArray(d.data));
+    assert.ok(d.data.length >= 1);
+    const first = d.data[0];
+    assert.ok("accountId" in first);
+    assert.ok("totalSales" in first);
+    assert.ok("revenueEur" in first);
+    assert.ok("netMarginEur" in first);
+    assert.ok("activeListings" in first);
+  });
 });

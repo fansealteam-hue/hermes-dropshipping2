@@ -21,6 +21,12 @@ function runMigrations(db) {
   addColumn("ALTER TABLE listings ADD COLUMN delivery_fee_eur_cents INTEGER NOT NULL DEFAULT 0");
   addColumn("ALTER TABLE listings ADD COLUMN repricing_count INTEGER NOT NULL DEFAULT 0");
   addColumn("ALTER TABLE listings ADD COLUMN last_repriced_at TEXT");
+
+  // Performance indexes (idempotent — CREATE INDEX IF NOT EXISTS)
+  db.exec("CREATE INDEX IF NOT EXISTS idx_listings_status     ON listings(status)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_listings_account_id ON listings(account_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sales_listing_id    ON sales(listing_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_status_run_at  ON jobs(status, run_at)");
 }
 
 if (require.main === module) {

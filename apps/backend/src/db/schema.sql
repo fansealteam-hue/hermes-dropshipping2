@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS listings (
   updated_at          TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_listings_status     ON listings(status);
+CREATE INDEX IF NOT EXISTS idx_listings_account_id ON listings(account_id);
+
 CREATE TABLE IF NOT EXISTS listing_history (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   listing_id  TEXT NOT NULL REFERENCES listings(listing_id),
@@ -108,6 +111,8 @@ CREATE TABLE IF NOT EXISTS sales (
   updated_at                  TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_sales_listing_id ON sales(listing_id);
+
 CREATE TABLE IF NOT EXISTS sale_history (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   sale_id     TEXT NOT NULL REFERENCES sales(sale_id),
@@ -136,6 +141,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   completed_at    TEXT,
   created_at      TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_jobs_status_run_at ON jobs(status, run_at);
 
 -- ─── Events (Hermès / webhooks) ──────────────────────────────────────────────
 

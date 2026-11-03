@@ -115,12 +115,16 @@ router.get("/listings/:id", (req, res) => {
 
 // All listings with product title + sale info (for dashboard)
 router.get("/listings", (req, res) => {
-  const { status, accountId, limit = 200, offset = 0 } = req.query;
+  const rawLimit  = parseInt(req.query.limit  ?? "200");
+  const rawOffset = parseInt(req.query.offset ?? "0");
+  const limitVal  = Math.min(Math.max(rawLimit,  1), 1000);
+  const offsetVal = Math.max(rawOffset, 0);
+  const { status, accountId } = req.query;
+
   let where = "WHERE 1=1";
-  const params = [];
-  if (status)    { where += " AND l.status = ?";     params.push(status) }
-  if (accountId) { where += " AND l.account_id = ?"; params.push(accountId) }
-  params.push(parseInt(limit), parseInt(offset));
+  const filterParams = [];
+  if (status)    { where += " AND l.status = ?";     filterParams.push(status) }
+  if (accountId) { where += " AND l.account_id = ?"; filterParams.push(accountId) }
 
   const rows = db.prepare(`
     SELECT
@@ -139,9 +143,9 @@ router.get("/listings", (req, res) => {
     ${where}
     ORDER BY l.created_at DESC
     LIMIT ? OFFSET ?
-  `).all(...params);
+  `).all(...filterParams, limitVal, offsetVal);
 
-  const total = db.prepare(`SELECT COUNT(*) AS n FROM listings l ${where.replace(/LIMIT.*/, '')}`).get(...params.slice(0, -2))?.n ?? 0;
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM listings l ${where}`).get(...filterParams)?.n ?? 0;
 
   res.json({ ok: true, data: rows, total });
 });
