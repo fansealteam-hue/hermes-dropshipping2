@@ -24,4 +24,6 @@ module.exports = {
   negotiate: (listingId, offerEur) => apiFetch("/api/negotiate", "POST", { listingId, offerEur }),
   cancelSale: saleId => apiFetch(`/api/sales/${saleId}/cancel`, "POST"),
   confirmAvailable: saleId => apiFetch(`/api/sales/${saleId}/confirm-available`, "POST"),
+  republishSale: saleId => apiFetch(`/api/sales/${saleId}/republish`, "POST"),
+  closeSale: saleId => apiFetch(`/api/sales/${saleId}/close`, "POST"),
 };

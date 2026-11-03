@@ -269,10 +269,15 @@ async function handleTracking(ctx, saleId, carrier, tracking) {
     ? "✅ Transmis automatiquement à l'acheteur Leboncoin\\."
     : "⚠️ Transmission automatique échouée — à envoyer manuellement sur Leboncoin\\.";
 
-  return ctx.reply(
+  await ctx.reply(
     msg.fmtTrackingAdded(res.data) + "\n\n" + syncStatus,
     { parse_mode: "MarkdownV2" }
   );
+
+  // Demander ce qu'on fait de l'annonce maintenant
+  const saleData = await api.getSale(saleId);
+  const titre = saleData?.data?.productTitle ?? "Article";
+  await sendVenduConfirm(ctx.chat.id, saleId, titre);
 }
 
 // ─── Error handler ────────────────────────────────────────────────────────────
@@ -385,7 +390,76 @@ bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert };
+// ─── Après ajout du suivi → demande si vendu définitif ───────────────────────
+// Appelé depuis le handler awaiting_tracking (messages.js envoie tracking_done)
+
+async function sendVenduConfirm(chatId, saleId, titre) {
+  const texte = [
+    "📦 *Suivi enregistré \\!*",
+    "",
+    `🏷 _${msg.escMd(titre ?? "Article")}_`,
+    "",
+    "Que voulez\\-vous faire avec cette annonce \\?",
+  ].join("\n");
+
+  const kb = new InlineKeyboard()
+    .text("🔁 Republier l'annonce", `republier:${saleId}`).row()
+    .text("📦 Garder archivé", `archiver:${saleId}`).row()
+    .text("❌ Annuler la vente", `annuler_vente:${saleId}`);
+
+  await bot.api.sendMessage(chatId, texte, { parse_mode: "MarkdownV2", reply_markup: kb });
+}
+
+// ─── 🔁 REPUBLIER → supprime cache photo + recrée l'annonce ─────────────────
+
+bot.callbackQuery(/^republier:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("republier:", "");
+  await ctx.answerCallbackQuery("Republication en cours…");
+
+  const res = await api.republishSale(saleId);
+  const ok = res?.ok;
+
+  const texte = ok
+    ? "✅ *Annonce republiée \\!*\nUne nouvelle annonce a été créée automatiquement\\."
+    : "⚠️ Republication échouée — relancez manuellement depuis le dashboard\\.";
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(texte, { parse_mode: "MarkdownV2" });
+});
+
+// ─── 📦 ARCHIVER → garde l'annonce archivée, pas de republication ────────────
+
+bot.callbackQuery(/^archiver:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("archiver:", "");
+  await ctx.answerCallbackQuery("Archivé ✓");
+
+  await api.closeSale(saleId).catch(() => {});
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(
+    "📦 *Annonce archivée\\.* Elle ne sera pas republiée\\.",
+    { parse_mode: "MarkdownV2" }
+  );
+});
+
+// ─── ❌ ANNULER LA VENTE → remet l'annonce active ────────────────────────────
+
+bot.callbackQuery(/^annuler_vente:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("annuler_vente:", "");
+  await ctx.answerCallbackQuery("Annulation en cours…");
+
+  const res = await api.cancelSale(saleId);
+  const ok = res?.ok;
+
+  const texte = ok
+    ? "↩️ *Vente annulée\\.* L'annonce est de nouveau active sur Leboncoin\\."
+    : "⚠️ Annulation enregistrée — vérifiez manuellement sur Leboncoin\\.";
+
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.reply(texte, { parse_mode: "MarkdownV2" });
+});
+
+module.exports = { bot, sendSaleAlert, sendVenduConfirm };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
