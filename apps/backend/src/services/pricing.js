@@ -14,16 +14,20 @@ const DELIVERY_OTHER_FEE = parseFloat(process.env.DELIVERY_OTHER_FEE ?? "3.0");
 
 /**
  * Smart multiplier based on cost — always guarantees minimum x3 benefit.
- * < 15 €  → x3   (petits produits)
- * 15-40 € → x2.5
- * 40-80 € → x2
- * > 80 €  → x1.5 (bénéfice 50-100 € suffit)
+ * < 10 €  → x5   (gadgets, petits articles — marge absolue faible, prix raisonnable)
+ * 10-20 € → x4   (petits produits — 40-80€ = très vendable)
+ * 20-40 € → x3   (produits moyens — 60-120€ = bon rapport)
+ * 40-80 € → x2.5 (bénéfice 60-120€)
+ * > 80 €  → x2   (bénéfice 80-200€ — raisonnable pour LBC)
+ *
+ * Objectif : 350 € bénéfice/jour (~10 ventes × 35 € marge moy.)
  */
 function smartMultiplier(costEur) {
-  if (costEur < 15)  return 3.0;
-  if (costEur < 40)  return 2.5;
-  if (costEur < 80)  return 2.0;
-  return 1.5;
+  if (costEur < 10)  return 5.0;
+  if (costEur < 20)  return 4.0;
+  if (costEur < 40)  return 3.0;
+  if (costEur < 80)  return 2.5;
+  return 2.0;
 }
 
 /** Single suggested price — multiplicateur intelligent selon le coût */
