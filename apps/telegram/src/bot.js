@@ -275,12 +275,12 @@ bot.catch(err => console.error("[bot]", err.message));
 async function sendSaleAlert(chatId, { sale, productTitle, variantLabel }) {
   const text = msg.fmtSaleAlert(sale, productTitle, variantLabel);
   const kb = new InlineKeyboard()
-    .text("🛒 COMMANDER", `order_sale:${sale.saleId}`)
-    .text("❌ ANNULER", `cancel_sale:${sale.saleId}`);
+    .text("🛒 COMMANDER", `order_sale:${sale.saleId}`).row()
+    .text("❌ ANNULER VENTE", `cancel_sale:${sale.saleId}`);
   await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
 }
 
-// ─── COMMANDER callback ───────────────────────────────────────────────────────
+// ─── COMMANDER → affiche infos acheteur + bouton VALIDER PAIEMENT ─────────────
 
 bot.callbackQuery(/^order_sale:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("order_sale:", "");
@@ -295,18 +295,49 @@ bot.callbackQuery(/^order_sale:(.+)$/, async ctx => {
   const info = [
     "📦 *Informations acheteur*",
     sale.buyerName ? `Nom : ${msg.escMd(sale.buyerName)}` : "",
-    sale.deliveryAddress ? `Adresse : ${msg.escMd(sale.deliveryAddress)}` : "",
-    `Prix payé : ${sale.salePriceEur?.toFixed(2)} €`,
+    sale.deliveryAddress ? `Adresse livraison : ${msg.escMd(sale.deliveryAddress)}` : "",
+    `Prix payé : *${msg.escMd(sale.salePriceEur?.toFixed(2))} €*`,
+    `Coût fournisseur estimé : ${msg.escMd(sale.costEur?.toFixed(2))} €`,
     `Lien fournisseur : ${msg.escMd(sale.supplierUrl ?? "")}`,
     "",
-    `Enregistrez la commande avec /commande ${msg.escMd(saleId)} REF`,
+    "👇 Validez pour procéder au paiement fournisseur",
   ].filter(Boolean).join("\n");
 
-  await ctx.editMessageText(info, { parse_mode: "MarkdownV2" });
-  await ctx.answerCallbackQuery("Informations affichées");
+  const kb = new InlineKeyboard()
+    .text("✅ VALIDER — procéder au paiement", `confirm_payment:${saleId}`).row()
+    .text("❌ Annuler", `cancel_sale:${saleId}`);
+
+  await ctx.editMessageText(info, { parse_mode: "MarkdownV2", reply_markup: kb });
+  await ctx.answerCallbackQuery();
 });
 
-// ─── ANNULER callback ─────────────────────────────────────────────────────────
+// ─── VALIDER PAIEMENT → push confirmation + instructions ────────────────────
+
+bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("confirm_payment:", "");
+  const res = await api.getSale(saleId);
+
+  if (!res.ok || !res.data) {
+    await ctx.answerCallbackQuery("Vente introuvable");
+    return;
+  }
+
+  const sale = res.data;
+  const lines = [
+    "✅ *Commande validée — procédez au paiement*",
+    "",
+    `🔗 ${msg.escMd(sale.supplierUrl ?? "Lien fournisseur manquant")}`,
+    "",
+    "Après avoir commandé :",
+    `1\\. Référence commande → /commande ${msg.escMd(saleId)} REF`,
+    `2\\. Numéro de suivi → /suivi ${msg.escMd(saleId)} Transporteur NUMERO`,
+  ].join("\n");
+
+  await ctx.editMessageText(lines, { parse_mode: "MarkdownV2" });
+  await ctx.answerCallbackQuery("✅ Procédez au paiement !");
+});
+
+// ─── ANNULER VENTE callback ───────────────────────────────────────────────────
 
 bot.callbackQuery(/^cancel_sale:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("cancel_sale:", "");

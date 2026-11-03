@@ -276,6 +276,7 @@ router.post("/messages/reply", async (req, res) => {
       listingPriceEur: listing.price_eur_cents / 100,
       productTitle: product?.title ?? listing.temu_item_id,
       variantLabel: variant?.label ?? listing.variant_id,
+      listingStatus: listing.status,
     });
     res.json({ ok: true, data: result });
   } catch (e) {

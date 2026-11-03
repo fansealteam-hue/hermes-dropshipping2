@@ -207,6 +207,85 @@ async function handleSendAlert({ saleId }, job) {
   }
 }
 
+// --- Mark listing sold on LBC + auto-reply "non disponible" (Claude B) --------
+
+/**
+ * Quand une vente est confirmée :
+ * 1. Marque l'annonce LBC comme vendue (via Playwright)
+ * 2. Active l'auto-reply "non disponible" pour les futurs messages
+ */
+async function handleMarkListingSold({ listingId, saleId }, job) {
+  const listing = db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(listingId);
+  if (!listing) return;
+
+  const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(listing.account_id);
+  const isMock = process.env.NODE_ENV === "test" || (account?.credentials_ref ?? "").startsWith("mock_");
+
+  if (isMock) {
+    db.prepare("UPDATE listings SET status = 'sold', updated_at = ? WHERE listing_id = ?")
+      .run(new Date().toISOString(), listingId);
+    return { listingId, marked: true };
+  }
+
+  // Production: clôturer l'annonce sur LBC
+  let browser;
+  try {
+    const { chromium } = require("playwright");
+    const fs = require("fs");
+    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+    const sessionPath = `${__dirname}/../../../data/sessions/${account.account_id}.json`;
+    const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
+    const context = await browser.newContext({ storageState });
+    const page = await context.newPage();
+
+    // Marquer vendu sur le gestionnaire d'annonces LBC
+    if (listing.leboncoin_ad_id) {
+      await page.goto(`https://www.leboncoin.fr/mes-annonces/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });
+      const markSoldBtn = await page.$('[data-testid="mark-as-sold"]').catch(() => null);
+      if (markSoldBtn) await markSoldBtn.click();
+    }
+
+    db.prepare("UPDATE listings SET status = 'sold', updated_at = ? WHERE listing_id = ?")
+      .run(new Date().toISOString(), listingId);
+
+    const newState = await context.storageState();
+    fs.mkdirSync(`${__dirname}/../../../data/sessions`, { recursive: true });
+    fs.writeFileSync(sessionPath, JSON.stringify(newState));
+    return { listingId, marked: true };
+  } finally {
+    await browser?.close();
+  }
+}
+
+/**
+ * Envoie alerte Telegram avec boutons VALIDER / ANNULER VENTE
+ * puis déclenche paiement fournisseur quand opérateur valide.
+ */
+async function handleSendAlertWithValidation({ saleId }, job) {
+  const sale = getSale(saleId);
+  if (!sale) throw new Error(`Sale ${saleId} not found`);
+
+  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(sale.temuItemId);
+  const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(sale.variantId);
+
+  try {
+    const botModule = require("../../telegram/src/bot.js");
+    const chatIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").filter(Boolean).map(Number);
+    for (const chatId of chatIds) {
+      await botModule.sendSaleAlert(chatId, {
+        sale,
+        productTitle: product?.title ?? sale.temuItemId,
+        variantLabel: variant?.label ?? sale.variantId,
+      });
+    }
+    db.prepare("UPDATE sales SET alert_sent = 1 WHERE sale_id = ?").run(saleId);
+  } catch (e) {
+    console.warn(`[jobs] sendAlert: ${e.message}`);
+    db.prepare("UPDATE sales SET alert_sent = 1, manual_action_note = 'Alerte Telegram a envoyer manuellement' WHERE sale_id = ?").run(saleId);
+  }
+}
+
 queue.register("publish_listing", handlePublishListing);
-queue.register("send_alert", handleSendAlert);
+queue.register("send_alert", handleSendAlertWithValidation);
 queue.register("sync_tracking", handleSyncTracking);
+queue.register("mark_listing_sold", handleMarkListingSold);

@@ -21,13 +21,28 @@ const AMOUNT_RE = /(\d+(?:[.,]\d+)?)\s*(?:€|euros?)/i;
  * @param {boolean} [opts.hasShipping] - Whether shipping is included
  * @returns {Promise<{ reply: string, action: 'send'|'escalate'|'suspend', offerEur?: number, decision?: string }>}
  */
+/**
+ * Reply for a sold listing — always "non disponible".
+ * Called automatically when the listing status is 'sold'.
+ */
+function soldReply() {
+  return {
+    reply: "Désolé, cet article vient d'être vendu. N'hésitez pas à consulter mes autres annonces !",
+    action: "send",
+    reason: "listing_sold",
+  };
+}
+
 async function generateReply({
   buyerMessage,
   listingPriceEur,
   productTitle,
   variantLabel,
   hasShipping = false,
+  listingStatus = "published",
 }) {
+  // Listing already sold → always reply non disponible
+  if (listingStatus === "sold") return soldReply();
   const lower = buyerMessage.toLowerCase();
 
   // Litige keywords → always escalate to operator
@@ -114,4 +129,4 @@ function _fallbackReply(message, listingPriceEur) {
   return "Bonjour, merci pour votre message. Le vendeur vous répond rapidement.";
 }
 
-module.exports = { generateReply };
+module.exports = { generateReply, soldReply };

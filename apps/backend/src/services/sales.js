@@ -56,6 +56,13 @@ function confirmSale({
     VALUES (?, 'send_alert', ?, 'pending', ?, datetime('now'), datetime('now'))
   `).run(jobId, JSON.stringify({ saleId }), `alert:${saleId}`);
 
+  // Enqueue mark_listing_sold — ferme l'annonce LBC + active auto-reply "non disponible"
+  const soldJobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'mark_listing_sold', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(soldJobId, JSON.stringify({ listingId, saleId }), `sold:${listingId}`);
+
   return { sale: getSale(saleId), duplicate: false };
 }
 
