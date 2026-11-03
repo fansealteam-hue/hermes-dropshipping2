@@ -26,4 +26,8 @@ module.exports = {
   confirmAvailable: saleId => apiFetch(`/api/sales/${saleId}/confirm-available`, "POST"),
   republishSale: saleId => apiFetch(`/api/sales/${saleId}/republish`, "POST"),
   closeSale: saleId => apiFetch(`/api/sales/${saleId}/close`, "POST"),
+  bumpAll: () => apiFetch("/api/listings/bump-all", "POST"),
+  syncAll: () => apiFetch("/api/accounts/sync-all", "POST"),
+  getAgents: () => apiFetch("/api/agents/status"),
+  getUnreadMessages: () => apiFetch("/api/messages/unread"),
 };
