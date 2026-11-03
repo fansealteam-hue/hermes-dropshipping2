@@ -71,11 +71,36 @@ async function downloadAndEnhance(url, itemId, variantId, index, productTitle) {
   return `/media/${filename}`;
 }
 
-// Angles de prise de vue pour les 3 photos régénérées
+// 3 prises de vue style "vrai vendeur particulier"
 const ANGLES = [
-  { label: "vue de face",        hint: "cadrage frontal centré, produit bien visible" },
-  { label: "vue de trois-quarts", hint: "angle légèrement de côté, donne du volume" },
-  { label: "vue de détail",       hint: "zoom sur la partie principale ou un détail clé" },
+  {
+    label: "vue principale",
+    hint: [
+      "photo de face, posé sur une table en bois dans un salon.",
+      "Une main du vendeur tient légèrement l'objet sur le côté.",
+      "Fond légèrement flou avec des éléments de maison (canapé, étagère).",
+      "Lumière de fenêtre naturelle, légère ombre portée.",
+      "Style selfie de vente — naturel, spontané, pas mis en scène.",
+    ].join(" "),
+  },
+  {
+    label: "vue de côté en contexte",
+    hint: [
+      "Photo depuis un angle de trois-quarts.",
+      "Produit posé sur un sol carrelé ou parquet, comme si quelqu'un venait de le sortir.",
+      "On voit un peu l'environnement autour — pas tout propre et rangé.",
+      "Lumière d'intérieur réaliste.",
+    ].join(" "),
+  },
+  {
+    label: "vue de détail rapprochée",
+    hint: [
+      "Zoom sur la partie principale ou le détail clé du produit.",
+      "Tenu dans une main, gros plan, légèrement de biais.",
+      "Flou de fond, mise au point nette sur le détail.",
+      "Comme une photo de téléphone prise rapidement pour montrer l'état.",
+    ].join(" "),
+  },
 ];
 
 /**
@@ -93,12 +118,12 @@ async function regenerateAsSellerPhotos(imageBuffer, productTitle) {
   const generations = await Promise.all(
     ANGLES.map(({ label, hint }) => {
       const prompt = [
-        `Photo réaliste d'un(e) ${product}, ${label}.`,
-        hint + ".",
-        `Posé(e) sur une table en bois ou sol d'intérieur, lumière naturelle chaleureuse.`,
-        `Style photo de particulier pour vendre sur Leboncoin — fond de maison neutre,`,
-        `pas de studio, pas de fond blanc. Produit net et bien éclairé.`,
-        `Pas de texte, watermark ou logo. Photographie réaliste haute résolution.`,
+        `Photo réaliste prise au smartphone d'un(e) ${product}.`,
+        hint,
+        `Style annonce Leboncoin — vendeur particulier, ambiance vraie maison française.`,
+        `Pas de fond blanc, pas de studio, pas de mise en scène parfaite.`,
+        `Légères imperfections naturelles (angle pas parfait, lumière un peu chaude).`,
+        `Pas de texte, watermark ou logo. Photo nette et lisible malgré le style naturel.`,
       ].join(" ");
 
       return client.images.generate({
