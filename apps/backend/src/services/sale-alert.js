@@ -98,14 +98,16 @@ async function tgCall(method, body) {
   return j.result;
 }
 
-/** Photos candidates de l'article : variante Temu → annonce Leboncoin → produit Temu. */
+/** Photos candidates de l'article : annonce Leboncoin → variante Temu → produit Temu. */
 function photoCandidates(sale) {
   const parse = (x) => { try { const v = JSON.parse(x ?? "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
   const out = [];
-  const v = db.prepare("SELECT image_urls FROM variants WHERE variant_id = ?").get(sale.variantId);
-  out.push(...parse(v?.image_urls));
+  // 1. photo de l'annonce Leboncoin (celle que l'acheteur a vue)
   const l = sale.listingId ? db.prepare("SELECT media_urls FROM listings WHERE listing_id = ?").get(sale.listingId) : null;
   out.push(...parse(l?.media_urls));
+  // 2. image de la variante Temu
+  const v = db.prepare("SELECT image_urls FROM variants WHERE variant_id = ?").get(sale.variantId);
+  out.push(...parse(v?.image_urls));
   const p = db.prepare("SELECT raw_json FROM products WHERE temu_item_id = ?").get(sale.temuItemId);
   try {
     const raw = JSON.parse(p?.raw_json ?? "{}");

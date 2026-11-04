@@ -57,11 +57,11 @@ test("valider depuis Telegram passe la vente en « commandée » (idempotent)", 
   assert.throws(() => markOrdered("nope"), (e) => e.code === "NOT_FOUND");
 });
 
-test("photos : variante puis annonce puis produit, sans doublon", () => {
+test("photos : annonce Leboncoin d'abord, puis variante Temu, sans doublon", () => {
   db.prepare("UPDATE variants SET image_urls = ? WHERE variant_id = 'v1'").run(JSON.stringify(["https://img/v1.jpg"]));
   db.prepare("INSERT INTO listings (listing_id, channel, account_id, temu_item_id, variant_id, title, price_eur_cents, cost_eur_cents, status, media_urls, created_at, updated_at) VALUES ('l', 'leboncoin', 'lbc_compte_a', 'tm1', 'v1', 't', 4500, 1500, 'sold', ?, datetime('now'), datetime('now'))")
     .run(JSON.stringify(["https://img/lbc.jpg", "https://img/v1.jpg"]));
-  assert.deepEqual(alert.photoCandidates(getSale("s_ok")), ["https://img/v1.jpg", "https://img/lbc.jpg"]);
+  assert.deepEqual(alert.photoCandidates(getSale("s_ok")), ["https://img/lbc.jpg", "https://img/v1.jpg"]);
 });
 
 test("envoi avec photo : sendPhoto avec légende + boutons ; repli si l'URL échoue", async () => {
