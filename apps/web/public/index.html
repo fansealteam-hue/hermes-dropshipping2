@@ -90,6 +90,7 @@ aside {
 aside nav { display: flex; flex-direction: column; gap: 3px; }
 .nav-label { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-3); padding: 0 10px 8px; }
 .nav-btn {
+  white-space: nowrap;
   display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 9px;
   background: none; border: none; cursor: pointer; color: var(--text-2); text-align: left;
   transition: background .15s, color .15s; font-weight: 500;
@@ -485,6 +486,70 @@ tbody tr:hover { background: var(--surface-2); }
 .goal .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
 .vest { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 
+/* Messages */
+.msg-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+.conv-list { padding: 0; overflow: hidden; }
+.conv-list .toolbar { padding: 14px 14px 0; margin-bottom: 10px; }
+.conv-items { max-height: 640px; overflow-y: auto; }
+.conv-item { display: flex; gap: 11px; padding: 12px 14px; border-top: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.conv-item:hover { background: var(--surface-2); }
+.conv-item.on { background: var(--accent-soft); }
+.conv-item .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex-shrink: 0; color: #fff; }
+.conv-item .mid { flex: 1; min-width: 0; }
+.conv-item .top { display: flex; align-items: center; gap: 6px; }
+.conv-item .top b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-item .top span { margin-left: auto; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.conv-item .ad { font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-item .last { font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.thread { display: flex; flex-direction: column; min-height: 520px; padding: 0; overflow: hidden; }
+.thread-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.thread-body { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 560px;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 60%); }
+.bub { max-width: 72%; padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.45; position: relative; animation: fade .25s; white-space: pre-wrap; }
+.bub.in { align-self: flex-start; background: var(--surface-3); border-bottom-left-radius: 5px; }
+.bub.out { align-self: flex-end; background: linear-gradient(140deg, var(--accent), #c9531a); color: #fff; border-bottom-right-radius: 5px; }
+.bub.out.esc { background: var(--amber-soft); color: var(--text); border: 1px dashed var(--amber); }
+.bub .meta { display: block; font-size: 10.5px; opacity: .7; margin-top: 4px; }
+.bub .offer { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: rgba(0,0,0,.15); margin-bottom: 4px; }
+.day-sep { align-self: center; font-size: 11px; color: var(--text-3); padding: 3px 10px; border-radius: 10px; background: var(--surface-2); margin: 6px 0; }
+.sim { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+.sim input, .sim select { height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); outline: none; min-width: 0; }
+.sim input { flex: 1; }
+.sim input:focus, .sim select:focus { border-color: var(--accent); }
+.posted-day { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 6px; }
+.posted-day .c { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.posted-day .b { width: 100%; max-width: 30px; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--green), color-mix(in srgb, var(--green) 40%, transparent)); min-height: 3px; transition: height .6s; }
+.posted-day .l { font-size: 10.5px; color: var(--text-3); text-transform: capitalize; }
+.posted-day .n { font-size: 11px; font-weight: 700; }
+@media (max-width: 1100px) { .msg-wrap { grid-template-columns: 1fr; } .conv-items { max-height: 320px; } }
+
+/* Commandes Temu */
+.to-order { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.ord { padding: 18px; position: relative; }
+.ord.late { border-color: color-mix(in srgb, var(--red) 45%, transparent); }
+.ord .hd { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.ord .hd .t { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.ord .hd .v { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.ord .money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.ord .money > div { padding: 9px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.ord .money .l { font-size: 11px; color: var(--text-3); }
+.ord .money .n { font-weight: 700; font-size: 15px; margin-top: 2px; }
+.ord .buyer { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px dashed var(--border-strong); margin-bottom: 12px; font-size: 12.5px; }
+.ord .buyer .row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.ord .buyer .row span:first-child { color: var(--text-3); width: 64px; flex-shrink: 0; }
+.ord .buyer .row b { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp { border: none; background: none; color: var(--text-3); cursor: pointer; padding: 3px; border-radius: 6px; display: grid; place-items: center; }
+.cp:hover { color: var(--accent); background: var(--accent-soft); }
+.cp svg { width: 13px; height: 13px; }
+.ord .act { display: flex; gap: 8px; flex-wrap: wrap; }
+.ord .act input { flex: 1; min-width: 120px; height: 36px; padding: 0 11px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; }
+.ord .act input:focus { border-color: var(--accent); }
+.ord .steps { display: flex; gap: 6px; margin-bottom: 12px; font-size: 11.5px; }
+.ord .steps span { padding: 3px 8px; border-radius: 6px; background: var(--surface-2); color: var(--text-3); }
+.ord .steps span.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ord .steps span.ok { background: var(--green-soft); color: var(--green); }
+@media (max-width: 480px) { .to-order { grid-template-columns: 1fr; } }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -647,6 +712,10 @@ th.sort.on { color: var(--accent); }
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></symbol>
   <symbol id="i-cube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5v9L12 22l-9-3.5z"/><path d="M3 9.5 12 14l9-4.5M12 14v8"/><path d="M7.5 7 16.5 12"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11h10.2L20 8H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
   <symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6z"/></symbol>
 </svg>
 
@@ -661,9 +730,11 @@ th.sort.on { color: var(--accent); }
       <button class="nav-btn active" data-view="overview"><svg><use href="#i-home"/></svg>Vue d'ensemble</button>
       <button class="nav-btn" data-view="warehouse"><svg><use href="#i-cube"/></svg>Entrepôt 3D<span class="live-dot"></span></button>
       <button class="nav-btn" data-view="products"><svg><use href="#i-box"/></svg>Produits</button>
+      <button class="nav-btn" data-view="temu"><svg><use href="#i-cart"/></svg>Achats Temu<span class="count" id="nav-temu-count" style="background:var(--amber-soft);color:var(--amber)"></span></button>
       <button class="nav-btn" data-view="sales"><svg><use href="#i-bag"/></svg>Ventes<span class="count" id="nav-action-count"></span></button>
       <button class="nav-btn" data-view="compta"><svg><use href="#i-book"/></svg>Comptabilité</button>
       <button class="nav-btn" data-view="facturation"><svg><use href="#i-file"/></svg>Facturation</button>
+      <button class="nav-btn" data-view="messages"><svg><use href="#i-chat"/></svg>Messages<span class="count" id="nav-msg-count"></span></button>
       <button class="nav-btn" data-view="listings"><svg><use href="#i-tag"/></svg>Annonces</button>
       <button class="nav-btn" data-view="accounts"><svg><use href="#i-users"/></svg>Comptes</button>
     </nav>
@@ -928,9 +999,47 @@ th.sort.on { color: var(--accent); }
       </div>
     </section>
 
+    <!-- ── Commandes Temu ─────────────────────────────── -->
+    <section class="view" id="v-temu">
+      <div class="grid kpis" id="temu-kpis"></div>
+      <div class="toolbar">
+        <div class="chips" id="temu-chips"></div>
+        <button class="btn" style="margin-left:auto" id="temu-open-all"><svg width="13" height="13"><use href="#i-link"/></svg>Ouvrir tous les produits sur Temu</button>
+      </div>
+      <div class="to-order" id="temu-list"></div>
+      <div class="note">Le site ne commande pas à ta place : clique « Commander sur Temu », paie la commande avec l'adresse de l'acheteur, puis colle la référence ici. La vente passe alors en « Commandée ». L'adresse complète de l'acheteur se trouve dans la conversation Leboncoin.</div>
+    </section>
+
+    <!-- ── Messages ───────────────────────────────────── -->
+    <section class="view" id="v-messages">
+      <div class="grid kpis" id="msg-kpis"></div>
+      <div class="msg-wrap">
+        <div class="card conv-list">
+          <div class="toolbar"><div class="search" style="max-width:none;min-width:0"><svg><use href="#i-search"/></svg><input id="conv-q" placeholder="Acheteur, annonce, message…" /></div></div>
+          <div class="chips" id="conv-chips" style="padding:0 14px 12px"></div>
+          <div class="conv-items" id="conv-items"></div>
+        </div>
+        <div class="card thread" id="thread">
+          <div class="thread-head" id="thread-head"></div>
+          <div class="thread-body" id="thread-body"></div>
+          <form class="sim" id="sim-form">
+            <select id="sim-listing" title="Annonce"></select>
+            <input id="sim-msg" placeholder="Tester : écris un message d'acheteur (« toujours dispo ? », « je propose 20€ »)…" />
+            <button class="btn primary" type="submit"><svg width="13" height="13"><use href="#i-send"/></svg>Tester la réponse</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Annonces ───────────────────────────────────── -->
     <section class="view" id="v-listings">
       <div class="grid kpis" id="listing-kpis"></div>
+      <div class="grid row-2b" style="margin-bottom:16px;align-items:start">
+        <div class="card"><div class="card-head"><div><div class="card-title">📢 Annonces postées</div><div class="card-sub" id="posted-sub">7 derniers jours</div></div></div>
+          <div class="posted-day" id="posted-chart"></div></div>
+        <div class="card"><div class="card-head"><div><div class="card-title">Dernières publications</div><div class="card-sub">en direct de l'auto-publication</div></div></div>
+          <div class="feed" id="posted-feed"></div></div>
+      </div>
       <div class="toolbar">
         <div class="search"><svg><use href="#i-search"/></svg><input id="list-q" placeholder="Rechercher une annonce…" /></div>
         <div class="chips" id="list-chips"></div>
@@ -938,7 +1047,7 @@ th.sort.on { color: var(--accent); }
       <div class="card">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Annonce</th><th>Statut</th><th>Compte</th><th class="r">Prix</th><th class="r">Coût</th><th class="r">Marge</th><th class="r">Reprix</th><th>Publiée</th></tr></thead>
+            <thead><tr><th>Annonce</th><th>Statut</th><th>Compte</th><th class="r">Prix</th><th class="r">Coût</th><th class="r">Marge</th><th class="r">Reprix</th><th>Publiée</th><th></th></tr></thead>
             <tbody id="list-table"></tbody>
           </table>
         </div>
@@ -1186,14 +1295,16 @@ async function load() {
     if (DEMO) {
       state = demoData(period);
     } else {
-      const [fin, dash, listings, accounts, wdRes] = await Promise.all([
+      const [fin, dash, listings, accounts, wdRes, convRes] = await Promise.all([
         api(`/api/finance?period=${period}`),
         api("/api/dashboard"),
         api("/api/listings?limit=500").catch(() => ({ data: [] })),
         api("/api/accounts/stats").catch(() => ({ data: [] })),
         api("/api/withdrawals").catch(() => ({ data: null })),
+        api("/api/conversations").catch(() => ({ data: null })),
       ]);
-      state = { fin: fin.data, dash: dash.data, listings: listings.data ?? [], accounts: accounts.data ?? [], wd: wdRes.data };
+      state = { fin: fin.data, dash: dash.data, listings: listings.data ?? [], accounts: accounts.data ?? [], wd: wdRes.data, convs: convRes.data };
+      Object.keys(convCache).forEach((k) => delete convCache[k]);
     }
     setConn(DEMO ? "demo" : "ok");
     hideBanner();
@@ -1236,6 +1347,8 @@ function renderAll() {
   renderFacturation();
   renderProducts();
   updateWarehouse();
+  renderMessages();
+  renderTemu();
   const n = state.dash?.salesNeedingAction?.length ?? 0;
   $("#nav-action-count").textContent = n || "";
 }
@@ -1368,7 +1481,32 @@ function renderSales() {
   }).join("") || emptyRow(9, q || salesFilter !== "all" ? "Aucune vente ne correspond" : "Aucune vente active");
 }
 
+const lbcUrl = (id) => (id && /^\d+$/.test(String(id)) ? `https://www.leboncoin.fr/vi/${id}.htm` : null);
+function renderPosted() {
+  const all = (state.listings ?? []).filter((l) => l.published_at);
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+    const e = new Date(d.getTime() + 86400000);
+    days.push({ d, n: all.filter((l) => { const t = new Date(l.published_at); return t >= d && t < e; }).length });
+  }
+  const max = Math.max(1, ...days.map((x) => x.n));
+  const week = days.reduce((a, x) => a + x.n, 0), today = days[6].n;
+  const sched = (state.listings ?? []).filter((l) => l.status === "scheduled").length;
+  $("#posted-sub").textContent = `${today} aujourd'hui · ${week} sur 7 jours · ${sched} programmée${sched > 1 ? "s" : ""}`;
+  $("#posted-chart").innerHTML = days.map((x, i) => `<div class="c"><span class="n num">${x.n || ""}</span>
+    <div class="b" style="height:${(x.n / max) * 64}px;${i === 6 ? "background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 40%,transparent))" : ""}"></div>
+    <span class="l">${i === 6 ? "auj." : x.d.toLocaleDateString("fr-FR", { weekday: "short" })}</span></div>`).join("");
+  const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
+  $("#posted-feed").innerHTML = all.slice().sort((a, b) => b.published_at.localeCompare(a.published_at)).slice(0, 6).map((l) => `<div class="feed-item">
+      <span class="feed-ico" style="background:var(--green-soft);color:var(--green)"><svg><use href="#i-send"/></svg></span>
+      <div style="min-width:0;flex:1"><div class="feed-txt" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.title || l.product_title || l.listing_id)}</div>
+      <div class="feed-time">${eur(l.price_eur_cents / 100)} · ${esc(accLabel[l.account_id] ?? l.account_id ?? "")} · ${ago(l.published_at)}</div></div>
+      ${lbcUrl(l.leboncoin_ad_id) ? `<a class="track-link" href="${lbcUrl(l.leboncoin_ad_id)}" target="_blank" rel="noopener" style="font-size:12px;align-self:center">Voir ↗</a>` : ""}</div>`).join("")
+    || `<div class="empty">Aucune annonce publiée</div>`;
+}
 function renderListings() {
+  renderPosted();
   const all = state.listings ?? [];
   const counts = all.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {});
   const pub = all.filter((l) => l.status === "published");
@@ -1404,9 +1542,10 @@ function renderListings() {
       <td class="r num muted">${eur(l.cost_eur_cents / 100)}</td>
       <td class="r num ${m >= 0 ? "pos" : "neg"}">${eur(m)}</td>
       <td class="r num muted">${l.repricing_count || 0}</td>
-      <td class="muted">${fmtDate(l.published_at)}</td>
+      <td class="muted">${fmtDate(l.published_at)}${l.published_at ? `<div class="prod-meta">${ago(l.published_at)}</div>` : ""}</td>
+      <td class="r">${lbcUrl(l.leboncoin_ad_id) ? `<a class="btn" style="text-decoration:none" href="${lbcUrl(l.leboncoin_ad_id)}" target="_blank" rel="noopener"><svg width="12" height="12"><use href="#i-link"/></svg>Voir</a>` : ""}</td>
     </tr>`;
-  }).join("") || emptyRow(8, q || listFilter !== "all" ? "Aucune annonce ne correspond" : "Aucune annonce");
+  }).join("") || emptyRow(9, q || listFilter !== "all" ? "Aucune annonce ne correspond" : "Aucune annonce");
 }
 
 function renderAccounts() {
@@ -1594,7 +1733,7 @@ function hover3d(e) {
 // Chaque vente active = un colis posé sur le poste correspondant à son étape.
 const WH_STATIONS = [
   { k: "confirmed", label: "Vente reçue", c: "#6aa5e8", icon: "€" },
-  { k: "order_placed", label: "Achat fournisseur", c: "#e6b04a", icon: "🛒" },
+  { k: "order_placed", label: "Achat Temu", c: "#e6b04a", icon: "🛒" },
   { k: "invoice", label: "Factures", c: "#b979e0", icon: "📄" },
   { k: "tracking_added", label: "Expédition", c: "#e8702a", icon: "🚚" },
   { k: "delivered", label: "Livré", c: "#4fbf8a", icon: "✓" },
@@ -1750,7 +1889,7 @@ function initWarehouse() {
   const truck = makeTruck(0xe8702a, "Livraison client");
   truck.rotation.y = Math.PI / 2;
   truck.position.set(38.5, 0, 7);
-  const supplier = makeTruck(0x6aa5e8, "Fournisseur");
+  const supplier = makeTruck(0x6aa5e8, "Arrivage Temu");
   supplier.rotation.y = -Math.PI / 2;
   supplier.position.set(-38.5, 0, 7);
 
@@ -2118,7 +2257,11 @@ function whSize() {
 }
 function whBubble(text) {
   if (!wh.ok) return;
-  const msgs = ["💬 Réponse envoyée", "💬 « Toujours dispo ? » → Oui !", "💬 Offre acceptée", "📦 Colis préparé", "📄 Facture créée", "✅ Suivi envoyé"];
+  // Bulles basées sur les vraies conversations quand il y en a
+  const real = (state.convs ?? []).filter((c) => c.lastMessage?.body).slice(0, 12);
+  const msgs = real.length
+    ? real.map((c) => (c.lastMessage.direction === "out" ? `🤖 ${c.lastMessage.body}` : `💬 ${c.buyerName ?? "Acheteur"} : ${c.lastMessage.body}`).slice(0, 34) + "…")
+    : ["💬 Réponse envoyée", "📦 Colis préparé", "📄 Facture créée", "✅ Suivi envoyé"];
   const t = text ?? msgs[Math.floor(Math.random() * msgs.length)];
   const cv = document.createElement("canvas"); cv.width = 512; cv.height = 110;
   const g = cv.getContext("2d");
@@ -2133,7 +2276,6 @@ function whBubble(text) {
   sp.position.set(st.x + (Math.random() - 0.5) * 4, 4, 1);
   wh.scene.add(sp);
   wh.bubbles.push(sp);
-  whFeedPush(t, st.c);
 }
 const whFeedLog = [];
 function whFeedPush(text, color, when = new Date().toISOString()) {
@@ -2161,6 +2303,9 @@ function updateWarehouse() {
   $("#wh-s3").innerHTML = `<b>${state.dash?.salesNeedingAction?.length ?? 0}</b> à traiter`;
   $("#wh-legend").innerHTML = WH_STATIONS.map((st) => `<span><i style="background:${st.c}"></i>${st.label} · <b class="num">${counts[st.k]}</b> · ${eurShort(money[st.k])}</span>`).join("");
   if (!whFeedLog.length) {
+    (state.convs ?? []).slice(0, 6).reverse().forEach((c) => whFeedLog.unshift({
+      text: c.needsYou ? `💬 ${c.buyerName ?? "Un acheteur"} attend ta réponse` : `🤖 Réponse auto à ${c.buyerName ?? "un acheteur"}`,
+      color: c.needsYou ? "#e5675f" : "#4fbf8a", when: c.lastAt }));
     (state.dash?.recentActivity ?? []).slice(0, 10).reverse().forEach((a) => whFeedLog.unshift({
       text: a.type === "sale_confirmed" ? `🛍️ Nouvelle vente ${String(a.saleId ?? "").slice(0, 12)}` : `📢 Annonce publiée ${String(a.listingId ?? "").slice(0, 12)}`,
       color: a.type === "sale_confirmed" ? "#6aa5e8" : "#4fbf8a", when: a.timestamp }));
@@ -2457,6 +2602,192 @@ footer{margin-top:auto;padding-top:20px;border-top:1px solid #e8dfd3;font-size:1
 ${pages}</body></html>`);
   win.document.close();
 }
+
+// ═══ Commandes Temu ════════════════════════════════════════════════════════
+let temuFilter = "todo";
+const safeUrl = (u) => (u && /^https:\/\//i.test(u) ? u : null);
+function copyTxt(v) { try { navigator.clipboard.writeText(String(v)); toast("Copié ✓"); } catch { toast("Copie impossible"); } }
+function renderTemu() {
+  const all = (state.dash?.activeSales ?? []);
+  const todo = all.filter((s) => s.status === "confirmed").sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt));
+  const ordered = all.filter((s) => s.status === "order_placed").sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt));
+  $("#nav-temu-count").textContent = todo.length || "";
+  const late = todo.filter((s) => daysSince(s.confirmedAt) >= 2).length;
+  const budget = todo.reduce((a, s) => a + (s.costEur || 0), 0);
+  const marge = todo.reduce((a, s) => a + s.salePriceEur - s.costEur - shipFee(), 0);
+  $("#temu-kpis").innerHTML = [
+    ["À commander", todo.length, late ? `<span class="pill down">${late} en retard (+48 h)</span>` : "aucun retard 👌", "var(--blue)", "var(--blue-soft)", "i-cart"],
+    ["À payer sur Temu", eurBig(budget + todo.length * shipFee()), `${eur(budget)} produits + ${eur(todo.length * shipFee())} de port`, "var(--amber)", "var(--amber-soft)", "i-euro"],
+    ["Bénéfice en jeu", eurBig(marge), "une fois tout commandé", "var(--green)", "var(--green-soft)", "i-trend"],
+    ["Commandées sans suivi", ordered.length, "ajoute le n° de suivi Temu", "var(--accent)", "var(--accent-soft)", "i-truck"],
+  ].map(([l, v, f, c, bg, ic]) => `<div class="card kpi"><div class="kpi-label"><span class="kpi-ico" style="background:${bg};color:${c}"><svg><use href="#${ic}"/></svg></span>${l}</div>
+    <div class="kpi-value num">${v}</div><div class="kpi-foot">${f}</div></div>`).join("");
+  $("#temu-chips").innerHTML = [["todo", "À commander", todo.length], ["ordered", "Commandées, sans suivi", ordered.length]]
+    .map(([k, l, n]) => `<button class="chip ${temuFilter === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
+  $$("#temu-chips .chip").forEach((c) => (c.onclick = () => { temuFilter = c.dataset.k; renderTemu(); }));
+  const list = temuFilter === "todo" ? todo : ordered;
+  $("#temu-open-all").style.display = temuFilter === "todo" && todo.some((s) => safeUrl(s.supplierUrl)) ? "" : "none";
+  $("#temu-open-all").onclick = () => { todo.map((s) => safeUrl(s.supplierUrl)).filter(Boolean).slice(0, 10).forEach((u) => window.open(u, "_blank", "noopener")); };
+  const titleOf = Object.fromEntries((state.listings ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
+  const byItem = itemTitles();
+  const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
+  $("#temu-list").innerHTML = list.map((s) => {
+    const t = titleOf[s.listingId] || s.productTitle || byItem[s.temuItemId] || "Produit";
+    const age = daysSince(s.confirmedAt);
+    const isLate = temuFilter === "todo" ? age >= 2 : age >= 10;
+    const url = safeUrl(s.supplierUrl);
+    const id = esc(s.saleId);
+    const m = s.salePriceEur - s.costEur - shipFee();
+    return `<div class="card ord ${isLate ? "late" : ""}">
+      <div class="steps"><span class="ok">✓ Vendu</span><span class="${temuFilter === "todo" ? "on" : "ok"}">${temuFilter === "todo" ? "② Commander" : "✓ Commandé"}</span><span class="${temuFilter === "ordered" ? "on" : ""}">③ Suivi</span><span>④ Livré</span></div>
+      <div class="hd"><div class="prod-thumb">${initials(t)}</div>
+        <div style="flex:1;min-width:0"><div class="t">${esc(t)}</div><div class="v">${esc(s.variantId ?? "")}${s.temuItemId ? " · Temu " + esc(s.temuItemId) : ""}</div></div>
+        <span class="badge ${isLate ? "b-red" : "b-grey"}" style="flex-shrink:0">${age === 0 ? "aujourd'hui" : `il y a ${age} j`}</span></div>
+      <div class="money">
+        <div><div class="l">Vendu</div><div class="n num">${eur(s.salePriceEur)}</div></div>
+        <div><div class="l">Coût Temu</div><div class="n num" style="color:var(--amber)">${eur(s.costEur + shipFee())}</div></div>
+        <div><div class="l">Bénéfice</div><div class="n num ${m >= 0 ? "pos" : "neg"}">${eur(m)}</div></div>
+      </div>
+      <div class="buyer">
+        <div class="row"><span>Acheteur</span><b>${esc(s.buyerName ?? "—")}</b>${s.buyerName ? `<button class="cp" title="Copier" onclick="copyTxt(${JSON.stringify(s.buyerName).replace(/"/g, "&quot;")})"><svg><use href="#i-copy"/></svg></button>` : ""}</div>
+        <div class="row"><span>Ville</span><b>${esc(s.deliveryAddress ?? "voir la conversation")}</b>${s.deliveryAddress ? `<button class="cp" title="Copier" onclick="copyTxt(${JSON.stringify(s.deliveryAddress).replace(/"/g, "&quot;")})"><svg><use href="#i-copy"/></svg></button>` : ""}</div>
+        <div class="row"><span>Compte</span><b>${esc(accLabel[s.accountId] ?? s.accountId ?? "—")}</b></div>
+        <div class="row"><span>Vente</span><b class="mono">${id}</b><button class="cp" title="Copier" onclick="copyTxt('${id}')"><svg><use href="#i-copy"/></svg></button></div>
+      </div>
+      ${temuFilter === "todo" ? `<div class="act">
+          ${url ? `<a class="btn primary" style="text-decoration:none" href="${esc(url)}" target="_blank" rel="noopener"><svg width="13" height="13"><use href="#i-cart"/></svg>Commander sur Temu</a>` : `<span class="muted" style="font-size:12px;align-self:center">Lien Temu manquant</span>`}
+          <input id="ref-${id}" placeholder="Réf. commande Temu (PO-…)" />
+          <button class="btn" onclick="temuMark('${id}')"><svg width="12" height="12"><use href="#i-check"/></svg>Commandé</button></div>`
+      : `<div class="act">
+          <input id="trk-${id}" placeholder="N° de suivi" />
+          <button class="btn primary" onclick="temuTrack('${id}')"><svg width="12" height="12"><use href="#i-truck"/></svg>Ajouter le suivi</button></div>
+          <div class="prod-meta" style="margin-top:8px">Réf. Temu : <span class="mono">${esc(s.orderRef ?? "—")}</span></div>`}
+    </div>`;
+  }).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>${temuFilter === "todo" ? "Rien à commander, tout est à jour 🎉" : "Aucune commande en attente de suivi"}</div></div></div>`;
+}
+async function temuPatch(id, body, okMsg) {
+  if (DEMO) return toast("Mode démo : rien n'a été enregistré");
+  try { await api(`/api/sales/${encodeURIComponent(id)}/tracking`, { method: "PATCH", body: JSON.stringify(body) }); toast(okMsg); load(); }
+  catch (e) { toast("Erreur : " + e.message); }
+}
+function temuMark(id) {
+  const v = document.getElementById("ref-" + id)?.value.trim();
+  if (!v) return toast("Colle d'abord la référence de commande Temu");
+  temuPatch(id, { orderRef: v }, "Commande enregistrée ✓");
+}
+function temuTrack(id) {
+  const v = document.getElementById("trk-" + id)?.value.trim();
+  if (!v) return toast("Colle le numéro de suivi");
+  temuPatch(id, { trackingNumber: v }, "Suivi ajouté ✓ — il sera envoyé à l'acheteur");
+}
+
+// ═══ Messages acheteurs ════════════════════════════════════════════════════
+let convSel = null, convFilter = "all";
+const convCache = {};
+const AV_COLORS = ["#e8702a", "#4fbf8a", "#6aa5e8", "#c9a45c", "#b979e0", "#e5675f"];
+const avColor = (s) => AV_COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % AV_COLORS.length];
+function renderMessages() {
+  const all = state.convs ?? [];
+  const need = all.filter((c) => c.needsYou).length;
+  $("#nav-msg-count").textContent = need || "";
+  const totIn = all.reduce((a, c) => a + c.buyerMessages, 0), totAuto = all.reduce((a, c) => a + c.autoReplies, 0);
+  const offers = all.reduce((a, c) => a + c.offers, 0);
+  const today = all.filter((c) => c.lastAt && new Date(c.lastAt) >= new Date(new Date().setHours(0, 0, 0, 0))).length;
+  $("#msg-kpis").innerHTML = [
+    ["Conversations", all.length, `${today} active${today > 1 ? "s" : ""} aujourd'hui`, "var(--blue)", "var(--blue-soft)", "i-chat"],
+    ["Réponses auto", totAuto, totIn ? `${Math.round((totAuto / totIn) * 100)} % des messages traités seuls` : "—", "var(--green)", "var(--green-soft)", "i-send"],
+    ["Offres reçues", offers, "négociées automatiquement", "var(--amber)", "var(--amber-soft)", "i-euro"],
+    ["À toi de répondre", need, need ? "litiges, offres acceptées, questions" : "rien en attente 👌", "var(--red)", "var(--red-soft)", "i-alert"],
+  ].map(([l, v, f, c, bg, ic]) => `<div class="card kpi"><div class="kpi-label"><span class="kpi-ico" style="background:${bg};color:${c}"><svg><use href="#${ic}"/></svg></span>${l}</div>
+    <div class="kpi-value num">${v}</div><div class="kpi-foot">${f}</div></div>`).join("");
+  const chips = [["all", "Toutes", all.length], ["need", "À toi de répondre", need], ["auto", "Gérées seules", all.length - need], ["offer", "Avec offre", all.filter((c) => c.offers).length]];
+  $("#conv-chips").innerHTML = chips.map(([k, l, n]) => `<button class="chip ${convFilter === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
+  $$("#conv-chips .chip").forEach((c) => (c.onclick = () => { convFilter = c.dataset.k; renderMessages(); }));
+  const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
+  const q = $("#conv-q").value.trim().toLowerCase();
+  const rows = all.filter((c) => (convFilter === "all" || (convFilter === "need" ? c.needsYou : convFilter === "auto" ? !c.needsYou : c.offers > 0)) &&
+    (!q || [c.buyerName, c.listingTitle, c.lastMessage?.body].some((x) => x && x.toLowerCase().includes(q))));
+  if (!convSel && rows.length) convSel = rows[0].conversationId;
+  $("#conv-items").innerHTML = rows.map((c) => `<div class="conv-item ${c.conversationId === convSel ? "on" : ""}" data-id="${esc(c.conversationId)}">
+      <div class="av" style="background:${avColor(c.buyerName ?? c.conversationId)}">${initials(c.buyerName ?? "?")}</div>
+      <div class="mid"><div class="top"><b>${esc(c.buyerName ?? "Acheteur")}</b>${c.needsYou ? '<span class="badge b-red" style="margin-left:6px;font-size:10.5px">à toi</span>' : ""}<span>${ago(c.lastAt)}</span></div>
+        <div class="ad">${esc(c.listingTitle ?? c.listingId ?? "")}${c.listingPriceEur ? " · " + eur(c.listingPriceEur) : ""}${c.accountId ? " · " + esc(accLabel[c.accountId] ?? c.accountId) : ""}</div>
+        <div class="last">${c.lastMessage?.direction === "out" ? "🤖 " : ""}${esc(c.lastMessage?.body ?? "")}</div></div></div>`).join("")
+    || `<div class="empty">${state.convs ? "Aucune conversation pour l'instant" : "Messages indisponibles : mets à jour le backend"}</div>`;
+  $$("#conv-items .conv-item").forEach((el) => (el.onclick = () => { convSel = el.dataset.id; renderMessages(); }));
+  // listings for simulator
+  const sel = $("#sim-listing");
+  const pubs = (state.listings ?? []).filter((l) => l.status === "published").slice(0, 100);
+  if (sel.options.length !== pubs.length) sel.innerHTML = pubs.map((l) => `<option value="${esc(l.listing_id)}">${esc((l.title || l.product_title || l.listing_id).slice(0, 40))} · ${eur(l.price_eur_cents / 100)}</option>`).join("");
+  renderThread();
+}
+async function renderThread() {
+  const c = (state.convs ?? []).find((x) => x.conversationId === convSel);
+  if (!c) {
+    $("#thread-head").innerHTML = `<div class="card-title">Simulateur de réponses</div><div class="card-sub">Choisis une annonce et écris un message d'acheteur pour voir ce que répond l'auto-répondeur.</div>`;
+    if (!$("#thread-body").dataset.sim) $("#thread-body").innerHTML = `<div class="empty" style="margin:auto">Aucune conversation sélectionnée</div>`;
+    return;
+  }
+  const url = lbcUrl(c.leboncoinAdId);
+  $("#thread-head").innerHTML = `<div class="av" style="width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:${avColor(c.buyerName ?? c.conversationId)}">${initials(c.buyerName ?? "?")}</div>
+    <div style="min-width:0"><div style="font-weight:600">${esc(c.buyerName ?? "Acheteur")}</div><div class="card-sub">${esc(c.listingTitle ?? c.listingId ?? "")}${c.listingPriceEur ? " · " + eur(c.listingPriceEur) : ""} · ${c.messageCount} messages</div></div>
+    <div style="margin-left:auto;display:flex;gap:6px">${c.needsYou ? '<span class="badge b-red">À toi de répondre</span>' : '<span class="badge b-green">Géré automatiquement</span>'}
+    ${url ? `<a class="btn" style="text-decoration:none" href="${url}" target="_blank" rel="noopener"><svg width="12" height="12"><use href="#i-link"/></svg>Annonce</a>` : ""}</div>`;
+  let msgs = convCache[c.conversationId];
+  if (!msgs) {
+    if (DEMO) msgs = convCache[c.conversationId] = c._messages;
+    else {
+      $("#thread-body").innerHTML = `<div class="empty" style="margin:auto">Chargement…</div>`;
+      try { msgs = convCache[c.conversationId] = (await api(`/api/conversations/${encodeURIComponent(c.conversationId)}`)).data.messages; }
+      catch (e) { $("#thread-body").innerHTML = `<div class="empty">Erreur : ${esc(e.message)}</div>`; return; }
+      if (c.conversationId !== convSel) return;
+    }
+  }
+  delete $("#thread-body").dataset.sim;
+  $("#thread-body").innerHTML = bubbles(msgs);
+  $("#thread-body").scrollTop = 1e6;
+}
+function bubbles(msgs) {
+  let lastDay = "";
+  return msgs.map((m) => {
+    const day = new Date(m.createdAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    const sep = day !== lastDay ? `<div class="day-sep">${day}</div>` : "";
+    lastDay = day;
+    const time = new Date(m.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    const DEC = { accept: "Offre acceptée", counter: "Contre-offre", reject: "Offre refusée" };
+    if (m.direction === "in") return `${sep}<div class="bub in">${m.offerEur ? `<span class="offer">Offre ${eur(m.offerEur)}</span><br>` : ""}${esc(m.body)}<span class="meta">${time}</span></div>`;
+    const esc_ = m.action && m.action !== "send";
+    return `${sep}<div class="bub out ${esc_ ? "esc" : ""}">${m.decision ? `<span class="offer">${DEC[m.decision] ?? m.decision}</span><br>` : ""}${esc(m.body || "")}${esc_ ? `<br><b>⚠️ Pas envoyé : à valider par toi</b>` : ""}<span class="meta">${esc_ ? "brouillon" : "🤖 réponse auto"} · ${time}</span></div>`;
+  }).join("");
+}
+$("#conv-q").oninput = renderMessages;
+$("#sim-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const msg = $("#sim-msg").value.trim(), listingId = $("#sim-listing").value;
+  if (!msg || !listingId) return toast("Choisis une annonce et écris un message");
+  const body = $("#thread-body");
+  body.dataset.sim = "1";
+  if (!body.querySelector(".sim-zone")) body.innerHTML = `<div class="day-sep">Simulation — rien n'est envoyé à l'acheteur</div><div class="sim-zone" style="display:flex;flex-direction:column;gap:10px"></div>`;
+  const zone = body.querySelector(".sim-zone");
+  const now = new Date().toISOString();
+  zone.insertAdjacentHTML("beforeend", bubbles([{ direction: "in", body: msg, createdAt: now }]).replace(/<div class="day-sep">.*?<\/div>/, ""));
+  $("#sim-msg").value = "";
+  let r;
+  if (DEMO) {
+    const l = state.listings.find((x) => x.listing_id === listingId);
+    const m = /(\d+(?:[.,]\d+)?)\s*(?:€|euros?)/i.exec(msg);
+    const price = l.price_eur_cents / 100;
+    r = m ? (+m[1].replace(",", ".") >= price * 0.9 ? { reply: `Ça marche pour ${m[1]} € 👍 Je vous réserve l'article.`, action: "escalate", decision: "accept" }
+      : { reply: `Je peux descendre à ${(price * 0.92).toFixed(0)} €, c'est mon dernier prix.`, action: "send", decision: "counter" })
+      : /litige|arnaque|rembours/i.test(msg) ? { reply: "", action: "escalate" }
+      : { reply: "Bonjour ! Oui, l'article est toujours disponible 😊 Envoi rapide et suivi. N'hésitez pas si vous avez une question.", action: "send" };
+  } else {
+    try { r = (await api("/api/messages/reply", { method: "POST", body: JSON.stringify({ buyerMessage: msg, listingId, dryRun: true }) })).data; }
+    catch (err) { return toast("Erreur : " + err.message); }
+  }
+  zone.insertAdjacentHTML("beforeend", bubbles([{ direction: "out", body: r.reply || (r.action === "escalate" ? "(Pas de réponse automatique : message transmis au vendeur)" : ""), action: r.action, decision: r.decision, createdAt: new Date().toISOString() }]).replace(/<div class="day-sep">.*?<\/div>/, ""));
+  body.scrollTop = 1e6;
+};
 
 // ═══ Produits : ce qui marche / ce qui ne se vend pas ═════════════════════
 let prodFilter = "all", prodSort = store.get("hermes_prod_sort", "rev"), prodDir = -1;
@@ -3129,8 +3460,8 @@ function toast(msg) {
 }
 
 // ═══ Navigation, thème, période ════════════════════════════════════════════
-const TITLES = { warehouse: "Entrepôt en direct", products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes Leboncoin" };
-const HASH = { warehouse: "entrepot", products: "produits", overview: "", sales: "ventes", compta: "compta", facturation: "facturation", listings: "annonces", accounts: "comptes" };
+const TITLES = { temu: "Commandes Temu", messages: "Messages acheteurs", warehouse: "Entrepôt en direct", products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes Leboncoin" };
+const HASH = { temu: "temu", messages: "messages", warehouse: "entrepot", products: "produits", overview: "", sales: "ventes", compta: "compta", facturation: "facturation", listings: "annonces", accounts: "comptes" };
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   if (h.startsWith("compte/")) { accId = h.slice(7); return go("account", true); }
@@ -3217,7 +3548,8 @@ function demoData(p) {
       if (i < 75) {
         const st = i < 2 ? "confirmed" : i > 14 ? (rnd() > 0.9 ? "cancelled" : "delivered") : statuses[Math.floor(rnd() * statuses.length)];
         sales.push({
-          saleId: "sale_" + Math.floor(rnd() * 1e12).toString(36), productTitle: products[pi], temuItemId: "tm" + pi, accountId: accounts[Math.floor(rnd() * 3)].accountId,
+          saleId: "sale_" + Math.floor(rnd() * 1e12).toString(36), productTitle: products[pi], temuItemId: "tm" + pi, variantId: ["Noir", "Blanc", "Standard", "Lot de 2"][pi % 4],
+          supplierUrl: "https://www.temu.com/", orderRef: "PO-211-" + Math.floor(rnd() * 1e8), accountId: accounts[Math.floor(rnd() * 3)].accountId,
           salePriceEur: price, costEur: cost, status: st, buyerName: ["Julie M.", "Karim B.", "Sophie L.", "Thomas R.", "Léa D."][Math.floor(rnd() * 5)],
           deliveryAddress: ["Lyon", "Paris", "Nantes", "Lille", "Bordeaux"][Math.floor(rnd() * 5)],
           trackingNumber: ["tracking_added", "delivered"].includes(st) ? "LX" + Math.floor(rnd() * 1e9) + "FR" : undefined,
@@ -3238,7 +3570,8 @@ function demoData(p) {
     return {
       listing_id: "lst_" + Math.floor(rnd() * 1e12).toString(36), account_id: accounts[i % 3].accountId,
       title: products[i % products.length], price_eur_cents: price, cost_eur_cents: Math.round(price * (0.4 + rnd() * 0.2)),
-      status: st, repricing_count: Math.floor(rnd() * 4), published_at: st === "published" || st === "archived" ? new Date(Date.now() - (8 + rnd() * 20) * 86400000).toISOString() : null,
+      status: st, repricing_count: Math.floor(rnd() * 4), leboncoin_ad_id: st === "published" ? String(2400000000 + Math.floor(rnd() * 9e7)) : null,
+      published_at: st === "published" || st === "archived" ? new Date(Date.now() - (i % 8 >= 6 ? 8 + rnd() * 20 : rnd() * 7) * 86400000).toISOString() : null,
       sale_id: i % 8 === 7 || i % 8 === 6 ? null : st !== "draft" && rnd() > (i % 8 < 2 ? 0.25 : 0.65) ? "sale_x" + i : null,
       sale_price_eur_cents: price, sold_at: new Date(Date.now() - rnd() * 2e9).toISOString(), temu_item_id: "tm" + (i % products.length),
     };
@@ -3256,6 +3589,28 @@ function demoData(p) {
         : { type: "sale_confirmed", timestamp: s.confirmedAt, saleId: s.saleId }),
     },
     listings,
+    convs: (() => {
+      const buyers = ["Julie M.", "Karim B.", "Sophie L.", "Thomas R.", "Léa D.", "Nadia K.", "Hugo P.", "Camille T."];
+      const scripts = [
+        [["in", "Bonjour, toujours disponible ?"], ["out", "Bonjour ! Oui, toujours disponible 😊 Envoi rapide avec suivi.", "send"]],
+        [["in", "je propose 20€", 20], ["out", "Je peux descendre à 26 €, c'est mon dernier prix.", "send", "counter"], ["in", "ok 26 ça me va"], ["out", "Super, je vous réserve l'article 👍", "send"]],
+        [["in", "C'est neuf ? Vous livrez à Lyon ?"], ["out", "Oui, neuf dans sa boîte. Livraison partout en France sous 5 à 8 jours avec suivi.", "send"]],
+        [["in", "Je n'ai toujours rien reçu, c'est une arnaque ?"]],
+        [["in", "45 euros et je prends", 45], ["out", "Ça marche pour 45 € 👍 Je vous réserve l'article.", "escalate", "accept"]],
+        [["in", "Il existe en noir ?"], ["out", "Bonjour ! Pour l'instant uniquement dans le coloris de l'annonce.", "send"]],
+      ];
+      return Array.from({ length: 10 }, (_, i) => {
+        const sc = scripts[i % scripts.length], l = listings[(i * 5) % listings.length];
+        const t0 = Date.now() - (i * 3.3 + 0.2) * 3600000;
+        const msgs = sc.map(([d, b, x, y], j) => ({ direction: d, body: b, offerEur: d === "in" && typeof x === "number" ? x : undefined,
+          action: d === "out" ? x : undefined, decision: d === "out" ? y : undefined, createdAt: new Date(t0 + j * 240000).toISOString() }));
+        const last = msgs[msgs.length - 1];
+        return { conversationId: "conv" + i, buyerName: buyers[i % buyers.length], listingId: l.listing_id, listingTitle: l.title, listingPriceEur: l.price_eur_cents / 100,
+          accountId: l.account_id, messageCount: msgs.length, buyerMessages: msgs.filter((m) => m.direction === "in").length,
+          autoReplies: msgs.filter((m) => m.direction === "out" && m.action === "send").length, offers: msgs.filter((m) => m.offerEur).length,
+          needsYou: last.direction === "in" || last.action !== "send", lastMessage: last, lastAt: last.createdAt, _messages: msgs };
+      });
+    })(),
     wd: {
       accounts: accounts.map((a, i) => ({ accountId: a.accountId, label: a.label, active: i !== 2, autoWithdraw: i === 0, thresholdEur: 20, frequency: i === 0 ? "weekly" : "monthly",
         availableEur: [184.5, 92.3, 0][i], pendingEur: [312.8, 140.2, 45][i], lastWithdrawalAt: new Date(Date.now() - (i + 2) * 86400000).toISOString(),

@@ -344,7 +344,7 @@ router.post("/sales/:id/sync-tracking", (req, res) => {
 // ─── Auto-responder (Claude B) ────────────────────────────────────────────────
 
 router.post("/messages/reply", async (req, res) => {
-  const { buyerMessage, listingId } = req.body ?? {};
+  const { buyerMessage, listingId, conversationId, buyerName, accountId, dryRun } = req.body ?? {};
   if (!buyerMessage || !listingId) {
     return res.status(400).json({ ok: false, error: "buyerMessage et listingId requis" });
   }
@@ -362,6 +362,13 @@ router.post("/messages/reply", async (req, res) => {
       variantLabel: variant?.label ?? listing.variant_id,
       listingStatus: listing.status,
     });
+    // Historique (sauf simulation depuis le dashboard)
+    if (!dryRun) {
+      const conv = require("../services/conversations").logExchange({
+        conversationId, accountId: accountId ?? listing.account_id, listingId, buyerName, buyerMessage, result,
+      });
+      return res.json({ ok: true, data: { ...result, conversationId: conv } });
+    }
     res.json({ ok: true, data: result });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -480,6 +487,20 @@ router.post("/withdrawals/:id/status", (req, res) => {
   if (!["done", "failed", "cancelled"].includes(status)) return res.status(400).json({ ok: false, error: "status: done | failed | cancelled" });
   try { res.json({ ok: true, data: withdrawals.setStatus(req.params.id, status, note) }); }
   catch (e) { res.status(wdStatus(e)).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+// ─── Conversations acheteurs ─────────────────────────────────────────────────
+
+router.get("/conversations", (req, res) => {
+  const { listConversations } = require("../services/conversations");
+  res.json({ ok: true, data: listConversations({ limit: req.query.limit }) });
+});
+
+router.get("/conversations/:id", (req, res) => {
+  const { getConversation } = require("../services/conversations");
+  const c = getConversation(req.params.id);
+  if (!c) return res.status(404).json({ ok: false, error: "Conversation introuvable" });
+  res.json({ ok: true, data: c });
 });
 
 module.exports = router;

@@ -105,6 +105,18 @@ app.post("/api/withdrawals/:id/status", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/withdrawals/${encodeURIComponent(req.params.id)}/status`, "POST", req.body)
 );
 
+app.get("/api/conversations", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/conversations?${new URLSearchParams(req.query).toString()}`)
+);
+
+app.get("/api/conversations/:id", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/conversations/${encodeURIComponent(req.params.id)}`)
+);
+
+app.post("/api/messages/reply", requireAuth, (req, res) =>
+  proxyApi(req, res, "/api/messages/reply", "POST", req.body)
+);
+
 // ─── SPA fallback ────────────────────────────────────────────────────────────
 app.get("*", (req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
