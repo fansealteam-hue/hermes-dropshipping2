@@ -33,3 +33,12 @@ test("compte inconnu → 404", async () => {
   const r = await req("PATCH", "/api/accounts/nope/niche", { niche: "Tech" });
   assert.equal(r.ok, false);
 });
+
+test("renommer un compte (nom vide refusé)", async () => {
+  const r = await req("PATCH", "/api/accounts/lbc_compte_b/label", { label: "  Julie Martin  " });
+  assert.equal(r.data.label, "Julie Martin");
+  const stats = await req("GET", "/api/accounts/stats");
+  assert.equal(stats.data.find((a) => a.accountId === "lbc_compte_b").label, "Julie Martin");
+  assert.equal((await req("PATCH", "/api/accounts/lbc_compte_b/label", { label: " " })).ok, false);
+  assert.equal((await req("PATCH", "/api/accounts/nope/label", { label: "X" })).ok, false);
+});

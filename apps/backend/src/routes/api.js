@@ -96,6 +96,15 @@ router.get("/accounts/stats", (req, res) => {
   res.json({ ok: true, data });
 });
 
+// Nom affiché d'un compte (prénom + nom ou nom de boutique)
+router.patch("/accounts/:id/label", (req, res) => {
+  const label = String(req.body?.label ?? "").trim().slice(0, 60);
+  if (!label) return res.status(400).json({ ok: false, error: "Nom requis" });
+  const r = db.prepare("UPDATE seller_accounts SET label = ? WHERE account_id = ?").run(label, req.params.id);
+  if (!r.changes) return res.status(404).json({ ok: false, error: "Compte introuvable" });
+  res.json({ ok: true, data: { accountId: req.params.id, label } });
+});
+
 // Niche d'un compte (bricolage, maison, tech…) — vide = sans niche
 router.patch("/accounts/:id/niche", (req, res) => {
   const niche = String(req.body?.niche ?? "").trim().slice(0, 40) || null;

@@ -559,7 +559,9 @@ tbody tr:hover { background: var(--surface-2); }
 .niche-head .tots { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .niche-head .tots span { font-size: 12px; padding: 5px 10px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
 .niche-head .tots b { color: var(--text); }
+.niche-pick span, .niche-pick { white-space: nowrap; }
 .niche-pick { display: flex; align-items: center; gap: 8px; margin: -6px 0 14px; font-size: 12px; color: var(--text-3); }
+.niche-pick + .niche-pick { margin-top: -6px; }
 .niche-pick input { flex: 1; min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; font-size: 12.5px; }
 .niche-pick input:focus { border-color: var(--accent); }
 .pa-sub { margin: 8px 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
@@ -825,6 +827,7 @@ th.sort.on { color: var(--accent); }
               <select id="period-pick"><option value="7d">7 derniers jours</option><option value="30d">30 derniers jours</option><option value="90d">90 derniers jours</option></select>
             </label>
             <div class="legend"><span><i style="background:var(--accent)"></i>Revenus</span><span><i style="background:var(--green)"></i>Marge</span></div>
+            <a class="btn primary" href="#entrepot" style="text-decoration:none"><svg width="13" height="13"><use href="#i-cube"/></svg>Entrepôt live</a>
           </div>
         </div>
         <div class="chart-box" id="chart"><div class="tooltip" id="tip"></div></div>
@@ -834,17 +837,6 @@ th.sort.on { color: var(--accent); }
         <div class="card-head"><div class="card-title" id="per-acc-title">Par compte</div>
           <a class="right track-link" href="#comptes" style="font-size:12.5px">Voir les comptes →</a></div>
         <div class="per-acc" id="per-acc"></div>
-      </div>
-
-      <div class="card scene-card">
-        <div class="scene-head">
-          <div><div class="card-title">Tes ventes en 3D</div><div class="card-sub" id="scene-sub">revenus et marge par jour</div></div>
-          <div class="right legend"><span><i style="background:var(--accent)"></i>Revenus</span><span><i style="background:var(--green)"></i>Marge</span>
-            <button class="btn" id="scene-spin" style="margin-left:6px">Pause</button>
-            <a class="btn primary" href="#entrepot" style="text-decoration:none"><svg width="13" height="13"><use href="#i-cube"/></svg>Entrepôt live</a></div>
-        </div>
-        <div class="scene" id="scene"><div class="scene-tip" id="scene-tip"></div></div>
-        <div class="scene-hint">Glisse pour tourner · molette pour zoomer</div>
       </div>
 
       <div class="grid row-2b">
@@ -1576,6 +1568,15 @@ const nicheColor = (n) => {
   const all = [...new Set(state.accounts.map((a) => a.niche).filter(Boolean))].sort((x, y) => x.localeCompare(y));
   return NICHE_COLORS[Math.max(0, all.indexOf(n)) % NICHE_COLORS.length];
 };
+async function setLabel(accountId, value, el) {
+  const label = value.trim();
+  const a = state.accounts.find((x) => x.accountId === accountId);
+  if (!a || a.label === label) return;
+  if (!label) { el.value = a.label; return toast("Le nom ne peut pas être vide"); }
+  if (DEMO) { a.label = label; renderAll(); return toast("Mode démo : nom non enregistré"); }
+  try { await api(`/api/accounts/${encodeURIComponent(accountId)}/label`, { method: "PATCH", body: JSON.stringify({ label }) }); a.label = label; renderAll(); toast(`Compte renommé « ${label} » ✓`); }
+  catch (e) { el.value = a.label; toast("Erreur : " + e.message); }
+}
 async function setNiche(accountId, value) {
   const niche = value.trim();
   const a = state.accounts.find((x) => x.accountId === accountId);
@@ -1602,9 +1603,11 @@ function renderAccounts() {
     <div class="card acc-card" onclick="location.hash='compte/${encodeURIComponent(a.accountId)}'">
       <div class="acc-head">
         <div class="acc-avatar" style="background:linear-gradient(140deg, ${hues[i % hues.length]}, color-mix(in srgb, ${hues[i % hues.length]} 60%, #000))">${initials(a.label)}</div>
-        <div><div class="acc-name">${esc(a.label)}</div><div class="prod-meta mono">${esc(a.accountId)}</div></div>
+        <div style="min-width:0"><div class="acc-name">${esc(a.label)}</div><div class="prod-meta mono">${esc(a.accountId)}</div></div>
         <span class="badge ${a.active ? "b-green" : "b-grey"}" style="margin-left:auto">${a.active ? "Actif" : "En pause"}</span>
       </div>
+      <label class="niche-pick" onclick="event.stopPropagation()">Nom
+        <input value="${esc(a.label)}" placeholder="Prénom Nom ou nom de boutique" onchange="setLabel('${esc(a.accountId)}', this.value, this)" onkeydown="if(event.key==='Enter')this.blur()" /></label>
       <label class="niche-pick" onclick="event.stopPropagation()">Niche
         <input list="niche-list" value="${esc(a.niche ?? "")}" placeholder="ex. Bricolage" onchange="setNiche('${esc(a.accountId)}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" /></label>
       <div class="acc-stats">
@@ -1666,6 +1669,7 @@ document.addEventListener("pointermove", (e) => {
 const scene3d = { ok: false };
 function initScene() {
   const host = $("#scene");
+  if (!host) return; // bloc « ventes en 3D » retiré de la vue d'ensemble
   if (!window.THREE) { host.innerHTML = '<div class="scene-fallback">Vue 3D indisponible (pas de connexion au CDN)</div>'; return; }
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
