@@ -310,31 +310,15 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
 async function handleSendAlertWithValidation({ saleId }, job) {
   const sale = getSale(saleId);
   if (!sale) throw new Error(`Sale ${saleId} not found`);
-
-  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(sale.temuItemId);
-  const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(sale.variantId);
-
   try {
-    const botModule = require("../../telegram/src/bot.js");
-    const chatIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").filter(Boolean).map(Number);
-
-    // Photos et composition de la variante
-    const imageUrls = JSON.parse(variant?.image_urls ?? "[]");
-    const variantOptions = variant?.label ?? "";
-
-    for (const chatId of chatIds) {
-      await botModule.sendSaleAlert(chatId, {
-        sale,
-        productTitle: product?.title ?? sale.temuItemId,
-        variantLabel: variant?.label ?? sale.variantId,
-        imageUrls,
-        variantOptions,
-      });
-    }
+    // Envoi direct via l'API Telegram (le bot tourne dans un autre conteneur)
+    const { sendSaleAlert } = require("../services/sale-alert");
+    if (process.env.NODE_ENV !== "test") await sendSaleAlert(saleId);
     db.prepare("UPDATE sales SET alert_sent = 1 WHERE sale_id = ?").run(saleId);
   } catch (e) {
     console.warn(`[jobs] sendAlert: ${e.message}`);
-    db.prepare("UPDATE sales SET alert_sent = 1, manual_action_note = 'Alerte Telegram a envoyer manuellement' WHERE sale_id = ?").run(saleId);
+    db.prepare("UPDATE sales SET alert_sent = 1, manual_action_required = 1, manual_action_note = ? WHERE sale_id = ?")
+      .run(`Alerte Telegram non envoyée : ${e.message}`, saleId);
   }
 }
 

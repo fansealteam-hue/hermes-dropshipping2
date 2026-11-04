@@ -84,6 +84,19 @@ function getSalesNeedingAction() {
   ).all().map(rowToSale);
 }
 
+/** Validation depuis Telegram : commande passée chez Temu (réf. facultative). */
+function markOrdered(saleId, { orderRef } = {}) {
+  const sale = db.prepare("SELECT * FROM sales WHERE sale_id = ?").get(saleId);
+  if (!sale) throw { code: "NOT_FOUND", message: `Vente ${saleId} introuvable` };
+  if (sale.status === "cancelled") throw { code: "CANCELLED", message: "Vente annulée" };
+  if (sale.status !== "confirmed") return getSale(saleId); // déjà commandée ou plus loin : rien à faire
+  const now = new Date().toISOString();
+  db.prepare("UPDATE sales SET status = 'order_placed', order_ref = COALESCE(?, order_ref), order_placed_at = ?, manual_action_required = 0, updated_at = ? WHERE sale_id = ?")
+    .run(orderRef ?? null, now, now, saleId);
+  logChange(saleId, "status", sale.status, "order_placed", now);
+  return getSale(saleId);
+}
+
 function addTracking(saleId, { orderRef, trackingNumber, trackingCarrier }) {
   const sale = db.prepare("SELECT * FROM sales WHERE sale_id = ?").get(saleId);
   if (!sale) throw { code: "NOT_FOUND", message: `Vente ${saleId} introuvable` };
@@ -161,4 +174,4 @@ function rowToSale(row) {
   };
 }
 
-module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery };
+module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery, markOrdered };

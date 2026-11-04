@@ -723,7 +723,7 @@ th.sort.on { color: var(--accent); }
   <aside>
     <div class="brand" id="brand" title="Cliquer pour renommer le projet">
       <div class="brand-mark" id="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/><path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".78"/><path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".56"/><path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.4" stroke-linecap="round"/><path d="M32 33V54" stroke="#b8450f" stroke-width="2.6" stroke-linecap="round"/></svg></div>
-      <div><div class="brand-name" id="brand-name">Tyno Entreprise</div><div class="brand-sub">Pilotage</div></div>
+      <div><div class="brand-name" id="brand-name">Tyno Entreprise</div></div>
     </div>
     <nav>
       <div class="nav-label">Menu</div>
@@ -2657,13 +2657,36 @@ function renderTemu() {
       ${temuFilter === "todo" ? `<div class="act">
           ${url ? `<a class="btn primary" style="text-decoration:none" href="${esc(url)}" target="_blank" rel="noopener"><svg width="13" height="13"><use href="#i-cart"/></svg>Commander sur Temu</a>` : `<span class="muted" style="font-size:12px;align-self:center">Lien Temu manquant</span>`}
           <input id="ref-${id}" placeholder="Réf. commande Temu (PO-…)" />
-          <button class="btn" onclick="temuMark('${id}')"><svg width="12" height="12"><use href="#i-check"/></svg>Commandé</button></div>`
+          <button class="btn" onclick="temuMark('${id}')"><svg width="12" height="12"><use href="#i-check"/></svg>Commandé</button></div>
+        <div class="act" style="margin-top:8px">
+          <button class="btn" onclick="temuStock('${id}', this)">🔄 Vérifier le stock Temu</button>
+          <button class="btn" onclick="temuAlert('${id}', this)"><svg width="12" height="12"><use href="#i-send"/></svg>Renvoyer sur Telegram</button>
+          <span class="prod-meta" id="stk-${id}" style="align-self:center"></span></div>`
       : `<div class="act">
           <input id="trk-${id}" placeholder="N° de suivi" />
           <button class="btn primary" onclick="temuTrack('${id}')"><svg width="12" height="12"><use href="#i-truck"/></svg>Ajouter le suivi</button></div>
           <div class="prod-meta" style="margin-top:8px">Réf. Temu : <span class="mono">${esc(s.orderRef ?? "—")}</span></div>`}
     </div>`;
   }).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>${temuFilter === "todo" ? "Rien à commander, tout est à jour 🎉" : "Aucune commande en attente de suivi"}</div></div></div>`;
+}
+async function temuStock(id, btn) {
+  const out = document.getElementById("stk-" + id);
+  if (DEMO) { out.innerHTML = '<span class="pos">🟢 Disponible — 42 en stock</span>'; return; }
+  btn.disabled = true; out.textContent = "Vérification…";
+  try {
+    const a = (await api(`/api/sales/${encodeURIComponent(id)}/availability?refresh=1`)).data;
+    out.innerHTML = (a.available === null ? "❔ Stock inconnu" : a.available ? `<span class="pos">🟢 Disponible — ${a.stock} en stock</span>` : '<span class="neg">🔴 Rupture de stock</span>')
+      + (a.costChanged ? ` · <span class="age-warn">prix Temu ${eur(a.costAtSaleEur)} → ${eur(a.currentCostEur)}</span>` : "")
+      + (a.error ? ` · <span class="muted">lecture Temu impossible</span>` : "");
+  } catch (e) { out.textContent = "Erreur : " + e.message; }
+  btn.disabled = false;
+}
+async function temuAlert(id, btn) {
+  if (DEMO) return toast("Mode démo : rien n'a été envoyé");
+  btn.disabled = true;
+  try { const r = await api(`/api/sales/${encodeURIComponent(id)}/resend-alert`, { method: "POST" }); toast(`Alerte envoyée sur Telegram ✓ (${r.data.sent})`); }
+  catch (e) { toast("Erreur : " + e.message); }
+  btn.disabled = false;
 }
 async function temuPatch(id, body, okMsg) {
   if (DEMO) return toast("Mode démo : rien n'a été enregistré");

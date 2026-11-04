@@ -117,6 +117,14 @@ app.post("/api/messages/reply", requireAuth, (req, res) =>
   proxyApi(req, res, "/api/messages/reply", "POST", req.body)
 );
 
+app.get("/api/sales/:id/availability", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/availability?${new URLSearchParams(req.query).toString()}`)
+);
+
+app.post("/api/sales/:id/resend-alert", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/resend-alert`, "POST")
+);
+
 // ─── SPA fallback ────────────────────────────────────────────────────────────
 app.get("*", (req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))

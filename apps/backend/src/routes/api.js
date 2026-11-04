@@ -503,4 +503,33 @@ router.get("/conversations/:id", (req, res) => {
   res.json({ ok: true, data: c });
 });
 
+// ─── Alerte vente : disponibilité Temu + validation ─────────────────────────
+
+router.get("/sales/:id/availability", async (req, res) => {
+  try {
+    const { checkAvailability } = require("../services/sale-alert");
+    res.json({ ok: true, data: await checkAvailability(req.params.id, { refresh: req.query.refresh === "1" }) });
+  } catch (e) {
+    res.status(e.code === "NOT_FOUND" ? 404 : 500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+router.post("/sales/:id/order-placed", (req, res) => {
+  try {
+    const { markOrdered } = require("../services/sales");
+    res.json({ ok: true, data: markOrdered(req.params.id, req.body ?? {}) });
+  } catch (e) {
+    res.status(e.code === "NOT_FOUND" ? 404 : e.code === "CANCELLED" ? 409 : 400).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+router.post("/sales/:id/resend-alert", async (req, res) => {
+  try {
+    const { sendSaleAlert } = require("../services/sale-alert");
+    res.json({ ok: true, data: { sent: await sendSaleAlert(req.params.id) } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
 module.exports = router;

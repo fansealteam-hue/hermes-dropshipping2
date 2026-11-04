@@ -9,9 +9,9 @@ const { randomUUID } = require("crypto");
  * Fetch and cache a Temu product.
  * Claude 2 replaces fetchFromTemu() with real implementation.
  */
-async function fetchProduct(temuUrl) {
-  // Check cache first
-  const cached = db.prepare(
+async function fetchProduct(temuUrl, { force = false } = {}) {
+  // Check cache first (sauf vérification forcée du stock)
+  const cached = force ? null : db.prepare(
     "SELECT * FROM products WHERE temu_url = ? AND fetched_at > datetime('now', '-1 hour')"
   ).get(temuUrl);
 

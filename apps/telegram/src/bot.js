@@ -321,11 +321,54 @@ bot.callbackQuery(/^avail_yes:(.+)$/, async ctx => {
 
   const kb = new InlineKeyboard()
     .text("✅ VALIDER — j'ai commandé", `confirm_payment:${saleId}`).row()
-    .text("❌ Finalement annuler", `avail_no:${saleId}`);
+    .text("❌ Finalement annuler", `cancel_ask:${saleId}`);
 
   await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
   await ctx.reply(info, { parse_mode: "MarkdownV2", reply_markup: kb });
   await ctx.answerCallbackQuery("Article disponible ✅");
+});
+
+// ─── Revérifier le stock Temu ────────────────────────────────────────────────
+
+bot.callbackQuery(/^check_stock:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("check_stock:", "");
+  await ctx.answerCallbackQuery("Vérification sur Temu…");
+  const res = await api.checkAvailability(saleId);
+  if (!res.ok || !res.data) {
+    await ctx.reply(`⚠️ Impossible de vérifier : ${res.error ?? "erreur"}`);
+    return;
+  }
+  const a = res.data;
+  const esc = (t) => String(t ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const eur = (n) => (n == null ? "?" : `${n.toFixed(2).replace(".", ",")} €`);
+  const line = a.available === null ? "❔ Stock inconnu"
+    : a.available ? `🟢 <b>Disponible</b> — ${a.stock} en stock` : "🔴 <b>Rupture de stock</b>";
+  const lines = [
+    `📦 <b>${esc(a.productTitle)}</b>${a.variantLabel ? ` · ${esc(a.variantLabel)}` : ""}`,
+    line,
+    a.costChanged ? `⚠️ Prix Temu : ${eur(a.costAtSaleEur)} → <b>${eur(a.currentCostEur)}</b>` : `Prix Temu : ${eur(a.currentCostEur ?? a.costAtSaleEur)}`,
+    a.error ? `<i>Lecture Temu impossible (${esc(a.error)}) — données du ${esc(a.checkedAt ?? "?")}</i>` : "<i>Vérifié à l'instant</i>",
+  ];
+  const kb = new InlineKeyboard();
+  if (a.available !== false) kb.text("✅ Dispo — je commande", `avail_yes:${saleId}`).row();
+  kb.text("❌ Annuler la vente", `cancel_ask:${saleId}`);
+  await ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
+});
+
+// ─── Annuler → confirmation (l'annulation prévient l'acheteur) ───────────────
+
+bot.callbackQuery(/^cancel_ask:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("cancel_ask:", "");
+  const kb = new InlineKeyboard()
+    .text("Oui, annuler et prévenir l'acheteur", `avail_no:${saleId}`).row()
+    .text("Non, garder la vente", `cancel_keep:${saleId}`);
+  await ctx.answerCallbackQuery();
+  await ctx.reply("⚠️ Annuler cette vente ? L'acheteur recevra un message sur Leboncoin.", { reply_markup: kb });
+});
+
+bot.callbackQuery(/^cancel_keep:(.+)$/, async ctx => {
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.answerCallbackQuery("Vente conservée 👍");
 });
 
 // ─── NON → annulation LBC + message acheteur + confirmation Telegram ─────────
@@ -350,6 +393,9 @@ bot.callbackQuery(/^avail_no:(.+)$/, async ctx => {
 
 bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("confirm_payment:", "");
+  // Enregistre la commande Temu → la vente passe en « Commandée » sur le dashboard
+  const ord = await api.markOrdered(saleId);
+  if (!ord.ok) { await ctx.answerCallbackQuery(`Erreur : ${ord.error ?? "commande non enregistrée"}`); return; }
   const res = await api.getSale(saleId);
   if (!res.ok || !res.data) { await ctx.answerCallbackQuery("Vente introuvable"); return; }
 
