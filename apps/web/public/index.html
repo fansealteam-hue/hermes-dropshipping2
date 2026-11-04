@@ -744,6 +744,24 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
 .chip.on { background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff; border-color: #e2651f; box-shadow: 0 6px 16px -10px #e8702a; }
 .seg button.on { background: var(--accent-soft); color: #ffb27a; }
 
+/* Comptes sous leur niche */
+.per-acc { gap: 22px; }
+.na-list { margin: 10px 0 0 18px; border-left: 2px solid var(--border); padding-left: 12px; }
+.na-row { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(4, minmax(0, 1fr)); gap: 10px; align-items: center; padding: 9px 8px; border-radius: 10px; text-decoration: none; color: inherit; font-size: 13px; }
+.na-row:not(.head):not(.tot):hover { background: var(--surface-2); }
+.na-row.head { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .8px; padding-top: 0; padding-bottom: 4px; }
+.na-row.tot { border-top: 1px dashed var(--border-strong); margin-top: 2px; font-weight: 700; color: var(--text-2); }
+.na-row > span:not(.na-acc) { text-align: right; white-space: nowrap; font-weight: 600; }
+.na-row.head > span:not(:first-child) { text-align: right; }
+.na-acc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.na-acc .av { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-family: var(--serif); font-weight: 600; color: #fff; font-size: 13px; flex-shrink: 0; }
+.na-acc b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.na-acc small { font-size: 11px; color: var(--text-3); }
+@media (max-width: 820px) {
+  .na-list { margin-left: 4px; padding-left: 8px; }
+  .na-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .na-row > :nth-child(2), .na-row > :nth-child(5) { display: none; }
+}
 /* Argent par compte */
 .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--green); background: var(--green-soft); padding: 2px 8px; border-radius: 20px; }
 .live-pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.6s infinite; }
@@ -1058,17 +1076,12 @@ th.sort.on { color: var(--accent); }
       </div>
 
       <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><div class="card-title" id="per-acc-title">Par compte</div>
-          <a class="right track-link" href="#comptes" style="font-size:12.5px">Voir les comptes →</a></div>
+        <div class="card-head"><div><div class="card-title" style="display:flex;align-items:center;gap:8px"><span id="per-acc-title">Par niche</span><span class="live-pill"><i></i>en direct</span></div>
+          <div class="card-sub" id="money-sub"></div></div>
+          <a class="right track-link" href="#comptes" style="font-size:12.5px">Comptes & retraits →</a></div>
         <div class="per-acc" id="per-acc"></div>
       </div>
 
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><div><div class="card-title" style="display:flex;align-items:center;gap:8px">💰 Argent par compte <span class="live-pill"><i></i>en direct</span></div>
-          <div class="card-sub" id="money-sub"></div></div>
-          <a class="right track-link" href="#comptes" style="font-size:12.5px">Retraits →</a></div>
-        <div class="money-acc" id="money-acc"></div>
-      </div>
 
       <div class="grid row-2b">
         <div class="card">
@@ -2120,6 +2133,21 @@ function whLabel(text, sub, color) {
   sp.scale.set(8, 3, 1);
   return sp;
 }
+// petite étiquette d'un compte (sous l'étiquette de sa niche)
+function whAccTag(text, color) {
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 72;
+  const g = cv.getContext("2d");
+  g.fillStyle = "rgba(15,13,12,0.85)";
+  g.beginPath(); g.roundRect ? g.roundRect(4, 4, 504, 64, 30) : g.rect(4, 4, 504, 64); g.fill();
+  g.fillStyle = color; g.beginPath(); g.arc(40, 36, 10, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#f3ede6"; g.textBaseline = "middle";
+  let f = 34; do { g.font = `600 ${f}px Inter, sans-serif`; f -= 2; } while (g.measureText(text).width > 430 && f > 18);
+  g.fillText(text, 64, 38);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthWrite: false, depthTest: false }));
+  sp.renderOrder = 10;
+  sp.scale.set(7.6, 1.07, 1);
+  return sp;
+}
 function whBox(w, h, d, color, opts = {}) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: opts.r ?? 0.6, metalness: opts.m ?? 0.1, emissive: opts.e ?? 0x000000, emissiveIntensity: opts.ei ?? 0 }));
   m.castShadow = true; m.receiveShadow = true;
@@ -2249,10 +2277,8 @@ function initWarehouse() {
     const sign = whBox(0.1, 0.9, 3.2, 0x23935f, { e: 0x23935f, ei: 0.6 }); sign.position.set(x - sgn * 0.4, 12.6, 1.2); scene.add(sign);
   });
   // Charpente métallique + lampes industrielles
-  for (let z = -20; z <= -4; z += 8) {
-    const beam = whBox(92, 0.7, 0.5, 0x4a4f57, { m: 0.75, r: 0.35 }); beam.position.set(0, 19.4, z); scene.add(beam);
-  }
-  [-30, -10, 10, 30].forEach((x) => {
+  { const beam = whBox(92, 0.7, 0.5, 0x4a4f57, { m: 0.75, r: 0.35 }); beam.position.set(0, 19.4, -21); scene.add(beam); }
+  [-32, -20, 20, 32].forEach((x) => {
     const cord = whBox(0.05, 3.4, 0.05, 0x151311); cord.position.set(x, 17.6, -10); scene.add(cord);
     if (Math.abs(x) < 15) cord.visible = false; // pas de fil devant l'enseigne
     const shade = new THREE.Mesh(new THREE.ConeGeometry(1.3, 0.9, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0x2c3036, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide }));
@@ -2283,7 +2309,7 @@ function initWarehouse() {
     const shelf = new THREE.Group();
     for (let lvl = 0; lvl < 3; lvl++) {
       // lisses orange avant/arrière + platelage grillagé + palette
-      [-1.15, 1.15].forEach((z) => { const beamR = whBox(7, 0.32, 0.16, 0xe8702a, { m: 0.4, r: 0.4 }); beamR.position.set(0, 1.08 + lvl * 2.6, z); shelf.add(beamR); });
+      [-1.15, 1.15].forEach((z) => { const beamR = whBox(7, 0.32, 0.16, 0xe8702a, { m: 0.4, r: 0.4 }); beamR.position.set(0, 1.08 + lvl * 2.6, z); beamR.userData.beam = true; shelf.add(beamR); });
       const deck = whBox(6.8, 0.05, 2.3, 0x6b6560, { m: 0.6, r: 0.5 }); deck.position.y = 1.22 + lvl * 2.6; shelf.add(deck);
       const pal = whPallet(6.6, 2.1); pal.position.y = 1.25 + lvl * 2.6; shelf.add(pal);
       const plank = { position: {} }; // compat
@@ -2312,7 +2338,7 @@ function initWarehouse() {
   const signCv = document.createElement("canvas"); signCv.width = 1024; signCv.height = 160;
   const signTex = new THREE.CanvasTexture(signCv);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 4), new THREE.MeshBasicMaterial({ map: signTex, transparent: true }));
-  sign.position.set(0, 12.6, -21.6);
+  sign.position.set(0, 15.6, -21.6);
   scene.add(sign);
   // Compteur d'annonces au-dessus des étagères
   let shelfLabel = whLabel("Annonces en ligne", "0", "#4fbf8a");
@@ -2436,7 +2462,7 @@ function initWarehouse() {
     const leaves = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 1), new THREE.MeshStandardMaterial({ color: 0x3f8f4e, roughness: 0.8, flatShading: true })); leaves.position.set(-3.6 * Math.sign(x), 1.7, 3.6);
     g.add(desk, screen, stand, papers, mug, chair, back, cab, pot, leaves);
     // employé assis qui tape au clavier
-    const w = whWorker(color);
+    const w = whWorker(color, { office: true });
     w.position.set(0, 0.55, 0.35); w.rotation.y = Math.PI;
     w.userData.legL.rotation.x = w.userData.legR.rotation.x = -1.45;
     w.userData.armL.rotation.x = w.userData.armR.rotation.x = -1.2;
@@ -2470,7 +2496,16 @@ function initWarehouse() {
   const makeDesk = (x, color, title, view) => {
     const g = new THREE.Group();
     g.position.set(x, 0, 26);
-    const rug = whBox(10.6, 0.05, 11, color, { r: 1 }); rug.position.y = 0.07; rug.material.color.multiplyScalar(0.3); g.add(rug);
+    const rug = whBox(10.4, 0.05, 10.6, 0x353b48, { r: 1 }); rug.position.y = 0.07; g.add(rug);
+    const band = whBox(10.4, 0.06, 0.35, color, { r: 0.8, e: color, ei: 0.35 }); band.position.set(0, 0.09, -5.1); g.add(band);
+    // cloisons basses vitrées de chaque côté du poste
+    [-5.1, 5.1].forEach((dx) => {
+      const part = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.7, 6), glassMat); part.position.set(dx, 0.95, -1.6); g.add(part);
+      const capP = whBox(0.12, 0.08, 6, 0xd8cfc4, { r: 0.6 }); capP.position.set(dx, 1.8, -1.6); g.add(capP);
+    });
+    // plafonnier
+    const lampP = whBox(3.4, 0.1, 0.8, 0xfff1e6, { e: 0xfff1e6, ei: 0.9 }); lampP.position.set(0, 4.6, -1.2); g.add(lampP);
+    [-1.5, 1.5].forEach((dx) => { const w2 = whBox(0.03, 2, 0.03, 0x151311); w2.position.set(dx, 5.6, -1.2); g.add(w2); });
     const desk = whBox(5, 0.16, 2.2, 0xd8cfc4, { r: 0.5 }); desk.position.set(0, 1.9, -1.2);
     [[-2.3, -2.1], [2.3, -2.1], [-2.3, -0.3], [2.3, -0.3]].forEach(([dx, dz]) => { const leg = whBox(0.1, 1.8, 0.1, 0x3a3430, { m: 0.6 }); leg.position.set(dx, 1, dz); g.add(leg); });
     const screen = whBox(1.8, 1.1, 0.08, 0x0c0b0a, { e: color, ei: 0.55 }); screen.position.set(-0.9, 2.75, -2);
@@ -2480,17 +2515,18 @@ function initWarehouse() {
     const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.3, 12), new THREE.MeshStandardMaterial({ color })); mug.position.set(-2, 2.13, -0.7);
     const chair = whBox(1, 0.15, 1, 0x151311); chair.position.set(0, 1.3, 0.4);
     const back = whBox(1, 1.2, 0.12, 0x151311); back.position.set(0, 1.95, 0.9);
-    const divider = whBox(5.4, 1.6, 0.12, color, { r: 0.9 }); divider.position.set(0, 1.5, -2.6); divider.material.color.multiplyScalar(0.55);
+    const divider = whBox(5.4, 1.4, 0.12, 0x2b3140, { r: 0.9 }); divider.position.set(0, 1.4, -2.6);
+    const stripeD = whBox(5.42, 0.12, 0.14, color, { e: color, ei: 0.4 }); stripeD.position.set(0, 2.05, -2.6); g.add(stripeD);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.32, 0.7, 14), new THREE.MeshStandardMaterial({ color: 0xd8cfc4 })); pot.position.set(3.9, 0.4, -2.2);
     const leaves = new THREE.Mesh(new THREE.IcosahedronGeometry(0.8, 1), new THREE.MeshStandardMaterial({ color: 0x3f8f4e, roughness: 0.8, flatShading: true })); leaves.position.set(3.9, 1.4, -2.2);
     g.add(desk, screen, screen2, stand, papers, mug, chair, back, divider, pot, leaves);
-    const w = whWorker(color);
+    const w = whWorker(color, { office: true });
     w.position.set(0, 0.25, 0.35); w.rotation.y = Math.PI;
     w.userData.legL.rotation.x = w.userData.legR.rotation.x = -1.45;
     w.userData.armL.rotation.x = w.userData.armR.rotation.x = -1.2;
     w.userData.seated = true;
     g.add(w);
-    const label = whLabel(title, "", "#" + new THREE.Color(color).getHexString()); label.position.set(0, 6.2, -1.5); label.scale.set(8, 3, 1); g.add(label);
+    const label = whLabel(title, "", "#" + new THREE.Color(color).getHexString()); label.position.set(0, 7, -1.5); label.scale.set(6.8, 2.55, 1); g.add(label);
     const hit = new THREE.Mesh(new THREE.BoxGeometry(11, 5, 10), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 2.5; hit.userData.view = view; g.add(hit);
     scene.add(g);
     return { group: g, label, title, color, worker: w, screen, hit, view };
@@ -2572,7 +2608,7 @@ function initWarehouse() {
         const u = o.worker.userData;
         u.armL.rotation.x = -1.2 + Math.sin(t * 14 + i) * 0.08;
         u.armR.rotation.x = -1.2 + Math.cos(t * 13 + i) * 0.08;
-        o.worker.children.find((c) => c.geometry?.type === "SphereGeometry")?.rotation.set(0, Math.sin(t * 0.7 + i) * 0.4, 0);
+        o.worker.userData.head.rotation.set(Math.sin(t * 1.3 + i) * 0.05 - 0.12, Math.sin(t * 0.7 + i) * 0.4, 0);
         o.screen.material.emissiveIntensity = 0.45 + Math.sin(t * 2.3 + i) * 0.1;
       });
       // le camion part livrer toutes les ~14 s puis revient se garer au quai
@@ -2735,26 +2771,82 @@ function levelUp(name, n, worker) {
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2700);
 }
-function whWorker(vest) {
+// Avatars : corps arrondis, visage ; entrepôt = casque + gilet fluo, bureaux = cheveux + chemise
+const WH_MAT = {};
+function whMat(color, opts = {}) {
+  const k = `${color}|${opts.r ?? 0.7}|${opts.m ?? 0}|${opts.e ?? ""}|${opts.ei ?? 0}`;
+  return (WH_MAT[k] ??= new THREE.MeshStandardMaterial({ color, roughness: opts.r ?? 0.7, metalness: opts.m ?? 0, emissive: opts.e ?? 0x000000, emissiveIntensity: opts.ei ?? 0 }));
+}
+function whMesh(geo, mat, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; return m; }
+const WH_GEO = {};
+const wg = (k, f) => (WH_GEO[k] ??= f());
+function whWorker(color, { office = false } = {}) {
   const g = new THREE.Group();
-  const skin = [0xf1c7a3, 0xd9a27a, 0xa86f4a, 0x7a4a2e][Math.floor(Math.random() * 4)];
-  const legL = whBox(0.32, 1, 0.32, 0x2b3445); legL.position.set(-0.2, 0.5, 0); legL.geometry.translate(0, -0.5, 0); legL.position.y = 1;
-  const legR = whBox(0.32, 1, 0.32, 0x2b3445); legR.geometry.translate(0, -0.5, 0); legR.position.set(0.2, 1, 0);
-  const torso = whBox(0.9, 1.05, 0.5, vest, { e: vest, ei: 0.15 }); torso.position.y = 1.55;
-  const stripe = whBox(0.92, 0.1, 0.52, 0xf5f5f0, { e: 0xffffff, ei: 0.6 }); stripe.position.y = 1.45;
-  const armL = whBox(0.24, 0.9, 0.24, vest); armL.geometry.translate(0, -0.4, 0); armL.position.set(-0.58, 2, 0);
-  const armR = whBox(0.24, 0.9, 0.24, vest); armR.geometry.translate(0, -0.4, 0); armR.position.set(0.58, 2, 0);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })); head.position.y = 2.45; head.castShadow = true;
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.4 })); helmet.position.y = 2.52;
-  const box = whParcel(0.7); box.position.set(0, 1.75, 0.55); box.visible = false;
-  [legL, legR].forEach((lg) => { const boot = whBox(0.36, 0.2, 0.5, 0x151311); boot.position.set(0, -0.92, 0.08); lg.add(boot); });
-  [armL, armR].forEach((ar) => { const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })); hand.position.y = -0.88; ar.add(hand); });
-  const stripe2 = whBox(0.92, 0.1, 0.52, 0xf5f5f0, { e: 0xffffff, ei: 0.6 }); stripe2.position.y = 1.75;
-  const collar = whBox(0.5, 0.12, 0.3, 0x2b3445); collar.position.y = 2.1;
-  const visor = whBox(0.5, 0.05, 0.25, 0xf2c230); visor.position.set(0, 2.5, 0.32);
-  g.add(legL, legR, torso, stripe, stripe2, collar, armL, armR, head, helmet, visor, box);
-  g.userData = { legL, legR, armL, armR, box, phase: Math.random() * 6, speed: 0.05 + Math.random() * 0.03, wait: 0, target: null };
-  g.scale.setScalar(0.95);
+  const skin = [0xf3cfae, 0xe0ac84, 0xb57a52, 0x8a5a3a, 0x5e3a24][Math.floor(Math.random() * 5)];
+  const hair = [0x1c1410, 0x3b2516, 0x6b4423, 0xc89b5a, 0x8c3b1e][Math.floor(Math.random() * 5)];
+  const skinM = whMat(skin, { r: 0.75 });
+  const pants = whMat(office ? 0x2a2f3a : 0x2b3445, { r: 0.85 });
+  const top = office ? whMat(new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.45).getHex(), { r: 0.8 }) : whMat(color, { r: 0.55, e: color, ei: 0.12 });
+  const refl = whMat(0xf5f5f0, { r: 0.3, e: 0xffffff, ei: 0.55 });
+  // jambes (pivot à la hanche) + chaussures
+  const legGeo = wg("leg", () => { const c = new THREE.CylinderGeometry(0.17, 0.15, 0.95, 12); c.translate(0, -0.475, 0); return c; });
+  const shoeGeo = wg("shoe", () => new THREE.BoxGeometry(0.3, 0.18, 0.48));
+  const mkLeg = (x) => {
+    const leg = whMesh(legGeo, pants, x, 1.02, 0);
+    const shoe = whMesh(shoeGeo, whMat(office ? 0x3b2a20 : 0x151311, { r: 0.6 }), 0, -0.98, 0.08);
+    leg.add(shoe);
+    return leg;
+  };
+  const legL = mkLeg(-0.18), legR = mkLeg(0.18);
+  // bassin + buste arrondi
+  const hips = whMesh(wg("hips", () => new THREE.CylinderGeometry(0.36, 0.34, 0.3, 16)), pants, 0, 1.08, 0);
+  hips.scale.z = 0.72;
+  const torso = whMesh(wg("torso", () => new THREE.CylinderGeometry(0.42, 0.36, 0.95, 18)), top, 0, 1.68, 0);
+  torso.scale.z = 0.72;
+  const chest = whMesh(wg("chest", () => new THREE.SphereGeometry(0.42, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2)), top, 0, 2.12, 0);
+  chest.scale.set(1, 0.45, 0.72);
+  g.add(hips, torso, chest);
+  if (!office) {
+    // gilet fluo : deux bandes réfléchissantes
+    [1.5, 1.82].forEach((y) => { const band = whMesh(wg("band", () => new THREE.CylinderGeometry(0.43, 0.41, 0.07, 18)), refl, 0, y, 0); band.scale.z = 0.73; g.add(band); });
+  } else {
+    // col de chemise
+    const col = whMesh(wg("collar", () => new THREE.TorusGeometry(0.17, 0.05, 8, 16)), whMat(0xffffff, { r: 0.7 }), 0, 2.22, 0.02); col.rotation.x = Math.PI / 2; g.add(col);
+  }
+  // bras (pivot à l'épaule) + mains
+  const armGeo = wg("arm", () => { const c = new THREE.CylinderGeometry(0.11, 0.1, 0.82, 10); c.translate(0, -0.41, 0); return c; });
+  const handGeo = wg("hand", () => new THREE.SphereGeometry(0.12, 10, 8));
+  const shGeo = wg("shoulder", () => new THREE.SphereGeometry(0.15, 12, 10));
+  const mkArm = (x) => {
+    const arm = whMesh(armGeo, top, x, 2.1, 0);
+    arm.add(whMesh(handGeo, skinM, 0, -0.86, 0));
+    g.add(whMesh(shGeo, top, x, 2.1, 0));
+    return arm;
+  };
+  const armL = mkArm(-0.5), armR = mkArm(0.5);
+  // cou + tête + visage
+  const neck = whMesh(wg("neck", () => new THREE.CylinderGeometry(0.1, 0.11, 0.18, 10)), skinM, 0, 2.3, 0);
+  const head = new THREE.Group(); head.position.y = 2.62;
+  head.add(whMesh(wg("head", () => new THREE.SphereGeometry(0.3, 20, 16)), skinM));
+  const eyeM = whMat(0x14100d, { r: 0.3 });
+  [-0.1, 0.1].forEach((x) => head.add(whMesh(wg("eye", () => new THREE.SphereGeometry(0.035, 8, 6)), eyeM, x, 0.03, 0.28)));
+  head.add(whMesh(wg("nose", () => new THREE.SphereGeometry(0.04, 8, 6)), skinM, 0, -0.04, 0.3));
+  [-0.29, 0.29].forEach((x) => head.add(whMesh(wg("ear", () => new THREE.SphereGeometry(0.06, 8, 6)), skinM, x, 0, 0)));
+  if (office) {
+    const hairM = whMat(hair, { r: 0.9 });
+    const cap = whMesh(wg("hair", () => new THREE.SphereGeometry(0.32, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55)), hairM, 0, 0.03, -0.02);
+    cap.rotation.x = -0.25; head.add(cap);
+    if (Math.random() > 0.5) { const back = whMesh(wg("hairback", () => new THREE.SphereGeometry(0.26, 14, 10)), hairM, 0, -0.12, -0.14); back.scale.set(1.05, 1.1, 0.8); head.add(back); }
+  } else {
+    const helmM = whMat(0xf2c230, { r: 0.35, m: 0.1 });
+    head.add(whMesh(wg("helmet", () => new THREE.SphereGeometry(0.34, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2)), helmM, 0, 0.06, 0));
+    const brim = whMesh(wg("brim", () => new THREE.CylinderGeometry(0.38, 0.38, 0.04, 18)), helmM, 0, 0.07, 0.05); brim.scale.z = 1.08; head.add(brim);
+    head.add(whMesh(wg("ridge", () => new THREE.BoxGeometry(0.08, 0.06, 0.62)), helmM, 0, 0.4, 0));
+  }
+  const box = whParcel(0.7); box.position.set(0, 1.85, 0.6); box.visible = false;
+  g.add(legL, legR, armL, armR, neck, head, box);
+  g.userData = { legL, legR, armL, armR, head, box, phase: Math.random() * 6, speed: 0.05 + Math.random() * 0.03, wait: 0, target: null };
+  g.scale.setScalar(0.92);
   return g;
 }
 function whPickTarget(w) {
@@ -2781,23 +2873,55 @@ function whStaff() {
   // Étagères débloquées selon le niveau
   const visibleShelves = [1, 3, 5, 7, 9, 9, 9][g.li];
   wh.shelves.forEach((sh) => (sh.visible = sh.userData.order < visibleShelves));
-  // Chaque carton sur une étagère = une annonce en ligne
-  const online = (state.listings ?? []).filter((l) => l.status === "published" && !l.sale_id).length;
-  const slots = wh.shelves.filter((sh) => sh.visible).sort((a, b) => a.userData.order - b.userData.order).flatMap((sh) => sh.children.filter((c) => c.userData.slot));
-  wh.shelves.forEach((sh) => sh.children.forEach((c) => { if (c.userData.slot) c.visible = false; }));
-  slots.slice(0, online).forEach((c) => (c.visible = true));
+  // Rayonnages par niche : chaque niche a ses travées, chaque carton = une annonce en ligne de ses comptes
+  const onlineL = (state.listings ?? []).filter((l) => l.status === "published" && !l.sale_id);
+  const byN = {};
+  onlineL.forEach((l) => { const k = nicheOf(l.account_id); (byN[k] ??= { niche: k, n: 0, accs: new Set() }).n++; byN[k].accs.add(l.account_id); });
+  (state.accounts ?? []).forEach((a) => { const k = a.niche || NO_NICHE; (byN[k] ??= { niche: k, n: 0, accs: new Set() }).accs.add(a.accountId); });
+  const niches = Object.values(byN).filter((x) => x.n > 0 || x.accs.size).sort((a, b) => b.n - a.n);
+  const bays = wh.shelves.filter((sh) => sh.visible).sort((a, b) => a.position.x - b.position.x);
+  wh.shelves.forEach((sh) => sh.children.forEach((c) => { if (c.userData.slot) c.visible = false; if (c.userData.beam) c.material.color.setHex(0x5b6069); }));
+  (wh.nicheLabels ?? []).forEach((l) => { wh.scene.remove(l); l.material.map.dispose(); l.material.dispose(); });
+  wh.nicheLabels = [];
+  const SLOTS = 12;
+  // répartition des travées : au moins une par niche, le reste au prorata des annonces
+  const want = niches.map((x) => Math.max(1, Math.ceil(x.n / SLOTS)));
+  let alloc = niches.map(() => 0), left = bays.length;
+  niches.forEach((x, i) => { if (left > 0) { alloc[i] = 1; left--; } });
+  for (let guard = 0; left > 0 && guard < 50; guard++) { let best = -1; niches.forEach((x, i) => { if (alloc[i] && alloc[i] < want[i] && (best < 0 || want[i] - alloc[i] > want[best] - alloc[best])) best = i; }); if (best < 0) break; alloc[best]++; left--; }
+  let cursor = 0, full = false;
+  niches.forEach((x, i) => {
+    const mine = bays.slice(cursor, cursor + alloc[i]); cursor += alloc[i];
+    if (!mine.length) return;
+    const col = new THREE.Color(nicheColor(x.niche)).getHex();
+    mine.forEach((sh) => sh.children.forEach((c) => { if (c.userData.beam) c.material.color.setHex(col); }));
+    const slots = mine.flatMap((sh) => sh.children.filter((c) => c.userData.slot));
+    slots.slice(0, x.n).forEach((c) => (c.visible = true));
+    if (x.n > slots.length) full = true;
+    const cx = mine.reduce((a, sh) => a + sh.position.x, 0) / mine.length;
+    const lab = whLabel(x.niche, `${x.n} annonce${x.n > 1 ? "s" : ""} · ${x.accs.size} compte${x.accs.size > 1 ? "s" : ""}${x.n > slots.length ? " · plein" : ""}`, nicheColor(x.niche));
+    lab.position.set(cx, 11.4, -17); lab.scale.set(Math.min(9, 6.5 + mine.length), 3, 1);
+    lab.material.depthTest = false; lab.renderOrder = 10;
+    wh.scene.add(lab); wh.nicheLabels.push(lab);
+    // comptes de la niche, juste en dessous
+    const perAcc = [...x.accs].map((id) => ({ id, label: state.accounts.find((a) => a.accountId === id)?.label ?? id, n: onlineL.filter((l) => l.account_id === id).length }))
+      .sort((p1, p2) => p2.n - p1.n);
+    perAcc.slice(0, 3).forEach((acc, j) => {
+      const al = whAccTag(`${acc.label} · ${acc.n}`, nicheColor(x.niche));
+      al.position.set(cx, 9.5 - j * 1.2, -16.6);
+      wh.scene.add(al); wh.nicheLabels.push(al);
+    });
+    if (perAcc.length > 3) { const more = whAccTag(`+ ${perAcc.length - 3} autre${perAcc.length - 3 > 1 ? "s" : ""}`, nicheColor(x.niche)); more.position.set(cx, 9.5 - 3 * 1.2, -16.6); wh.scene.add(more); wh.nicheLabels.push(more); }
+  });
   const old = wh.getShelfLabel();
-  const nl = whLabel("Annonces en ligne", `${online}${online > slots.length ? " (étagères pleines !)" : ""}`, "#4fbf8a");
-  nl.position.copy(old.position); nl.scale.set(online > slots.length ? 11 : 8, 3, 1);
-  wh.scene.remove(old); old.material.map.dispose(); old.material.dispose();
-  wh.scene.add(nl); wh.setShelfLabel(nl);
+  old.visible = !niches.length; // étiquette globale seulement s'il n'y a aucune niche
   // Enseigne
   const brand = store.get("hermes_brand", "Tyno Entreprise");
   const sg = wh.signCv.getContext("2d");
   sg.clearRect(0, 0, 1024, 160);
   sg.fillStyle = "#e8702a"; sg.fillRect(0, 0, 1024, 160);
   sg.fillStyle = "#fff"; sg.textAlign = "center"; sg.textBaseline = "middle";
-  const signTxt = `${whName()} · ${g.cur.name}`;
+  const signTxt = whName();
   let fs = 92; do { sg.font = `600 ${fs}px 'Cormorant Garamond', Georgia, serif`; fs -= 4; } while (sg.measureText(signTxt).width > 960 && fs > 30);
   sg.fillText(signTxt, 512, 84);
   wh.signTex.needsUpdate = true;
@@ -4156,37 +4280,7 @@ function walletHtml(w, sm = false) {
       <div class="wv num">${eur(w.wait)}</div><div class="wd">Ventes pas encore reçues par l'acheteur.</div></div>`;
 }
 let moneyPrev = {};
-function renderMoneyByAccount() {
-  const sales = state.dash?.activeSales ?? [];
-  const accs = state.accounts.length ? state.accounts : [...new Set(sales.map((x) => x.accountId))].map((id) => ({ accountId: id, label: id }));
-  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
-  const rows = accs.map((a, i) => {
-    const w = walletFor(a.accountId);
-    const today = sales.filter((x) => x.accountId === a.accountId && x.status !== "cancelled" && new Date(x.confirmedAt) >= day0);
-    return { a, i, ok: w.ok, wait: w.wait, nToday: today.length, revToday: today.reduce((s2, x) => s2 + x.salePriceEur, 0) };
-  }).sort((x, y) => y.ok + y.wait - (x.ok + x.wait));
-  const tot = rows.reduce((t, r) => ({ ok: t.ok + r.ok, wait: t.wait + r.wait, n: t.n + r.nToday, rev: t.rev + r.revToday }), { ok: 0, wait: 0, n: 0, rev: 0 });
-  const max = Math.max(1, ...rows.map((r) => r.ok + r.wait));
-  $("#money-sub").innerHTML = `<b class="num" style="color:var(--text)">${eur(tot.ok + tot.wait)}</b> au total · ${eur(tot.ok)} disponible · ${eur(tot.wait)} en attente · mis à jour ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
-  const head = `<div class="ma-row head"><span>Compte</span><span>Disponible</span><span>En attente</span><span>Répartition</span><span>Aujourd'hui</span></div>`;
-  const body = rows.map(({ a, i, ok, wait, nToday, revToday }) => {
-    const c = HUES[i % HUES.length];
-    const changed = moneyPrev[a.accountId] != null && moneyPrev[a.accountId] !== ok + wait;
-    return `<a class="ma-row ${changed ? "flash" : ""}" href="#compte/${encodeURIComponent(a.accountId)}">
-      <div class="ma-acc"><span class="av" style="background:linear-gradient(140deg, ${c}, color-mix(in srgb, ${c} 60%, #000))">${initials(a.label)}</span>
-        <div style="min-width:0"><div class="nm">${esc(a.label)}</div><div class="ni">${esc(nicheOf(a.accountId))}</div></div></div>
-      <div class="ma-v num pos">${eur(ok)}<small>prêt à virer</small></div>
-      <div class="ma-v num" style="color:var(--amber)">${eur(wait)}<small>colis en route</small></div>
-      <div><div class="ma-bar" style="width:${Math.max(6, ((ok + wait) / max) * 100)}%"><i style="width:${ok + wait ? (ok / (ok + wait)) * 100 : 0}%;background:var(--green)"></i><i style="flex:1;background:var(--amber)"></i></div></div>
-      <div class="ma-today">${nToday ? `<b class="num">+${eur(revToday)}</b><div class="muted" style="font-size:11px">${nToday} vente${nToday > 1 ? "s" : ""}</div>` : `<span class="muted">—</span>`}</div>
-    </a>`;
-  }).join("");
-  const total = rows.length > 1 ? `<div class="ma-row total"><span>Total</span><span class="num pos">${eur(tot.ok)}</span><span class="num" style="color:var(--amber)">${eur(tot.wait)}</span><span></span><span class="num">${tot.n ? "+" + eur(tot.rev) : "—"}</span></div>` : "";
-  $("#money-acc").innerHTML = rows.length ? head + body + total : `<div class="empty">Aucun compte</div>`;
-  moneyPrev = Object.fromEntries(rows.map((r) => [r.a.accountId, r.ok + r.wait]));
-}
 function renderPerAccount() {
-  renderMoneyByAccount();
   const days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
   const since = Date.now() - days * 86400000;
   const sales = (state.dash?.activeSales ?? []).filter((s) => s.status !== "cancelled" && new Date(s.confirmedAt) >= since);
@@ -4197,19 +4291,39 @@ function renderPerAccount() {
     return { a, i, n: ss.length, rev: ss.reduce((x, s) => x + s.salePriceEur, 0) };
   }).sort((x, y) => y.rev - x.rev);
   $("#per-acc-title").textContent = `Par niche · ${days} derniers jours`;
+  rows.forEach((r) => (r.i = state.accounts.findIndex((x) => x.accountId === r.a.accountId)));
   const byNiche = {};
   rows.forEach((r) => { const k = r.a.niche || NO_NICHE; (byNiche[k] ??= { niche: k, rev: 0, n: 0, accs: [] }); byNiche[k].rev += r.rev; byNiche[k].n += r.n; byNiche[k].accs.push(r); });
+  const wt = walletTotal();
+  $("#money-sub").innerHTML = `${eur(total)} de CA sur ${days} j · <b class="num pos">${eur(wt.ok)}</b> disponible · <b class="num" style="color:var(--amber)">${eur(wt.wait)}</b> en attente · ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const all = state.dash?.activeSales ?? [];
   $("#per-acc").innerHTML = Object.values(byNiche).sort((x, y) => y.rev - x.rev).map(({ niche, rev, n, accs }) => {
     const pct = total ? Math.round((rev / total) * 100) : 0;
     const c = nicheColor(niche);
+    const nw = accs.reduce((t, { a }) => { const w = walletFor(a.accountId); return { ok: t.ok + w.ok, wait: t.wait + w.wait }; }, { ok: 0, wait: 0 });
     return `<div class="pa-row">
       <div class="top"><i style="background:${c};box-shadow:0 0 8px ${c}"></i><b>${esc(niche)}</b>
         <span class="pct" style="background:color-mix(in srgb, ${c} 18%, transparent);color:${c}">${pct} %</span>
         <span class="meta">${n} vente${n > 1 ? "s" : ""} · ${accs.length} compte${accs.length > 1 ? "s" : ""}</span><span class="amt num">${eur(rev)}</span></div>
       <div class="pa-track"><div class="pa-fill ${pct ? "" : "zero"}" style="width:${pct}%;background:linear-gradient(90deg, color-mix(in srgb, ${c} 50%, transparent), ${c});color:${c}"></div></div>
-      <div class="pa-sub">${accs.map(({ a, rev: r, n: k }) => `<a href="#compte/${encodeURIComponent(a.accountId)}">
-        <span>${esc(a.label)} <span class="muted">· ${k} vente${k > 1 ? "s" : ""}</span></span><span class="num" style="font-weight:600">${eur(r)}</span>
-        <span class="tr"><i style="width:${rev ? (r / rev) * 100 : 0}%;background:${c}"></i></span></a>`).join("")}</div>
+      <div class="na-list">
+        <div class="na-row head"><span>Compte</span><span>CA</span><span>Disponible</span><span>En attente</span><span>Aujourd'hui</span></div>
+        ${accs.map(({ a, i, rev: r, n: k }) => {
+          const w = walletFor(a.accountId);
+          const td = all.filter((x) => x.accountId === a.accountId && x.status !== "cancelled" && new Date(x.confirmedAt) >= day0);
+          const tdRev = td.reduce((s2, x) => s2 + x.salePriceEur, 0);
+          const ac = HUES[i % HUES.length];
+          const key = a.accountId, sum = w.ok + w.wait;
+          const changed = moneyPrev[key] != null && moneyPrev[key] !== sum;
+          moneyPrev[key] = sum;
+          return `<a class="na-row ${changed ? "flash" : ""}" href="#compte/${encodeURIComponent(a.accountId)}">
+            <span class="na-acc"><span class="av" style="background:linear-gradient(140deg, ${ac}, color-mix(in srgb, ${ac} 60%, #000))">${initials(a.label)}</span><span style="min-width:0"><b>${esc(a.label)}</b><small>${k} vente${k > 1 ? "s" : ""}</small></span></span>
+            <span class="num">${eur(r)}</span><span class="num pos">${eur(w.ok)}</span><span class="num" style="color:var(--amber)">${eur(w.wait)}</span>
+            <span class="num">${td.length ? `+${eur(tdRev)}` : `<span class="muted">—</span>`}</span></a>`;
+        }).join("")}
+        ${accs.length > 1 ? `<div class="na-row tot"><span>Total ${esc(niche)}</span><span class="num">${eur(rev)}</span><span class="num pos">${eur(nw.ok)}</span><span class="num" style="color:var(--amber)">${eur(nw.wait)}</span><span></span></div>` : ""}
+      </div>
     </div>`;
   }).join("") || `<div class="empty">Aucun compte</div>`;
 }
