@@ -14,12 +14,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
 :root {
-  --bg: #0c0b0a;
-  --bg-glow: rgba(226, 97, 27, 0.10);
-  --surface: #151311;
-  --surface-2: #1d1a17;
-  --surface-3: #262220;
-  --border: #2a2623;
+  --bg: #080706;
+  --bg-glow: rgba(232, 112, 42, 0.13);
+  --surface: #12100e;
+  --surface-2: #1a1714;
+  --surface-3: #24201c;
+  --border: #26221e;
   --border-strong: #3a3430;
   --text: #f3ede6;
   --text-2: #b4aaa0;
@@ -70,7 +70,9 @@ html, body { background: var(--bg); }
 body {
   color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.45;
   min-height: 100vh; -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(900px 500px at 85% -10%, var(--bg-glow), transparent 70%);
+  background-image:
+    radial-gradient(900px 520px at 88% -12%, var(--bg-glow), transparent 70%),
+    radial-gradient(700px 480px at -8% 108%, rgba(232, 112, 42, 0.07), transparent 70%);
   background-attachment: fixed;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -727,6 +729,21 @@ th { letter-spacing: .3px; }
 h1 { letter-spacing: -0.4px; }
 @media (max-width: 820px) { .view-sub { font-size: 12.5px; } }
 
+/* ── Noir & orange ── */
+.card { background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 97%, #fff), var(--surface)); }
+.card:hover { border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); box-shadow: var(--shadow), 0 18px 40px -28px color-mix(in srgb, var(--accent) 60%, transparent); }
+.kpi { overflow: hidden; }
+.kpi::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, transparent), transparent); opacity: .55; }
+.kpi.hero::before { opacity: 1; }
+h1 { background: linear-gradient(180deg, #fff, #d9cfc5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand-name { background: linear-gradient(90deg, #fff, #f0c9a8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.btn.primary { background: linear-gradient(180deg, #f08a3e, #e2651f); border-color: #e2651f; box-shadow: 0 8px 20px -10px #e8702a; }
+.btn.primary:hover { filter: brightness(1.1); }
+aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9)); }
+.nav-btn.active { color: #ffb27a; }
+.chip.on { background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff; border-color: #e2651f; box-shadow: 0 6px 16px -10px #e8702a; }
+.seg button.on { background: var(--accent-soft); color: #ffb27a; }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -945,7 +962,6 @@ th.sort.on { color: var(--accent); }
         </div>
         <button class="icon-btn search-btn" id="search-btn" title="Rechercher (Ctrl+K)"><svg><use href="#i-search"/></svg><span class="kbd">Ctrl K</span></button>
         <button class="icon-btn" id="bell-btn" title="Centre de tâches"><svg><use href="#i-bell"/></svg><span class="bell-n" id="bell-n"></span></button>
-        <button class="icon-btn" id="theme-btn" title="Changer de thème"><svg><use href="#i-sun"/></svg></button>
         <button class="icon-btn" id="refresh-btn" title="Actualiser"><svg><use href="#i-refresh"/></svg></button>
       </div>
     </div>
@@ -4560,6 +4576,7 @@ function go(v, fromHash = false) {
   $("#view-sub").textContent = SUBS[v] ?? "";
   if (v === "account") renderAccount();
   if (v === "warehouse") { initWarehouse(); renderWhFeed(); setTimeout(whSize, 30); }
+  if (v === "compta") setTimeout(renderYearChart, 30);
   $("#period-seg").style.display = v === "overview" ? "" : "none";
   if (v === "overview" && state.fin) chart(fillDays(state.fin.daily ?? [], period));
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4582,17 +4599,8 @@ $$("#period-seg button").forEach((b) => {
   };
 });
 
-function applyTheme(t) {
-  document.documentElement.dataset.theme = t;
-  $("#theme-btn use").setAttribute("href", t === "light" ? "#i-moon" : "#i-sun");
-}
-applyTheme(store.get("hermes_theme", "dark"));
-$("#theme-btn").onclick = () => {
-  const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-  store.set("hermes_theme", t);
-  applyTheme(t);
-  if (state.fin) update3d(fillDays(state.fin.daily ?? [], period));
-};
+// Thème unique : noir & orange
+document.documentElement.dataset.theme = "dark";
 $("#refresh-btn").onclick = load;
 $("#sales-q").oninput = renderSales;
 $("#list-q").oninput = renderListings;
@@ -4601,6 +4609,7 @@ let rz;
 addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => {
   if (state.fin && view === "overview") chart(fillDays(state.fin.daily ?? [], period));
   if (view === "account") renderAccount();
+  if (view === "compta") renderYearChart();
 }, 120); });
 
 const hr = new Date().getHours();
