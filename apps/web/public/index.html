@@ -630,6 +630,37 @@ tbody tr:hover { background: var(--surface-2); }
   .cmdk { top: 10px; }
 }
 
+/* Objectif, heatmap, calculateur */
+.goal-row { grid-template-columns: 1fr 1.6fr; margin-bottom: 16px; }
+.goal-body { display: flex; align-items: center; gap: 20px; }
+.ring { width: 140px; height: 140px; flex-shrink: 0; }
+.ring .big { font: 750 24px var(--sans); fill: var(--text); }
+.ring .sm { font: 500 10.5px var(--sans); fill: var(--text-3); letter-spacing: .5px; }
+.goal-stats { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+.goal-stats .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-2); }
+.goal-stats .row b { color: var(--text); font-weight: 650; white-space: nowrap; }
+.heat { display: grid; grid-template-columns: 34px repeat(12, 1fr); gap: 4px; }
+.heat .hl { font-size: 10.5px; color: var(--text-3); display: flex; align-items: center; }
+.heat .hh { font-size: 10px; color: var(--text-3); text-align: center; }
+.heat .cell { aspect-ratio: 1.6; border-radius: 5px; background: var(--accent); position: relative; cursor: default; min-height: 14px; }
+.heat .cell.zero { background: var(--surface-3); }
+.heat .cell.best { outline: 2px solid var(--gold); outline-offset: 1px; }
+.heat-legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 10px; font-size: 10.5px; color: var(--text-3); }
+.heat-legend i { width: 14px; height: 10px; border-radius: 3px; background: var(--accent); display: inline-block; }
+.heat-legend span { margin: 0 4px; }
+.calc-grid { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
+.calc-in .field input { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; font-size: 15px; width: 100%; }
+.calc-in .field input:focus { border-color: var(--accent); }
+.calc-out { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.strat { padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); }
+.strat.main { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: linear-gradient(150deg, var(--accent-soft), var(--surface-2) 70%); }
+.strat .n { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); }
+.strat .p { font-size: 26px; font-weight: 750; letter-spacing: -0.6px; margin: 6px 0 2px; }
+.strat .m { font-size: 12.5px; color: var(--green); font-weight: 600; }
+.strat .d { font-size: 11.5px; color: var(--text-3); margin-top: 8px; line-height: 1.5; }
+@media (max-width: 1100px) { .goal-row { grid-template-columns: 1fr; } .calc-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .calc-out { grid-template-columns: 1fr; } .goal-body { flex-direction: column; align-items: stretch; } .ring { align-self: center; } .heat { grid-template-columns: 28px repeat(12, 1fr); gap: 2px; } .heat .hh:nth-child(odd) { visibility: hidden; } }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -879,6 +910,20 @@ th.sort.on { color: var(--accent); }
         </div>
       </div>
 
+      <div class="grid goal-row">
+        <div class="card goal-card">
+          <div class="card-head"><div><div class="card-title">🎯 Objectif du mois</div><div class="card-sub" id="goal-sub"></div></div>
+            <div class="right"><button class="btn" id="goal-edit">Modifier</button></div></div>
+          <div class="goal-body"><svg class="ring" id="goal-ring" viewBox="0 0 140 140"></svg><div class="goal-stats" id="goal-stats"></div></div>
+          <button class="btn" id="report-btn" style="margin-top:14px;width:100%;justify-content:center"><svg width="13" height="13"><use href="#i-file"/></svg>Bilan de la semaine (PDF)</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">🕐 Quand tes acheteurs achètent</div><div class="card-sub" id="heat-sub"></div></div></div>
+          <div class="heat" id="heat"></div>
+          <div class="heat-legend"><span>moins</span><i style="opacity:.15"></i><i style="opacity:.35"></i><i style="opacity:.6"></i><i style="opacity:.85"></i><i></i><span>plus</span></div>
+        </div>
+      </div>
+
       <div class="card hero-chart">
         <div class="hero-top">
           <div>
@@ -970,6 +1015,17 @@ th.sort.on { color: var(--accent); }
     <!-- ── Produits ───────────────────────────────────── -->
     <section class="view" id="v-products">
       <div class="grid kpis" id="prod-kpis"></div>
+      <div class="card calc" style="margin-bottom:16px">
+        <div class="card-head"><div><div class="card-title">🧮 Calculateur de prix</div><div class="card-sub">Même règle que l'auto-publication : multiplicateur selon le coût, port Temu inclus, marge minimale garantie</div></div></div>
+        <div class="calc-grid">
+          <div class="calc-in">
+            <div class="field"><label>Prix Temu de l'article</label><input id="calc-cost" type="number" min="0" step="0.01" value="12.50" /></div>
+            <div class="field"><label>Port Temu</label><input id="calc-ship" type="number" min="0" step="0.01" /></div>
+            <label class="lbl" style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--text-2);cursor:pointer"><input type="checkbox" id="calc-deliv" /> Livraison « autre » Leboncoin (+3 €)</label>
+          </div>
+          <div class="calc-out" id="calc-out"></div>
+        </div>
+      </div>
       <div class="grid prod-cols">
         <div class="card">
           <div class="card-head"><div><div class="card-title" style="display:flex;gap:8px;align-items:center"><span class="badge b-green">Ça marche</span></div>
@@ -1435,6 +1491,9 @@ function renderAll() {
   renderMessages();
   renderTemu();
   renderTasks();
+  renderGoal();
+  renderHeat();
+  renderCalc();
   $("#mob-temu-n").textContent = $("#nav-temu-count").textContent;
   $("#mob-msg-n").textContent = $("#nav-msg-count").textContent;
   const n = state.dash?.salesNeedingAction?.length ?? 0;
@@ -2932,6 +2991,133 @@ footer{margin-top:auto;padding-top:20px;border-top:1px solid #e8dfd3;font-size:1
 ${pages}</body></html>`);
   win.document.close();
 }
+
+// ═══ Objectif du mois ══════════════════════════════════════════════════════
+const goalMonth = () => parseFloat(store.get("hermes_goal_month", "1000")) || 1000;
+function renderGoal() {
+  const fee = shipFee();
+  const now = new Date(), ms = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), day = now.getDate();
+  const month = (state.dash?.activeSales ?? []).filter((x) => x.status !== "cancelled" && x.confirmedAt && new Date(x.confirmedAt) >= ms);
+  const profit = month.reduce((a, x) => a + x.salePriceEur - (x.actualCostEur ?? x.costEur) - fee, 0);
+  const goal = goalMonth();
+  const pct = Math.max(0, profit / goal);
+  const proj = (profit / Math.max(1, day)) * dim;
+  const left = Math.max(0, goal - profit), daysLeft = Math.max(1, dim - day + 1);
+  const R = 58, C = 2 * Math.PI * R;
+  const col = pct >= 1 ? "var(--green)" : proj >= goal ? "var(--accent)" : "var(--amber)";
+  $("#goal-ring").innerHTML = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--surface-3)" stroke-width="12"/>
+    <circle cx="70" cy="70" r="${R}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${Math.min(1, pct) * C} ${C}" transform="rotate(-90 70 70)" style="transition:stroke-dasharray 1s"/>
+    <text x="70" y="70" text-anchor="middle" class="big">${Math.round(pct * 100)} %</text><text x="70" y="90" text-anchor="middle" class="sm">DE L'OBJECTIF</text>`;
+  $("#goal-sub").textContent = `${eur(goal)} de bénéfice net en ${now.toLocaleDateString("fr-FR", { month: "long" })}`;
+  $("#goal-stats").innerHTML = `
+    <div class="row"><span>Bénéfice actuel</span><b class="num pos">${eur(profit)}</b></div>
+    <div class="row"><span>Projection fin de mois</span><b class="num" style="color:${proj >= goal ? "var(--green)" : "var(--amber)"}">${eur(proj)}</b></div>
+    <div class="row"><span>${pct >= 1 ? "Objectif atteint 🎉" : "Il reste"}</span><b class="num">${pct >= 1 ? "+" + eur(profit - goal) : eur(left)}</b></div>
+    <div class="row"><span>À faire par jour</span><b class="num">${pct >= 1 ? "—" : eur(left / daysLeft)} <span class="muted" style="font-weight:400">· ${daysLeft} j</span></b></div>`;
+}
+$("#goal-edit").onclick = () => {
+  const v = prompt("Objectif de bénéfice net pour le mois (€) :", String(goalMonth()));
+  const n = parseFloat(String(v ?? "").replace(",", "."));
+  if (n > 0) { store.set("hermes_goal_month", String(n)); renderGoal(); toast("Objectif mis à jour ✓"); }
+};
+
+// ═══ Meilleurs moments de vente ════════════════════════════════════════════
+function renderHeat() {
+  const days = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  const grid = Array.from({ length: 7 }, () => Array(12).fill(0));
+  const sales = (state.dash?.activeSales ?? []).filter((x) => x.status !== "cancelled" && x.confirmedAt);
+  sales.forEach((x) => { const d = new Date(x.confirmedAt); grid[(d.getDay() + 6) % 7][Math.floor(d.getHours() / 2)]++; });
+  const max = Math.max(1, ...grid.flat());
+  let best = [0, 0, -1];
+  grid.forEach((r, i) => r.forEach((v, j) => { if (v > best[2]) best = [i, j, v]; }));
+  const dayTot = grid.map((r) => r.reduce((a, b) => a + b, 0));
+  const bestDay = dayTot.indexOf(Math.max(...dayTot));
+  let html = `<span></span>` + Array.from({ length: 12 }, (_, j) => `<span class="hh">${j * 2}h</span>`).join("");
+  grid.forEach((r, i) => {
+    html += `<span class="hl">${days[i]}</span>` + r.map((v, j) => `<span class="cell ${v ? "" : "zero"} ${i === best[0] && j === best[1] && v ? "best" : ""}" style="${v ? `opacity:${(0.15 + 0.85 * (v / max)).toFixed(2)}` : ""}" title="${days[i]} ${j * 2}h–${j * 2 + 2}h : ${v} vente${v > 1 ? "s" : ""}"></span>`).join("");
+  });
+  $("#heat").innerHTML = html;
+  $("#heat-sub").innerHTML = sales.length
+    ? `Meilleur créneau : <b style="color:var(--text)">${["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"][best[0]]} ${best[1] * 2} h – ${best[1] * 2 + 2} h</b> · meilleur jour : ${days[bestDay].toLowerCase()}. Publie juste avant.`
+    : "Pas encore assez de ventes";
+}
+
+// ═══ Calculateur de prix (même règle que le backend) ═══════════════════════
+function smartMult(c) { return c < 10 ? 5 : c < 20 ? 4 : c < 40 ? 3 : c < 80 ? 2.5 : 2; }
+function renderCalc() {
+  const cost = Math.max(0, parseFloat($("#calc-cost").value) || 0);
+  if ($("#calc-ship").value === "") $("#calc-ship").value = shipFee().toFixed(2);
+  const ship = Math.max(0, parseFloat($("#calc-ship").value) || 0);
+  const fee = $("#calc-deliv").checked ? 3 : 0;
+  const total = cost + ship, m = smartMult(total);
+  const mk = (mult) => { const price = Math.floor(Math.max(total * mult, total + 5)) + 0.99 + fee; return { price, margin: price - total - fee, mult }; };
+  const strats = [["Prix conseillé", mk(m), true, "vente normale"], ["Vente rapide", mk(Math.max(m, 4) === m ? m * 0.8 : m), false, "prix plus bas pour écouler vite"], ["Premium", mk(m * 1.4), false, "article rare / tendance"]];
+  // vente rapide : jamais sous la marge minimale
+  strats[1][1] = (() => { const price = Math.floor(Math.max(total * Math.max(2, m * 0.75), total + 5)) + 0.99 + fee; return { price, margin: price - total - fee, mult: Math.max(2, m * 0.75) }; })();
+  $("#calc-out").innerHTML = strats.map(([n, r, main, d]) => {
+    const accept = r.price * 0.95, counter = r.price * 0.85;
+    return `<div class="strat ${main ? "main" : ""}"><div class="n">${n}</div><div class="p num">${eur(r.price)}</div>
+      <div class="m">+${eur(r.margin)} de marge · ×${r.mult.toFixed(1).replace(".", ",")}</div>
+      <div class="d">Coût réel ${eur(total)} · ${d}<br>Offre acceptée dès <b>${eur(accept)}</b> · contre-offre dès ${eur(counter)}</div></div>`;
+  }).join("");
+}
+["calc-cost", "calc-ship", "calc-deliv"].forEach((id) => ($("#" + id).oninput = renderCalc));
+
+// ═══ Bilan de la semaine (imprimable / PDF) ════════════════════════════════
+function weeklyReport() {
+  const win = window.open("", "_blank");
+  if (!win) return toast("Autorise les fenêtres pop-up pour ouvrir le bilan");
+  const fee = shipFee();
+  const now = new Date(), d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), p0 = new Date(d0.getTime() - 7 * 86400000);
+  const all = (state.dash?.activeSales ?? []).filter((x) => x.status !== "cancelled" && x.confirmedAt);
+  const inR = (x, a, b) => { const t = new Date(x.confirmedAt); return t >= a && t < b; };
+  const end = new Date(now.getTime() + 86400000);
+  const wk = all.filter((x) => inR(x, d0, end)), pw = all.filter((x) => inR(x, p0, d0));
+  const stat = (arr) => { const rev = arr.reduce((a, x) => a + x.salePriceEur, 0); const pr = arr.reduce((a, x) => a + x.salePriceEur - (x.actualCostEur ?? x.costEur) - fee, 0); return { n: arr.length, rev, pr, avg: arr.length ? rev / arr.length : 0 }; };
+  const a = stat(wk), b = stat(pw);
+  const delta = (x, y) => (!y ? (x ? "nouveau" : "—") : `${x >= y ? "▲" : "▼"} ${Math.abs(Math.round(((x - y) / Math.abs(y)) * 100))} %`);
+  const dcls = (x, y) => (x >= y ? "up" : "down");
+  const titleOf = Object.fromEntries((state.listings ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
+  const byItem = itemTitles();
+  const top = {};
+  wk.forEach((x) => { const t = titleOf[x.listingId] || x.productTitle || byItem[x.temuItemId] || "Produit"; (top[t] ??= { t, n: 0, pr: 0 }); top[t].n++; top[t].pr += x.salePriceEur - (x.actualCostEur ?? x.costEur) - fee; });
+  const niches = {};
+  wk.forEach((x) => { const k = nicheOf(x.accountId); (niches[k] ??= { k, n: 0, rev: 0 }); niches[k].n++; niches[k].rev += x.salePriceEur; });
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(d0.getTime() + i * 86400000); const e = new Date(d.getTime() + 86400000); const arr = wk.filter((x) => inR(x, d, e)); return { d, rev: arr.reduce((s2, x) => s2 + x.salePriceEur, 0) }; });
+  const maxD = Math.max(1, ...days.map((x) => x.rev));
+  const tasks = computeTasks();
+  const brand = store.get("hermes_brand", "Tyno Entreprise");
+  const fmtD = (d) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Bilan de la semaine — ${esc(brand)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,Arial,sans-serif;color:#1c1814;background:#ece6dd;font-size:13px}
+.bar{position:sticky;top:0;background:#1c1814;color:#fff;padding:12px 20px;display:flex;align-items:center}.bar button{margin-left:auto;background:#e8702a;color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+.page{background:#fff;width:210mm;min-height:297mm;margin:24px auto;padding:16mm 16mm;box-shadow:0 10px 40px -15px rgba(0,0,0,.3)}
+header{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:2px solid #1c1814;margin-bottom:20px}h1{font-family:"Cormorant Garamond",serif;font-size:30px}
+.sub{color:#6d645b}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}.k{border:1px solid #e8dfd3;border-radius:12px;padding:12px}.k .l{font-size:11px;color:#958a7f;text-transform:uppercase;letter-spacing:1px}
+.k .v{font-size:22px;font-weight:700;margin:6px 0 2px}.up{color:#23935f;font-weight:600;font-size:12px}.down{color:#c9443b;font-weight:600;font-size:12px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#958a7f;margin:20px 0 10px}.chart{display:flex;gap:8px;align-items:flex-end;height:120px}.c{flex:1;text-align:center;font-size:10.5px;color:#958a7f}
+.c i{display:block;background:linear-gradient(#e8702a,#f3b07f);border-radius:5px 5px 2px 2px;margin-bottom:4px}table{width:100%;border-collapse:collapse}td,th{padding:8px 6px;border-bottom:1px solid #eee5da;text-align:left}th{font-size:11px;color:#958a7f;font-weight:500}.r{text-align:right}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.t{padding:8px 10px;border-radius:8px;background:#f8f3ec;margin-bottom:6px}
+@media print{body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto}@page{size:A4;margin:10mm}}</style></head><body>
+<div class="bar"><b>Bilan de la semaine</b><button onclick="print()">Télécharger en PDF / Imprimer</button></div>
+<div class="page"><header><img src="${location.origin}/logo.svg" width="46" height="46" style="border-radius:12px"/><div><h1>Bilan de la semaine</h1><div class="sub">${esc(brand)} · du ${fmtD(d0)} au ${fmtD(now)}</div></div></header>
+<div class="kpis">
+<div class="k"><div class="l">Chiffre d'affaires</div><div class="v">${eur(a.rev)}</div><div class="${dcls(a.rev, b.rev)}">${delta(a.rev, b.rev)} vs semaine d'avant</div></div>
+<div class="k"><div class="l">Bénéfice net</div><div class="v">${eur(a.pr)}</div><div class="${dcls(a.pr, b.pr)}">${delta(a.pr, b.pr)}</div></div>
+<div class="k"><div class="l">Ventes</div><div class="v">${a.n}</div><div class="${dcls(a.n, b.n)}">${delta(a.n, b.n)}</div></div>
+<div class="k"><div class="l">Panier moyen</div><div class="v">${eur(a.avg)}</div><div class="${dcls(a.avg, b.avg)}">${delta(a.avg, b.avg)}</div></div></div>
+<h2>Chiffre d'affaires par jour</h2><div class="chart">${days.map((x) => `<div class="c"><i style="height:${Math.max(3, (x.rev / maxD) * 96)}px"></i>${x.d.toLocaleDateString("fr-FR", { weekday: "short" })}<br><b style="color:#1c1814">${Math.round(x.rev)} €</b></div>`).join("")}</div>
+<div class="two"><div><h2>Meilleurs produits</h2><table><tr><th>Produit</th><th class="r">Ventes</th><th class="r">Bénéfice</th></tr>
+${Object.values(top).sort((x, y) => y.pr - x.pr).slice(0, 6).map((x) => `<tr><td>${esc(x.t)}</td><td class="r">${x.n}</td><td class="r">${eur(x.pr)}</td></tr>`).join("") || `<tr><td colspan="3">Aucune vente</td></tr>`}</table></div>
+<div><h2>Par niche</h2><table><tr><th>Niche</th><th class="r">Ventes</th><th class="r">CA</th></tr>
+${Object.values(niches).sort((x, y) => y.rev - x.rev).map((x) => `<tr><td>${esc(x.k)}</td><td class="r">${x.n}</td><td class="r">${eur(x.rev)}</td></tr>`).join("") || `<tr><td colspan="3">—</td></tr>`}</table>
+<h2>À faire</h2>${tasks.slice(0, 6).map(([, ic, t]) => `<div class="t">${ic} ${esc(t)}</div>`).join("") || "<div class='t'>Rien en attente 🎉</div>"}</div></div>
+</div></body></html>`);
+  win.document.close();
+}
+$("#report-btn").onclick = weeklyReport;
 
 // ═══ Centre de tâches ══════════════════════════════════════════════════════
 function computeTasks() {
