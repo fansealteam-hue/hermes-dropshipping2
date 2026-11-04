@@ -415,11 +415,48 @@ document.getElementById("btn-test-conn")?.addEventListener("click", async () => 
   }
 });
 
+// ─── Export CSV ───────────────────────────────────────────────────────────────
+
+document.getElementById("btn-export-csv")?.addEventListener("click", () => {
+  const apiUrl = localStorage.getItem("tyno_api_url") || "";
+  if (!apiUrl) { alert("Configure d'abord l'URL API dans les Paramètres."); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  const from  = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  window.open(`${apiUrl}/api/export/sales?from=${from}&to=${today}`, "_blank");
+});
+
+// ─── Pause globale ────────────────────────────────────────────────────────────
+
+document.getElementById("btn-pause-toggle")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btn-pause-toggle");
+  const paused = btn.dataset.paused === "1";
+  const res = await apiFetch("/api/system/pause", "POST", { pause: !paused });
+  if (res.ok) {
+    btn.dataset.paused = paused ? "0" : "1";
+    btn.textContent = paused ? "⏸ Mettre en pause" : "▶ Reprendre";
+    btn.className = paused ? "btn btn-warning" : "btn btn-success";
+  }
+});
+
+async function loadSystemStatus() {
+  const res = await apiFetch("/status");
+  if (!res.ok || res.demo) return;
+  const d = res.data ?? res;
+  const el = document.getElementById("system-status-bar");
+  if (!el) return;
+  el.innerHTML = [
+    `<span class="badge ${d.jobs?.failedToday > 0 ? 'badge-err' : 'badge-ok'}">Jobs échoués: ${d.jobs?.failedToday ?? 0}</span>`,
+    `<span class="badge badge-info">En attente: ${d.jobs?.pending ?? 0}</span>`,
+    `<span class="badge badge-info">Messages: ${d.messages?.unread ?? 0} non lus</span>`,
+    `<span class="badge badge-ok">Uptime: ${Math.floor((d.uptime ?? 0) / 60)}min</span>`,
+  ].join(" ");
+}
+
 // ─── Auto-refresh Dashboard ───────────────────────────────────────────────────
 
 setInterval(() => {
   const active = document.querySelector(".nav-item.active")?.dataset?.section;
-  if (active === "dashboard") loadDashboard();
+  if (active === "dashboard") { loadDashboard(); loadSystemStatus(); }
 }, 30_000);
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -427,4 +464,5 @@ setInterval(() => {
 (function init() {
   const hash = location.hash.replace("#", "") || "dashboard";
   showSection(SECTION_TITLES[hash] ? hash : "dashboard");
+  loadSystemStatus();
 })();

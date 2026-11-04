@@ -50,6 +50,12 @@
         <button id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
         <div class="header-title" id="header-title">Dashboard</div>
         <div class="header-right">
+          <div id="system-status-bar" class="system-status-bar" style="display:none">
+            <span id="sys-paused-badge" class="sys-badge sys-paused" style="display:none">⏸ PAUSE</span>
+            <span id="sys-jobs-info" class="sys-jobs-info"></span>
+            <span id="sys-msgs-info" class="sys-msgs-info"></span>
+          </div>
+          <button id="btn-pause-toggle" class="btn-pause-toggle btn-secondary" title="Mettre le bot en pause / relancer">⏸ Pause</button>
           <div class="api-status" id="api-status">
             <span class="status-dot" id="status-dot"></span>
             <span id="status-label">Connexion…</span>
@@ -238,6 +244,17 @@
               <button id="btn-save-params" class="btn-primary">Enregistrer</button>
               <button id="btn-test-conn" class="btn-secondary">Tester la connexion</button>
               <span id="conn-result"></span>
+            </div>
+          </div>
+
+          <div class="card mt-24">
+            <div class="card-header"><span>Export &amp; Contrôle</span></div>
+            <div class="export-row">
+              <label for="export-from">Du</label>
+              <input type="date" id="export-from">
+              <label for="export-to">au</label>
+              <input type="date" id="export-to">
+              <button id="btn-export-csv" class="btn-secondary">⬇ Export CSV ventes</button>
             </div>
           </div>
         </section>

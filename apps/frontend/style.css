@@ -108,6 +108,19 @@ input { color: var(--text); }
 
 .header-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+/* System status bar */
+.system-status-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sys-badge { padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.sys-badge.sys-paused { background: #f97316; color: #fff; }
+.sys-jobs-info, .sys-msgs-info { color: var(--text-muted); }
+.btn-pause-toggle { padding: 4px 12px; font-size: 12px; }
+.btn-pause-toggle.active { background: #f97316; border-color: #f97316; color: #fff; }
+
+/* Export row */
+.export-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; }
+.export-row label { font-size: 13px; color: var(--text-muted); }
+.export-row input[type="date"] { background: var(--dark-700,#1a1a2e); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+
 #content { flex: 1; overflow-y: auto; padding: 24px; }
 #content::-webkit-scrollbar { width: 6px; }
 #content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
