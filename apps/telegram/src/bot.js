@@ -284,8 +284,9 @@ bot.catch(err => console.error("[bot]", err.message));
 async function sendSaleAlert(chatId, { sale, productTitle, variantLabel, imageUrls = [], variantOptions = "" }) {
   const text = msg.fmtSaleAlert(sale, productTitle, variantLabel, variantOptions);
   const kb = new InlineKeyboard()
-    .text("✅ OUI, disponible", `avail_yes:${sale.saleId}`).row()
-    .text("❌ NON, plus dispo", `avail_no:${sale.saleId}`);
+    .text("✅ Disponible", `avail_yes:${sale.saleId}`)
+    .text("❌ Pas disponible", `cancel_ask:${sale.saleId}`).row()
+    .text("🔄 Revérifier le stock Temu", `check_stock:${sale.saleId}`);
 
   const photoUrl = imageUrls?.[0];
   if (photoUrl) {
@@ -313,14 +314,13 @@ bot.callbackQuery(/^avail_yes:(.+)$/, async ctx => {
     `💰 Prix payé : *${msg.escMd((sale.salePriceEur ?? 0).toFixed(2))} €*`,
     sale.costEur != null  ? `Coût estimé : ${msg.escMd(sale.costEur.toFixed(2))} €` : "",
     "",
-    "🛒 *Lien fournisseur à commander :*",
-    msg.escMd(sale.supplierUrl ?? ""),
-    "",
-    "👇 Validez après avoir passé la commande Temu",
+    "1️⃣ Commande sur Temu avec l'adresse de l'acheteur",
+    "2️⃣ Puis appuie sur *VALIDER*",
   ].filter(Boolean).join("\n");
 
-  const kb = new InlineKeyboard()
-    .text("✅ VALIDER — j'ai commandé", `confirm_payment:${saleId}`).row()
+  const kb = new InlineKeyboard();
+  if (/^https:\/\//.test(sale.supplierUrl ?? "")) kb.url("🛒 Commander sur Temu", sale.supplierUrl).row();
+  kb.text("✅ VALIDER — j'ai commandé", `confirm_payment:${saleId}`).row()
     .text("❌ Finalement annuler", `cancel_ask:${saleId}`);
 
   await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
@@ -349,9 +349,9 @@ bot.callbackQuery(/^check_stock:(.+)$/, async ctx => {
     a.costChanged ? `⚠️ Prix Temu : ${eur(a.costAtSaleEur)} → <b>${eur(a.currentCostEur)}</b>` : `Prix Temu : ${eur(a.currentCostEur ?? a.costAtSaleEur)}`,
     a.error ? `<i>Lecture Temu impossible (${esc(a.error)}) — données du ${esc(a.checkedAt ?? "?")}</i>` : "<i>Vérifié à l'instant</i>",
   ];
-  const kb = new InlineKeyboard();
-  if (a.available !== false) kb.text("✅ Dispo — je commande", `avail_yes:${saleId}`).row();
-  kb.text("❌ Annuler la vente", `cancel_ask:${saleId}`);
+  const kb = new InlineKeyboard()
+    .text("✅ Disponible", `avail_yes:${saleId}`)
+    .text("❌ Pas disponible", `cancel_ask:${saleId}`);
   await ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
 });
 
@@ -363,7 +363,7 @@ bot.callbackQuery(/^cancel_ask:(.+)$/, async ctx => {
     .text("Oui, annuler et prévenir l'acheteur", `avail_no:${saleId}`).row()
     .text("Non, garder la vente", `cancel_keep:${saleId}`);
   await ctx.answerCallbackQuery();
-  await ctx.reply("⚠️ Annuler cette vente ? L'acheteur recevra un message sur Leboncoin.", { reply_markup: kb });
+  await ctx.reply("❌ Article pas disponible ? La vente sera annulée et l'acheteur prévenu sur Leboncoin.", { reply_markup: kb });
 });
 
 bot.callbackQuery(/^cancel_keep:(.+)$/, async ctx => {

@@ -46,17 +46,44 @@ test("message : compte, article, coût d'achat, bénéfice, dispo ; texte échap
   assert.match(txt, /Prix Temu changé/);
 });
 
-test("boutons : pas de « je commande » si rupture ; annulation via confirmation", () => {
-  const ok = alert.alertKeyboard("s_ok", true).inline_keyboard.flat().map((b) => b.callback_data);
-  assert.deepEqual(ok, ["avail_yes:s_ok", "check_stock:s_ok", "cancel_ask:s_ok"]);
-  const out = alert.alertKeyboard("s_out", false).inline_keyboard.flat().map((b) => b.callback_data);
-  assert.deepEqual(out, ["check_stock:s_out", "cancel_ask:s_out"]);
+test("boutons : Disponible / Pas disponible (avec confirmation) + revérifier", () => {
+  const ok = alert.alertKeyboard("s_ok").inline_keyboard.flat().map((b) => b.callback_data);
+  assert.deepEqual(ok, ["avail_yes:s_ok", "cancel_ask:s_ok", "check_stock:s_ok"]);
 });
 
 test("valider depuis Telegram passe la vente en « commandée » (idempotent)", () => {
   assert.equal(markOrdered("s_ok").status, "order_placed");
   assert.equal(markOrdered("s_ok", { orderRef: "PO-1" }).status, "order_placed");
   assert.throws(() => markOrdered("nope"), (e) => e.code === "NOT_FOUND");
+});
+
+test("photos : variante puis annonce puis produit, sans doublon", () => {
+  db.prepare("UPDATE variants SET image_urls = ? WHERE variant_id = 'v1'").run(JSON.stringify(["https://img/v1.jpg"]));
+  db.prepare("INSERT INTO listings (listing_id, channel, account_id, temu_item_id, variant_id, title, price_eur_cents, cost_eur_cents, status, media_urls, created_at, updated_at) VALUES ('l', 'leboncoin', 'lbc_compte_a', 'tm1', 'v1', 't', 4500, 1500, 'sold', ?, datetime('now'), datetime('now'))")
+    .run(JSON.stringify(["https://img/lbc.jpg", "https://img/v1.jpg"]));
+  assert.deepEqual(alert.photoCandidates(getSale("s_ok")), ["https://img/v1.jpg", "https://img/lbc.jpg"]);
+});
+
+test("envoi avec photo : sendPhoto avec légende + boutons ; repli si l'URL échoue", async () => {
+  process.env.TELEGRAM_BOT_TOKEN = "123:abc";
+  process.env.TELEGRAM_ALLOWED_CHAT_IDS = "111";
+  const calls = [];
+  const orig = globalThis.fetch;
+  let failUrlOnce = true;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).startsWith("https://img/")) return { ok: true, headers: { get: () => "image/jpeg" }, arrayBuffer: async () => new ArrayBuffer(8) };
+    const isForm = opts.body instanceof FormData;
+    const body = isForm ? Object.fromEntries([...opts.body.entries()].map(([k, v]) => [k, typeof v === "string" ? v : "<file>"])) : JSON.parse(opts.body);
+    calls.push({ url, body });
+    if (!isForm && body.photo && failUrlOnce) { failUrlOnce = false; return { status: 400, json: async () => ({ ok: false, description: "wrong file identifier" }) }; }
+    return { status: 200, json: async () => ({ ok: true, result: {} }) };
+  };
+  try { assert.equal(await alert.sendSaleAlert("s_ok"), 1); } finally { globalThis.fetch = orig; }
+  assert.equal(calls.length, 2, "URL refusée puis upload");
+  assert.match(calls[1].url, /sendPhoto$/);
+  assert.equal(calls[1].body.photo, "<file>");
+  assert.match(calls[1].body.caption, /NOUVELLE VENTE/);
+  assert.match(calls[1].body.reply_markup, /avail_yes:s_ok/);
 });
 
 test("envoi : appelle l'API Telegram pour chaque chat autorisé", async () => {
@@ -69,8 +96,8 @@ test("envoi : appelle l'API Telegram pour chaque chat autorisé", async () => {
     assert.equal(await alert.sendSaleAlert("s_out"), 2);
   } finally { globalThis.fetch = orig; }
   assert.equal(calls.length, 2);
-  assert.match(calls[0].url, /bot123:abc\/sendMessage$/);
+  assert.match(calls[0].url, /bot123:abc\/sendPhoto$/); // photo de l'annonce
   assert.equal(calls[0].body.chat_id, "111");
   assert.equal(calls[0].body.parse_mode, "HTML");
-  assert.match(calls[0].body.text, /Rupture de stock/);
+  assert.match(calls[0].body.caption, /Rupture de stock/);
 });

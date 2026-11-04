@@ -80,25 +80,66 @@ function buildAlertText(sale, a, accountLabel) {
   ].filter((l) => l !== "").join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
-function alertKeyboard(saleId, available) {
-  const rows = [];
-  if (available !== false) rows.push([{ text: "✅ Dispo — je commande", callback_data: `avail_yes:${saleId}` }]);
-  rows.push([{ text: "🔄 Revérifier le stock Temu", callback_data: `check_stock:${saleId}` }]);
-  rows.push([{ text: "❌ Pas dispo — annuler la vente", callback_data: `cancel_ask:${saleId}` }]);
-  return { inline_keyboard: rows };
+function alertKeyboard(saleId) {
+  return { inline_keyboard: [
+    [{ text: "✅ Disponible", callback_data: `avail_yes:${saleId}` }, { text: "❌ Pas disponible", callback_data: `cancel_ask:${saleId}` }],
+    [{ text: "🔄 Revérifier le stock Temu", callback_data: `check_stock:${saleId}` }],
+  ] };
 }
 
 async function tgCall(method, body) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  });
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, isForm
+    ? { method: "POST", body }
+    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
   if (!j.ok) throw new Error(j.description ?? `Telegram HTTP ${r.status}`);
   return j.result;
 }
 
-/** Envoie l'alerte à tous les chats autorisés. Retourne le nombre d'envois. */
+/** Photos candidates de l'article : variante Temu → annonce Leboncoin → produit Temu. */
+function photoCandidates(sale) {
+  const parse = (x) => { try { const v = JSON.parse(x ?? "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
+  const out = [];
+  const v = db.prepare("SELECT image_urls FROM variants WHERE variant_id = ?").get(sale.variantId);
+  out.push(...parse(v?.image_urls));
+  const l = sale.listingId ? db.prepare("SELECT media_urls FROM listings WHERE listing_id = ?").get(sale.listingId) : null;
+  out.push(...parse(l?.media_urls));
+  const p = db.prepare("SELECT raw_json FROM products WHERE temu_item_id = ?").get(sale.temuItemId);
+  try {
+    const raw = JSON.parse(p?.raw_json ?? "{}");
+    out.push(...(raw.imageUrls ?? []), ...((raw.variants ?? []).flatMap((x) => x.imageUrls ?? [])));
+  } catch { /* raw_json illisible */ }
+  return [...new Set(out.map((x) => (typeof x === "string" ? x : x?.url)).filter(Boolean))].slice(0, 6);
+}
+
+/** Envoie une photo : par URL, sinon téléchargée puis uploadée, sinon fichier local. */
+async function sendPhotoAny(chat_id, src, extra) {
+  const fs = require("fs");
+  const path = require("path");
+  if (/^https?:\/\//i.test(src)) {
+    try { return await tgCall("sendPhoto", { chat_id, photo: src, ...extra }); } catch { /* Telegram n'a pas pu charger l'URL */ }
+    const r = await fetch(src);
+    if (!r.ok) throw new Error(`image HTTP ${r.status}`);
+    const blob = new Blob([await r.arrayBuffer()], { type: r.headers.get("content-type") ?? "image/jpeg" });
+    return tgUpload(chat_id, blob, "photo.jpg", extra);
+  }
+  const mediaDir = process.env.MEDIA_DIR ?? path.join(__dirname, "../../../data/media");
+  const file = path.isAbsolute(src) ? src : path.join(mediaDir, src);
+  if (!fs.existsSync(file)) throw new Error("fichier photo introuvable");
+  return tgUpload(chat_id, new Blob([fs.readFileSync(file)]), path.basename(file), extra);
+}
+function tgUpload(chat_id, blob, name, extra) {
+  const fd = new FormData();
+  fd.append("chat_id", String(chat_id));
+  fd.append("photo", blob, name);
+  for (const [k, v] of Object.entries(extra)) fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
+  return tgCall("sendPhoto", fd);
+}
+const visibleLength = (html) => html.replace(/<[^>]+>/g, "").replace(/&(lt|gt|amp);/g, "x").length;
+
+/** Envoie l'alerte (photo de l'article + infos + boutons) à tous les chats autorisés. */
 async function sendSaleAlert(saleId) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -108,18 +149,28 @@ async function sendSaleAlert(saleId) {
   const a = await checkAvailability(saleId, { refresh: process.env.NODE_ENV !== "test" });
   const acc = db.prepare("SELECT label FROM seller_accounts WHERE account_id = ?").get(sale.accountId);
   const text = buildAlertText(sale, a, acc?.label);
-  const reply_markup = alertKeyboard(saleId, a.available);
-  const v = db.prepare("SELECT image_urls FROM variants WHERE variant_id = ?").get(sale.variantId);
-  const photo = (() => { try { return JSON.parse(v?.image_urls ?? "[]")[0]; } catch { return undefined; } })();
+  const reply_markup = alertKeyboard(saleId);
+  const photos = photoCandidates(sale);
+  const fits = visibleLength(text) <= 1024; // limite Telegram d'une légende
   let sent = 0;
   for (const chat_id of chatIds) {
-    if (photo && text.length <= 1000) {
-      try { await tgCall("sendPhoto", { chat_id, photo, caption: text, parse_mode: "HTML", reply_markup }); sent++; continue; } catch { /* repli texte */ }
+    let photoSent = false;
+    for (const src of photos) {
+      try {
+        await sendPhotoAny(chat_id, src, fits
+          ? { caption: text, parse_mode: "HTML", reply_markup }
+          : { caption: `📦 ${a.productTitle}`.slice(0, 1000) });
+        photoSent = true;
+        break;
+      } catch { /* photo suivante */ }
     }
-    await tgCall("sendMessage", { chat_id, text, parse_mode: "HTML", reply_markup, disable_web_page_preview: true });
+    if (!(photoSent && fits)) {
+      await tgCall("sendMessage", { chat_id, text: photos.length && !photoSent ? `${text}\n\n<i>(photo indisponible)</i>` : text,
+        parse_mode: "HTML", reply_markup, disable_web_page_preview: true });
+    }
     sent++;
   }
   return sent;
 }
 
-module.exports = { checkAvailability, buildAlertText, alertKeyboard, sendSaleAlert, availabilityLine };
+module.exports = { checkAvailability, buildAlertText, alertKeyboard, sendSaleAlert, availabilityLine, photoCandidates };
