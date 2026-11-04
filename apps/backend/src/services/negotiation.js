@@ -34,37 +34,35 @@ function evaluateOffer(listingPriceEur, offerPriceEur) {
   return { decision: "counter", counterPriceEur: listingPriceEur, ratio };
 }
 
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
 function buildReply(decision, counterPriceEur, listingPriceEur) {
-  // Toutes les réponses précisent : livraison uniquement (jamais retrait)
-  const livraisonNote = "Je propose uniquement la livraison (pas de remise en main propre).";
+  const livraisonNote = "Je fais uniquement en livraison btw 📦";
 
   switch (decision) {
     case "accept":
-      return [
-        "Bonjour, votre offre est acceptée !",
-        livraisonNote,
-        "Je vous contacte pour finaliser.",
-      ].join(" ");
+      return _pick([
+        `Top, c'est ok pour moi ! ${livraisonNote} On finalise comment ?`,
+        `Marché conclu ! ${livraisonNote} Dites-moi comment vous voulez procéder 😊`,
+        `C'est bon pour moi ! ${livraisonNote} On règle ça comment ?`,
+      ]);
 
     case "counter":
       if (counterPriceEur < listingPriceEur) {
-        return [
-          `Bonjour, je peux faire un effort à ${counterPriceEur.toFixed(2)} €, c'est mon dernier prix.`,
-          livraisonNote,
-        ].join(" ");
+        return _pick([
+          `Honnêtement je peux faire ${counterPriceEur.toFixed(2)} € et c'est vraiment mon max. ${livraisonNote}`,
+          `Je peux descendre à ${counterPriceEur.toFixed(2)} €, c'est le mieux que je puisse faire 🙂 ${livraisonNote}`,
+          `${counterPriceEur.toFixed(2)} € c'est mon dernier prix, je ne peux pas aller plus bas. ${livraisonNote}`,
+        ]);
       }
-      return [
-        `Bonjour, le prix est à ${listingPriceEur.toFixed(2)} €, c'est déjà le minimum.`,
-        livraisonNote,
-        "N'hésitez pas si vous êtes intéressé(e) !",
-      ].join(" ");
+      return _pick([
+        `Ah c'est difficile, j'en suis déjà à ${listingPriceEur.toFixed(2)} € qui est mon minimum. ${livraisonNote} Toujours intéressé(e) ?`,
+        `Je suis déjà au plus bas à ${listingPriceEur.toFixed(2)} €, j'ai pas vraiment de marge. ${livraisonNote} 😊`,
+        `${listingPriceEur.toFixed(2)} € c'est vraiment mon prix plancher malheureusement. ${livraisonNote} Dites-moi si ça vous va !`,
+      ]);
 
     default:
-      return [
-        "Bonjour, merci pour votre message.",
-        livraisonNote,
-        "Le vendeur vous répond rapidement.",
-      ].join(" ");
+      return `Merci pour votre intérêt ! ${livraisonNote} Dites-moi si vous avez des questions 😊`;
   }
 }
 
