@@ -28,15 +28,82 @@ async function _dispatch(job) {
       if (!payload.temuUrl) return { ok: false, error: "temuUrl manquant" };
       console.log(`[job-runner] extension_import: ${payload.temuUrl}`);
       return { ok: true };
+    case "publish_pending_listings":
+      return _publishPendingListings();
     case "bump_all":
-      // Sera traité par le handler LBC existant ; ici on simule
       console.log("[job-runner] bump_all — stub");
       return { ok: true };
+    case "research_temu_trends":
+      return _researchTemuTrends();
+    case "research_competitor_prices":
+      return _researchCompetitorPrices();
+    case "research_republish_candidates":
+      return _researchRepublishCandidates();
     case "morning_report":
       return _runMorningReport();
     default:
       return { ok: false, error: `Opération inconnue: ${job.operation}` };
   }
+}
+
+// ─── Publication annonces (08h-18h) ──────────────────────────────────────────
+
+async function _publishPendingListings() {
+  const drafts = db.prepare(`
+    SELECT listing_id, channel, account_id FROM listings
+    WHERE status = 'draft'
+      AND (scheduled_at IS NULL OR scheduled_at <= datetime('now'))
+    LIMIT 20
+  `).all();
+
+  let published = 0;
+  for (const l of drafts) {
+    const jobId = enqueueJob("publish_listing", {
+      listingId: l.listing_id,
+      channel:   l.channel,
+      accountId: l.account_id,
+    });
+    if (jobId) published++;
+  }
+  console.log(`[job-runner] publish_pending: ${published} annonce(s) enfilée(s)`);
+  return { ok: true, published };
+}
+
+// ─── Recherche nocturne (18h-08h) ────────────────────────────────────────────
+
+async function _researchTemuTrends() {
+  // Stub : en production, scraper les catégories tendance Temu
+  // et enregistrer les nouveaux produits potentiels dans une table
+  // research_suggestions (jamais d'achat automatique).
+  console.log("[job-runner] research_temu_trends — stub (pas de credentials Temu configurées)");
+  return { ok: true, note: "stub — implémenter avec credentials Temu" };
+}
+
+async function _researchCompetitorPrices() {
+  // Stub : comparer nos prix actifs avec les annonces similaires LBC/Vinted
+  const actives = db.prepare(`
+    SELECT listing_id, title, price_eur_cents FROM listings WHERE status = 'active' LIMIT 50
+  `).all();
+  console.log(`[job-runner] research_competitor_prices — ${actives.length} annonce(s) à analyser (stub)`);
+  return { ok: true, analyzed: actives.length };
+}
+
+async function _researchRepublishCandidates() {
+  // Annonces actives non vues depuis >48h → candidats à republier
+  const candidates = db.prepare(`
+    SELECT listing_id, title, last_repriced_at FROM listings
+    WHERE status = 'active'
+      AND (last_repriced_at IS NULL OR last_repriced_at < datetime('now', '-48 hours'))
+    LIMIT 20
+  `).all();
+
+  let enqueued = 0;
+  for (const l of candidates) {
+    const jobId = enqueueJob("republish_listing", { listingId: l.listing_id });
+    if (jobId) enqueued++;
+  }
+  console.log(`[job-runner] research_republish_candidates: ${enqueued} candidat(s) enfilé(s)`);
+  return { ok: true, enqueued };
 }
 
 // ─── Rapport matinal ─────────────────────────────────────────────────────────

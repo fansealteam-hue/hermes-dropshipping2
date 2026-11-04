@@ -2,49 +2,69 @@
 const cron = require("node-cron");
 const { enqueueJob } = require("./workers/job-runner");
 
-/**
- * Retourne l'heure courante en Europe/Paris (0–23).
- */
 function parisHour() {
   return parseInt(
     new Intl.DateTimeFormat("fr-FR", {
       timeZone: "Europe/Paris",
-      hour:     "numeric",
-      hour12:   false,
+      hour: "numeric",
+      hour12: false,
     }).format(new Date()),
     10
   );
 }
 
-/**
- * Scheduler nocturne — bump toutes les heures entre 22h et 08h Paris.
- * Chaque minute node-cron vérifie l'heure Paris, le bump est enfilé max 1×/h.
- */
+function parisDateHour() {
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
+  }).format(new Date()).replace(/\//g, "-");
+}
+
 function startScheduler() {
-  // Bump nocturne : vérifie toutes les heures si on est dans la fenêtre 22h-08h
+  // ── 08h-18h : publication d'annonces (toutes les heures) ─────────────────
+  // Enfile un job publish_pending_listings qui prend les annonces draft
+  // prêtes et les publie une par une via le worker publish-listing.
   cron.schedule("0 * * * *", () => {
     const h = parisHour();
-    const isNight = h >= 22 || h < 8;
-    if (!isNight) return;
-
-    const dateStr = new Intl.DateTimeFormat("fr-FR", {
-      timeZone: "Europe/Paris",
-      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
-    }).format(new Date()).replace(/\//g, "-");
-
-    const key = `bump_all:${dateStr}`;
-    const jobId = enqueueJob("bump_all", {}, { idempotencyKey: key });
-    if (jobId) console.log(`[scheduler] bump_all enfilé (${dateStr})`);
+    if (h < 8 || h >= 18) return;
+    const key = `publish_pending:${parisDateHour()}`;
+    const jobId = enqueueJob("publish_pending_listings", {}, { idempotencyKey: key });
+    if (jobId) console.log(`[scheduler] publish_pending_listings enfilé (${parisDateHour()})`);
   }, { timezone: "Europe/Paris" });
 
-  // Rapport matinal chaque jour à 08h05 Paris
+  // ── 18h-08h : recherche nocturne (toutes les heures) ──────────────────────
+  // 1. Recherche produits tendance Temu (scraping autorisé, pas d'achat)
+  // 2. Recherche prix concurrents LBC/Vinted pour les annonces actives
+  // 3. Recherche annonces à republier (non vues depuis >48h)
+  cron.schedule("30 * * * *", () => {
+    const h = parisHour();
+    const isNight = h >= 18 || h < 8;
+    if (!isNight) return;
+    const dh = parisDateHour();
+
+    const r1 = enqueueJob("research_temu_trends",    {}, { idempotencyKey: `temu_trends:${dh}` });
+    const r2 = enqueueJob("research_competitor_prices", {}, { idempotencyKey: `competitor_prices:${dh}` });
+    const r3 = enqueueJob("research_republish_candidates", {}, { idempotencyKey: `republish_candidates:${dh}` });
+    if (r1 || r2 || r3) console.log(`[scheduler] recherche nocturne enfilée (${dh})`);
+  }, { timezone: "Europe/Paris" });
+
+  // ── bump annonces (22h-08h, 1×/h) ────────────────────────────────────────
+  cron.schedule("0 * * * *", () => {
+    const h = parisHour();
+    if (h < 22 && h >= 8) return;
+    const key = `bump_all:${parisDateHour()}`;
+    const jobId = enqueueJob("bump_all", {}, { idempotencyKey: key });
+    if (jobId) console.log(`[scheduler] bump_all enfilé (${parisDateHour()})`);
+  }, { timezone: "Europe/Paris" });
+
+  // ── rapport matinal 08h05 ─────────────────────────────────────────────────
   cron.schedule("5 8 * * *", () => {
     const key = `morning_report:${new Date().toISOString().slice(0, 10)}`;
-    const jobId = enqueueJob("morning_report", {}, { idempotencyKey: key });
-    if (jobId) console.log("[scheduler] morning_report enfilé");
+    enqueueJob("morning_report", {}, { idempotencyKey: key });
+    console.log("[scheduler] morning_report enfilé");
   }, { timezone: "Europe/Paris" });
 
-  console.log("[scheduler] démarré — bump nocturne 22h-08h, rapport 08h05 Paris");
+  console.log("[scheduler] démarré — publication 08h-18h | recherche 18h-08h | bump 22h-08h | rapport 08h05");
 }
 
 module.exports = { startScheduler };
