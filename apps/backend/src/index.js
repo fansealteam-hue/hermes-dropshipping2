@@ -18,6 +18,9 @@ app.use("/admin", require("./routes/admin"));
 const MEDIA_DIR = process.env.MEDIA_DIR ?? require("path").join(__dirname, "../../data/media");
 app.use("/media", require("express").static(MEDIA_DIR));
 
+// Dashboard SPA
+app.use("/dashboard", express.static(path.join(__dirname, "../../frontend")));
+
 // Health check (no auth)
 app.get("/health", (req, res) => res.json({ ok: true }));
 
