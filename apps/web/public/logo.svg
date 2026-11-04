@@ -1,15 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tyno Entreprise">
   <defs>
     <linearGradient id="tyno-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f08a3e"/>
-      <stop offset="1" stop-color="#b8450f"/>
+      <stop offset="0" stop-color="#f59a52"/>
+      <stop offset=".55" stop-color="#e8702a"/>
+      <stop offset="1" stop-color="#a83d0c"/>
+    </linearGradient>
+    <linearGradient id="tyno-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#ffe9d8"/>
+    </linearGradient>
+    <linearGradient id="tyno-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#tyno-bg)"/>
+  <rect x="1" y="1" width="62" height="31" rx="15" fill="url(#tyno-shine)"/>
   <!-- Colis isométrique : le dessus forme la barre du T, l'arête centrale en est le pied -->
-  <path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/>
-  <path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".78"/>
-  <path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".56"/>
-  <path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.4" stroke-linecap="round"/>
-  <path d="M32 33V54" stroke="#b8450f" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M32 11 52 22 32 33 12 22Z" fill="url(#tyno-top)"/>
+  <path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".8"/>
+  <path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".55"/>
+  <path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M32 33V54" stroke="#a83d0c" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M12 22 32 33 52 22" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="1" stroke-linejoin="round"/>
 </svg>

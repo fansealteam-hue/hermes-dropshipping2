@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#080706" />
+<title>Connexion — Tyno Entreprise</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: #080706; --surface: #12100e; --surface-2: #1a1714; --border: #26221e; --border-strong: #3a3430; --text: #f3ede6; --text-2: #b4aaa0; --text-3: #7d746c; --accent: #e8702a; --red: #e5675f; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); }
+  body { color: var(--text); font-family: "Inter", -apple-system, sans-serif; display: grid; place-items: center; padding: 16px; -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(700px 420px at 50% -10%, rgba(232,112,42,.18), transparent 70%), radial-gradient(600px 400px at 100% 110%, rgba(232,112,42,.08), transparent 70%); }
+  .card { width: 100%; max-width: 400px; padding: 34px 30px 28px; border-radius: 22px; border: 1px solid var(--border);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, #fff), var(--surface)); box-shadow: 0 40px 90px -40px #000, 0 0 0 1px rgba(232,112,42,.06); animation: in .5s cubic-bezier(.2,.8,.2,1); }
+  @keyframes in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+  .logo { width: 64px; height: 64px; margin: 0 auto 18px; display: block; filter: drop-shadow(0 14px 28px rgba(232,112,42,.45)); }
+  h1 { text-align: center; font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 32px; letter-spacing: -.2px;
+    background: linear-gradient(90deg, #fff, #f0c9a8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { text-align: center; color: var(--text-3); font-size: 13px; margin: 6px 0 26px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .sub svg { width: 13px; height: 13px; }
+  label { font-size: 12.5px; color: var(--text-2); font-weight: 500; display: block; margin-bottom: 7px; }
+  .field { position: relative; }
+  input[type=password], input[type=text] { width: 100%; height: 48px; padding: 0 46px 0 14px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 15px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(232,112,42,.15); }
+  .eye { position: absolute; right: 8px; top: 8px; width: 32px; height: 32px; border: none; background: none; color: var(--text-3); cursor: pointer; border-radius: 8px; display: grid; place-items: center; }
+  .eye:hover { color: var(--text); background: rgba(255,255,255,.05); }
+  .eye svg { width: 17px; height: 17px; }
+  button[type=submit] { margin-top: 16px; width: 100%; height: 48px; border-radius: 12px; border: 1px solid #e2651f; background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff;
+    font: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer; box-shadow: 0 12px 28px -12px #e8702a; transition: filter .15s, transform .1s; }
+  button[type=submit]:hover { filter: brightness(1.08); }
+  button[type=submit]:active { transform: scale(.985); }
+  .err { display: none; margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; color: var(--red); background: rgba(229,103,95,.12); border: 1px solid rgba(229,103,95,.3); }
+  .err.show { display: block; }
+  .foot { text-align: center; color: var(--text-3); font-size: 11.5px; margin-top: 20px; }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login" autocomplete="on">
+    <img class="logo" src="/logo.svg" alt="" />
+    <h1>Tyno Entreprise</h1>
+    <div class="sub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Espace privé</div>
+    <div class="err" id="err"></div>
+    <input type="hidden" name="next" id="next" />
+    <input type="text" name="username" value="tyno" autocomplete="username" hidden />
+    <label for="pw">Mot de passe</label>
+    <div class="field">
+      <input id="pw" type="password" name="password" autocomplete="current-password" required autofocus />
+      <button class="eye" type="button" id="eye" aria-label="Afficher le mot de passe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div>
+    <button type="submit">Se connecter</button>
+    <div class="foot">Connexion gardée 30 jours sur cet appareil</div>
+  </form>
+<script>
+  const q = new URLSearchParams(location.search);
+  // le « #page » n'est jamais envoyé au serveur : on le recolle à l'adresse de retour
+  document.getElementById("next").value = (q.get("next") || "/") + (location.hash || "");
+  const msg = { "1": "Mot de passe incorrect.", wait: "Trop d'essais : réessaie dans 15 minutes.", config: "Le mot de passe du site n'est pas configuré (WEB_SECRET_TOKEN dans .env)." }[q.get("err")];
+  if (msg) { const e = document.getElementById("err"); e.textContent = msg; e.classList.add("show"); }
+  document.getElementById("eye").onclick = () => { const i = document.getElementById("pw"); i.type = i.type === "password" ? "text" : "password"; i.focus(); };
+</script>
+</body>
+</html>

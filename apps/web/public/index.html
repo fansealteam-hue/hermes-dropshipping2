@@ -86,7 +86,8 @@ aside {
   background: color-mix(in srgb, var(--surface) 60%, transparent); backdrop-filter: blur(12px);
 }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 6px; }
-.brand-mark svg { width: 26px; height: 26px; margin-top: 1px; }
+.brand-mark svg { width: 26px; height: 26px; margin-top: 1px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+.brand-mark { background: linear-gradient(140deg, #f59a52, #e8702a 55%, #a83d0c) !important; }
 .brand-mark {
   width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0;
   background: linear-gradient(140deg, var(--accent), #b8450f); color: #fff;
@@ -1080,7 +1081,7 @@ th.sort.on { color: var(--accent); }
 <div class="app">
   <aside>
     <div class="brand" id="brand" title="Cliquer pour renommer le projet">
-      <div class="brand-mark" id="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/><path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".78"/><path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".56"/><path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.4" stroke-linecap="round"/><path d="M32 33V54" stroke="#b8450f" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+      <div class="brand-mark" id="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="bm-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#ffe9d8"/></linearGradient></defs><path d="M32 11 52 22 32 33 12 22Z" fill="url(#bm-top)"/><path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".8"/><path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".55"/><path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.6" stroke-linecap="round"/><path d="M32 33V54" stroke="#a83d0c" stroke-width="2.8" stroke-linecap="round"/></svg></div>
       <div><div class="brand-name" id="brand-name">Tyno Entreprise</div></div>
     </div>
     <nav>
@@ -1104,7 +1105,10 @@ th.sort.on { color: var(--accent); }
         <div class="co-bar"><i id="co-bar"></i></div>
         <div class="co-goal" id="co-goal">Objectif du mois</div>
       </a>
-      <div class="conn" id="conn"><span class="conn-dot"></span><span id="conn-txt">Connexion…</span></div>
+      <div style="display:flex;gap:8px">
+        <div class="conn" id="conn" style="flex:1;min-width:0"><span class="conn-dot"></span><span id="conn-txt">Connexion…</span></div>
+        <a class="icon-btn" href="/logout" title="Se déconnecter" style="width:40px;height:auto;text-decoration:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg></a>
+      </div>
     </div>
   </aside>
 
@@ -1721,7 +1725,7 @@ async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers });
   let j;
   try { j = await r.json(); } catch { throw new Error(`HTTP ${r.status}`); }
-  if (r.status === 401) throw new Error("Accès refusé — ouvre la page avec ?token=TON_TOKEN");
+  if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search + location.hash); throw new Error("Connexion requise"); }
   if (!j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
   return j;
 }
