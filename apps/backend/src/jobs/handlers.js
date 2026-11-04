@@ -10,6 +10,14 @@ const db = require("../db/db");
 const SESSIONS_DIR = process.env.SESSIONS_DIR
   ?? path.join(__dirname, "../../../data/sessions");
 
+async function _launchBrowser() {
+  const { chromium } = require("playwright");
+  return chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium",
+    headless: true,
+  });
+}
+
 // --- Leboncoin connector (Claude 3) ------------------------------------------
 
 /**
@@ -45,13 +53,9 @@ async function handlePublishListing({ listingId }, job) {
   // Production: Playwright browser automation
   let browser;
   try {
-    const { chromium } = require("playwright");
     const fs = require("fs");
 
-    browser = await chromium.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium",
-      headless: true,
-    });
+    browser = await _launchBrowser();
 
     const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
@@ -178,7 +182,6 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
   // Production: post tracking in Leboncoin conversation
   let browser;
   try {
-    const { chromium } = require("playwright");
     const fs = require("fs");
 
     const listing = db.prepare("SELECT * FROM listings WHERE listing_id = ?").get(sale.listing_id);
@@ -188,10 +191,7 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
       return { saleId, synced: false, manual: true };
     }
 
-    browser = await chromium.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium",
-      headless: true,
-    });
+    browser = await _launchBrowser();
 
     const sessionPath = `${SESSIONS_DIR}/${sale.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
@@ -272,9 +272,8 @@ async function handleMarkListingSold({ listingId, saleId }, job) {
   // Production: clôturer l'annonce sur LBC
   let browser;
   try {
-    const { chromium } = require("playwright");
     const fs = require("fs");
-    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+    browser = await _launchBrowser();
     const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
@@ -360,9 +359,8 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
 
   let browser;
   try {
-    const { chromium } = require("playwright");
     const fs = require("fs");
-    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+    browser = await _launchBrowser();
     const sessionPath = `${SESSIONS_DIR}/${account.account_id}.json`;
     const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;
     const context = await browser.newContext({ storageState });
@@ -426,9 +424,8 @@ async function handleRepriceCheck(_, job) {
       // Mettre à jour le prix sur LBC via Playwright
       let browser;
       try {
-        const { chromium } = require("playwright");
         const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(listing.account_id);
-        browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium", headless: true });
+        browser = await _launchBrowser();
         const sessionPath = `${SESSIONS_DIR}/${listing.account_id}.json`;
         const fs = require("fs");
         const storageState = fs.existsSync(sessionPath) ? JSON.parse(fs.readFileSync(sessionPath, "utf8")) : undefined;

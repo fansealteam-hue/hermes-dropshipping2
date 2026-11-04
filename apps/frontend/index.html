@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TYNO — Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">T</span>
+        <span class="logo-text">TYNO</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-section="dashboard" href="#dashboard">
+          <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        </a>
+        <a class="nav-item" data-section="ventes" href="#ventes">
+          <span class="nav-icon">🛒</span><span class="nav-label">Ventes</span>
+        </a>
+        <a class="nav-item" data-section="produits" href="#produits">
+          <span class="nav-icon">📦</span><span class="nav-label">Produits</span>
+        </a>
+        <a class="nav-item" data-section="annonces" href="#annonces">
+          <span class="nav-icon">📋</span><span class="nav-label">Annonces</span>
+        </a>
+        <a class="nav-item" data-section="messages" href="#messages">
+          <span class="nav-icon">💬</span><span class="nav-label">Messages</span>
+          <span class="badge" id="badge-messages"></span>
+        </a>
+        <a class="nav-item" data-section="agents" href="#agents">
+          <span class="nav-icon">🤖</span><span class="nav-label">Agents</span>
+        </a>
+        <a class="nav-item" data-section="nuit" href="#nuit">
+          <span class="nav-icon">🌙</span><span class="nav-label">Nuit</span>
+        </a>
+        <a class="nav-item" data-section="parametres" href="#parametres">
+          <span class="nav-icon">⚙️</span><span class="nav-label">Paramètres</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <div id="main">
+      <!-- Header -->
+      <header id="header">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+        <div class="header-title" id="header-title">Dashboard</div>
+        <div class="header-right">
+          <div id="system-status-bar" class="system-status-bar" style="display:none">
+            <span id="sys-paused-badge" class="sys-badge sys-paused" style="display:none">⏸ PAUSE</span>
+            <span id="sys-jobs-info" class="sys-jobs-info"></span>
+            <span id="sys-msgs-info" class="sys-msgs-info"></span>
+          </div>
+          <button id="btn-pause-toggle" class="btn-pause-toggle btn-secondary" title="Mettre le bot en pause / relancer">⏸ Pause</button>
+          <div class="api-status" id="api-status">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-label">Connexion…</span>
+          </div>
+          <div class="header-time" id="header-time"></div>
+        </div>
+      </header>
+
+      <!-- Sections -->
+      <div id="content">
+
+        <!-- DASHBOARD -->
+        <section id="sec-dashboard" class="section active">
+          <div class="kpi-grid">
+            <div class="kpi-tile" id="kpi-ventes">
+              <div class="kpi-label">Ventes actives</div>
+              <div class="kpi-value" id="kv-ventes">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-ca">
+              <div class="kpi-label">CA du jour</div>
+              <div class="kpi-value" id="kv-ca">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-marge">
+              <div class="kpi-label">Marge nette</div>
+              <div class="kpi-value" id="kv-marge">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-jobs">
+              <div class="kpi-label">Jobs en attente</div>
+              <div class="kpi-value" id="kv-jobs">—</div>
+            </div>
+          </div>
+
+          <div class="card mt-24">
+            <div class="card-header">
+              <span>Dernières ventes</span>
+              <span id="demo-badge-dash" class="demo-badge" style="display:none">DÉMO</span>
+            </div>
+            <div class="table-wrap">
+              <table id="dash-sales-table">
+                <thead><tr>
+                  <th>Produit</th><th>Prix</th><th>Statut</th><th>Date</th>
+                </tr></thead>
+                <tbody id="dash-sales-body">
+                  <tr><td colspan="4" class="loading">Chargement…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-header"><span>Agents</span></div>
+            <div id="agents-status-dash" class="agents-list">Chargement…</div>
+          </div>
+        </section>
+
+        <!-- VENTES -->
+        <section id="sec-ventes" class="section">
+          <div class="section-toolbar">
+            <h2>Ventes <span id="demo-badge-ventes" class="demo-badge" style="display:none">DÉMO</span></h2>
+            <div class="pagination-ctrl">
+              <button id="ventes-prev" class="btn-sm">‹ Préc</button>
+              <span id="ventes-page-info"></span>
+              <button id="ventes-next" class="btn-sm">Suiv ›</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table id="ventes-table">
+                <thead><tr>
+                  <th>Produit</th><th>Prix</th><th>Statut</th><th>Ville</th><th>Date</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="ventes-body">
+                  <tr><td colspan="6" class="loading">Chargement…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PRODUITS -->
+        <section id="sec-produits" class="section">
+          <div class="section-toolbar">
+            <h2>Produits <span id="demo-badge-produits" class="demo-badge" style="display:none">DÉMO</span></h2>
+          </div>
+          <div id="produits-grid" class="products-grid">
+            <div class="loading">Chargement…</div>
+          </div>
+        </section>
+
+        <!-- ANNONCES -->
+        <section id="sec-annonces" class="section">
+          <div class="section-toolbar">
+            <h2>Annonces <span id="demo-badge-annonces" class="demo-badge" style="display:none">DÉMO</span></h2>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table id="annonces-table">
+                <thead><tr>
+                  <th>Titre</th><th>Canal</th><th>Compte</th><th>Prix</th><th>Statut</th><th>MAJ</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="annonces-body">
+                  <tr><td colspan="7" class="loading">Chargement…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MESSAGES -->
+        <section id="sec-messages" class="section">
+          <div class="section-toolbar">
+            <h2>Messages non lus <span id="demo-badge-messages" class="demo-badge" style="display:none">DÉMO</span></h2>
+          </div>
+          <div id="messages-list" class="messages-list">
+            <div class="loading">Chargement…</div>
+          </div>
+        </section>
+
+        <!-- AGENTS -->
+        <section id="sec-agents" class="section">
+          <div class="section-toolbar">
+            <h2>Agents <span id="demo-badge-agents" class="demo-badge" style="display:none">DÉMO</span></h2>
+          </div>
+          <div id="agents-list" class="agents-list-full">
+            <div class="loading">Chargement…</div>
+          </div>
+        </section>
+
+        <!-- NUIT -->
+        <section id="sec-nuit" class="section">
+          <div class="section-toolbar">
+            <h2>Automatisation nocturne</h2>
+          </div>
+          <div class="card nuit-card">
+            <div class="nuit-toggle-row">
+              <span class="nuit-label">Automatisation nocturne (22h – 08h)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="nuit-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="nuit-info">
+              <div class="nuit-info-row">
+                <span class="info-label">Plage horaire</span>
+                <span class="info-val">22:00 → 08:00 Europe/Paris</span>
+              </div>
+              <div class="nuit-info-row">
+                <span class="info-label">Prochaine exécution</span>
+                <span class="info-val" id="nuit-next">—</span>
+              </div>
+              <div class="nuit-info-row">
+                <span class="info-label">Jobs bump hier soir</span>
+                <span class="info-val" id="nuit-bumps">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="card mt-16">
+            <div class="card-header"><span>Log nocturne (10 dernières actions)</span></div>
+            <div id="nuit-log" class="nuit-log">
+              <div class="log-empty">Aucun log disponible.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PARAMÈTRES -->
+        <section id="sec-parametres" class="section">
+          <div class="section-toolbar">
+            <h2>Paramètres</h2>
+          </div>
+          <div class="card params-card">
+            <div class="param-row">
+              <label for="param-api-url">URL API backend</label>
+              <input type="url" id="param-api-url" placeholder="https://api.example.com" autocomplete="off">
+            </div>
+            <div class="param-row">
+              <label>Token Telegram</label>
+              <div class="masked-field">***</div>
+              <span class="masked-hint">Configurer dans .env sur le serveur</span>
+            </div>
+            <div class="param-row">
+              <label>Token extension Chrome</label>
+              <div class="masked-field">***</div>
+              <span class="masked-hint">Configurer EXTENSION_API_TOKEN dans .env</span>
+            </div>
+            <div class="param-actions">
+              <button id="btn-save-params" class="btn-primary">Enregistrer</button>
+              <button id="btn-test-conn" class="btn-secondary">Tester la connexion</button>
+              <span id="conn-result"></span>
+            </div>
+          </div>
+
+          <div class="card mt-24">
+            <div class="card-header"><span>Export &amp; Contrôle</span></div>
+            <div class="export-row">
+              <label for="export-from">Du</label>
+              <input type="date" id="export-from">
+              <label for="export-to">au</label>
+              <input type="date" id="export-to">
+              <button id="btn-export-csv" class="btn-secondary">⬇ Export CSV ventes</button>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /app -->
+
+  <script src="app.js"></script>
+</body>
+</html>

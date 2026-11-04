@@ -115,12 +115,16 @@ router.get("/listings/:id", (req, res) => {
 
 // All listings with product title + sale info (for dashboard)
 router.get("/listings", (req, res) => {
-  const { status, accountId, limit = 200, offset = 0 } = req.query;
+  const rawLimit  = parseInt(req.query.limit  ?? "200");
+  const rawOffset = parseInt(req.query.offset ?? "0");
+  const limitVal  = Math.min(Math.max(rawLimit,  1), 1000);
+  const offsetVal = Math.max(rawOffset, 0);
+  const { status, accountId } = req.query;
+
   let where = "WHERE 1=1";
-  const params = [];
-  if (status)    { where += " AND l.status = ?";     params.push(status) }
-  if (accountId) { where += " AND l.account_id = ?"; params.push(accountId) }
-  params.push(parseInt(limit), parseInt(offset));
+  const filterParams = [];
+  if (status)    { where += " AND l.status = ?";     filterParams.push(status) }
+  if (accountId) { where += " AND l.account_id = ?"; filterParams.push(accountId) }
 
   const rows = db.prepare(`
     SELECT
@@ -139,9 +143,9 @@ router.get("/listings", (req, res) => {
     ${where}
     ORDER BY l.created_at DESC
     LIMIT ? OFFSET ?
-  `).all(...params);
+  `).all(...filterParams, limitVal, offsetVal);
 
-  const total = db.prepare(`SELECT COUNT(*) AS n FROM listings l ${where.replace(/LIMIT.*/, '')}`).get(...params.slice(0, -2))?.n ?? 0;
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM listings l ${where}`).get(...filterParams)?.n ?? 0;
 
   res.json({ ok: true, data: rows, total });
 });
@@ -413,7 +417,44 @@ router.post("/sales/:id/cancel", (req, res) => {
 router.post("/sales/:id/confirm-available", (req, res) => {
   const sale = getSale(req.params.id);
   if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
-  // Déjà confirmed — rien à faire côté DB, juste ack
+  res.json({ ok: true });
+});
+
+// ─── Republier annonce après vente (bouton 🔁 Republier) ─────────────────────
+
+router.post("/sales/:id/republish", (req, res) => {
+  const { randomUUID } = require("crypto");
+  const sale = getSale(req.params.id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+
+  // Marquer la vente comme closed
+  db.prepare("UPDATE sales SET status = 'closed', updated_at = datetime('now') WHERE sale_id = ?")
+    .run(sale.saleId);
+
+  // Enqueue republish job (supprime cache photo + recrée annonce)
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const key = `republish:${sale.listingId}:${Date.now()}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'republish_listing', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(jobId, JSON.stringify({ listingId: sale.listingId, saleId: sale.saleId }), key);
+
+  res.json({ ok: true, data: { jobId, status: "enqueued" } });
+});
+
+// ─── Clore une vente sans republication (bouton 📦 Archiver) ─────────────────
+
+router.post("/sales/:id/close", (req, res) => {
+  const sale = getSale(req.params.id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+
+  db.prepare("UPDATE sales SET status = 'closed', updated_at = datetime('now') WHERE sale_id = ?")
+    .run(sale.saleId);
+
+  // Archive l'annonce aussi
+  db.prepare("UPDATE listings SET status = 'archived', updated_at = datetime('now') WHERE listing_id = ?")
+    .run(sale.listingId);
+
   res.json({ ok: true });
 });
 
@@ -454,6 +495,273 @@ router.post("/hermes/event", (req, res) => {
 
   db.prepare("UPDATE events SET processed = 1, processed_at = datetime('now') WHERE event_id = ?").run(eventId);
   res.json({ ok: true });
+});
+
+// ─── Confirmer commande fournisseur (Bug 1) ───────────────────────────────────
+
+router.post("/sales/:id/confirm-order", (req, res) => {
+  const { id } = req.params;
+  const sale = db.prepare("SELECT * FROM sales WHERE sale_id = ?").get(id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+
+  const { orderRef, pricePaid } = req.body ?? {};
+  if (!orderRef) return res.status(400).json({ ok: false, error: "orderRef requis" });
+
+  // Sanitize : ne jamais stocker de données personnelles acheteur ici
+  const priceCents = pricePaid != null ? Math.round(parseFloat(pricePaid) * 100) : null;
+
+  db.prepare(`
+    UPDATE sales
+    SET status = 'order_placed',
+        order_ref = ?,
+        order_placed_at = datetime('now'),
+        actual_cost_eur_cents = COALESCE(?, actual_cost_eur_cents),
+        updated_at = datetime('now')
+    WHERE sale_id = ?
+  `).run(orderRef, priceCents, id);
+
+  res.json({ ok: true, data: { saleId: id, status: "order_placed", orderRef } });
+});
+
+// ─── Idempotence callbacks (Bug 8) ────────────────────────────────────────────
+
+// Table créée automatiquement
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS callback_log (
+    callback_id TEXT PRIMARY KEY,
+    processed_at TEXT NOT NULL
+  )
+`).run();
+
+router.post("/callbacks/mark-done", (req, res) => {
+  const { callbackId } = req.body ?? {};
+  if (!callbackId) return res.status(400).json({ ok: false, error: "callbackId requis" });
+
+  const existing = db.prepare("SELECT 1 FROM callback_log WHERE callback_id = ?").get(callbackId);
+  if (existing) return res.json({ ok: true, alreadyDone: true });
+
+  db.prepare("INSERT OR IGNORE INTO callback_log (callback_id, processed_at) VALUES (?, datetime('now'))").run(callbackId);
+  res.json({ ok: true, alreadyDone: false });
+});
+
+// ─── Import produit depuis extension Chrome ────────────────────────────────────
+
+router.post("/products/import-from-extension", (req, res) => {
+  const { title, url, price, images, variants, source, extensionToken } = req.body ?? {};
+  if (!url || !title) return res.status(400).json({ ok: false, error: "title et url requis" });
+
+  // Vérification token extension (simple)
+  const validToken = process.env.EXTENSION_API_TOKEN;
+  if (validToken && extensionToken !== validToken) {
+    return res.status(403).json({ ok: false, error: "Token extension invalide" });
+  }
+
+  const { randomUUID } = require("crypto");
+  const temuItemId = `ext_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+
+  // Enqueue job pour traitement par le worker
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'process_extension_import', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(jobId, JSON.stringify({ title, url, price, images, variants, source, temuItemId }), `ext_import:${url}`);
+
+  res.json({ ok: true, data: { jobId, temuItemId, message: "Import en file d'attente" } });
+});
+
+// ─── Bump all listings ────────────────────────────────────────────────────────
+
+router.post("/listings/bump-all", (req, res) => {
+  const rows = db.prepare(
+    "SELECT listing_id FROM listings WHERE status = 'active' AND account_id IS NOT NULL"
+  ).all();
+  let jobsCreated = 0;
+  for (const row of rows) {
+    const key = `bump_listing:${row.listing_id}`;
+    const existing = db.prepare(
+      "SELECT 1 FROM jobs WHERE idempotency_key = ? AND status = 'pending'"
+    ).get(key);
+    if (!existing) {
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      db.prepare(
+        `INSERT INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+         VALUES (?, 'bump_listing', ?, 'pending', ?, datetime('now'), datetime('now'))`
+      ).run(jobId, JSON.stringify({ listingId: row.listing_id }), key);
+      jobsCreated++;
+    }
+  }
+  res.json({ ok: true, data: { jobsCreated } });
+});
+
+// ─── Sync all accounts ────────────────────────────────────────────────────────
+
+router.post("/accounts/sync-all", (req, res) => {
+  const accounts = db.prepare(
+    "SELECT account_id FROM seller_accounts WHERE active = 1"
+  ).all();
+  let jobsCreated = 0;
+  for (const acc of accounts) {
+    const key = `sync_account:${acc.account_id}`;
+    const existing = db.prepare(
+      "SELECT 1 FROM jobs WHERE idempotency_key = ? AND status = 'pending'"
+    ).get(key);
+    if (!existing) {
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      db.prepare(
+        `INSERT INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+         VALUES (?, 'sync_account', ?, 'pending', ?, datetime('now'), datetime('now'))`
+      ).run(jobId, JSON.stringify({ accountId: acc.account_id }), key);
+      jobsCreated++;
+    }
+  }
+  res.json({ ok: true, data: { jobsCreated } });
+});
+
+// ─── Agents status ────────────────────────────────────────────────────────────
+
+router.get("/agents/status", (req, res) => {
+  const pending   = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'").get().n;
+  const running   = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'running'").get().n;
+  const done24h   = db.prepare(
+    "SELECT COUNT(*) AS n FROM jobs WHERE status = 'done' AND created_at >= datetime('now', '-24 hours')"
+  ).get().n;
+  const failed24h = db.prepare(
+    "SELECT COUNT(*) AS n FROM jobs WHERE status = 'failed' AND created_at >= datetime('now', '-24 hours')"
+  ).get().n;
+  res.json({ ok: true, data: { pending, running, done24h, failed24h } });
+});
+
+// ─── Unread messages ──────────────────────────────────────────────────────────
+
+router.get("/messages/unread", (req, res) => {
+  // table créée à la migration si absente
+  db.prepare(`CREATE TABLE IF NOT EXISTS lbc_messages (
+    id          TEXT PRIMARY KEY,
+    listing_id  TEXT,
+    sender_name TEXT,
+    preview     TEXT,
+    full_text   TEXT,
+    read        INTEGER NOT NULL DEFAULT 0,
+    received_at TEXT NOT NULL
+  )`).run();
+  const rows = db.prepare(
+    "SELECT id, sender_name AS senderName, preview, received_at FROM lbc_messages WHERE read = 0 ORDER BY received_at DESC LIMIT 20"
+  ).all();
+  res.json({ ok: true, data: rows });
+});
+
+// ─── Export CSV comptable ─────────────────────────────────────────────────────
+// GET /api/export/sales?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Télécharge un CSV des ventes pour la comptabilité (pas de données PII)
+
+router.get("/export/sales", (req, res) => {
+  const { from, to } = req.query;
+  const dateFrom = from ?? new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const dateTo   = to   ?? new Date().toISOString().slice(0, 10);
+
+  const rows = db.prepare(`
+    SELECT
+      s.sale_id,
+      s.confirmed_at,
+      s.order_placed_at,
+      l.title,
+      s.channel,
+      s.sale_price_eur_cents,
+      s.cost_eur_cents,
+      s.actual_cost_eur_cents,
+      s.order_ref,
+      s.tracking_number,
+      s.tracking_carrier,
+      s.status,
+      s.delivery_city
+    FROM sales s
+    JOIN listings l ON l.listing_id = s.listing_id
+    WHERE date(s.confirmed_at) BETWEEN ? AND ?
+    ORDER BY s.confirmed_at ASC
+  `).all(dateFrom, dateTo);
+
+  const SHIPPING = Math.round(parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99") * 100);
+
+  const header = [
+    "Date vente", "Date commande", "Produit", "Canal",
+    "Prix vendu (€)", "Coût estimé (€)", "Coût réel (€)",
+    "Marge brute (€)", "Réf commande", "Tracking", "Transporteur",
+    "Statut", "Ville livraison"
+  ].join(";");
+
+  const lines = rows.map(r => {
+    const prixVendu   = (r.sale_price_eur_cents / 100).toFixed(2);
+    const coutEstime  = (r.cost_eur_cents / 100).toFixed(2);
+    const coutReel    = r.actual_cost_eur_cents != null ? (r.actual_cost_eur_cents / 100).toFixed(2) : "";
+    const coutPourMarge = r.actual_cost_eur_cents ?? (r.cost_eur_cents + SHIPPING);
+    const fraisVente  = Math.round(r.sale_price_eur_cents * 0.08);
+    const marge = ((r.sale_price_eur_cents - coutPourMarge - fraisVente) / 100).toFixed(2);
+
+    return [
+      r.confirmed_at?.slice(0, 10) ?? "",
+      r.order_placed_at?.slice(0, 10) ?? "",
+      `"${(r.title ?? "").replace(/"/g, "'")}"`,
+      r.channel ?? "",
+      prixVendu,
+      coutEstime,
+      coutReel,
+      marge,
+      r.order_ref ?? "",
+      r.tracking_number ?? "",
+      r.tracking_carrier ?? "",
+      r.status ?? "",
+      r.delivery_city ?? "",
+    ].join(";");
+  });
+
+  const csv = [header, ...lines].join("\n");
+  const filename = `ventes_${dateFrom}_${dateTo}.csv`;
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send("﻿" + csv); // BOM UTF-8 pour Excel
+});
+
+// ─── Système : statut & pause globale ────────────────────────────────────────
+
+router.get("/system/status", (req, res) => {
+  try {
+    const paused = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE paused_global = 1 AND status = 'pending'"
+    ).get().n > 0;
+
+    const activeSales = db.prepare(
+      "SELECT COUNT(*) AS n FROM sales WHERE status NOT IN ('closed','cancelled')"
+    ).get().n;
+
+    const pendingJobs = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'"
+    ).get().n;
+
+    const failedJobs = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE status = 'failed'"
+    ).get().n;
+
+    res.json({ ok: true, paused, activeSales, pendingJobs, failedJobs });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post("/system/pause", (req, res) => {
+  const { pause } = req.body ?? {};
+  if (typeof pause !== "boolean") {
+    return res.status(400).json({ ok: false, error: "pause (boolean) requis" });
+  }
+  try {
+    db.prepare(
+      "UPDATE jobs SET paused_global = ? WHERE status = 'pending'"
+    ).run(pause ? 1 : 0);
+    console.log(`[api] mode pause ${pause ? "activé" : "désactivé"}`);
+    res.json({ ok: true, paused: pause });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 module.exports = router;

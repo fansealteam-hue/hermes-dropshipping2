@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS listings (
   updated_at          TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_listings_status     ON listings(status);
+CREATE INDEX IF NOT EXISTS idx_listings_account_id ON listings(account_id);
+
 CREATE TABLE IF NOT EXISTS listing_history (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   listing_id  TEXT NOT NULL REFERENCES listings(listing_id),
@@ -108,6 +111,8 @@ CREATE TABLE IF NOT EXISTS sales (
   updated_at                  TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_sales_listing_id ON sales(listing_id);
+
 CREATE TABLE IF NOT EXISTS sale_history (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   sale_id     TEXT NOT NULL REFERENCES sales(sale_id),
@@ -137,6 +142,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at      TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_jobs_status_run_at ON jobs(status, run_at);
+
 -- ─── Events (Hermès / webhooks) ──────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS events (
@@ -157,6 +164,28 @@ CREATE TABLE IF NOT EXISTS bot_sessions (
   session_json TEXT NOT NULL DEFAULT '{}',
   updated_at  TEXT NOT NULL
 );
+
+-- ─── Callback deduplication ──────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS callback_log (
+  callback_id   TEXT PRIMARY KEY,     -- Telegram callback_query.id (unique per query)
+  processed_at  TEXT NOT NULL
+);
+
+-- ─── LBC messages (inbound buyer messages) ───────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS lbc_messages (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id    TEXT NOT NULL,
+  buyer_name    TEXT,
+  message       TEXT NOT NULL,
+  received_at   TEXT NOT NULL,
+  replied       INTEGER NOT NULL DEFAULT 0,
+  replied_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_lbc_messages_listing ON lbc_messages(listing_id);
+CREATE INDEX IF NOT EXISTS idx_lbc_messages_replied ON lbc_messages(replied);
 
 -- ─── Vinted archive (preserved, not active) ──────────────────────────────────
 

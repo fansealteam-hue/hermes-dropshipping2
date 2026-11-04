@@ -1,29 +1,24 @@
+"use strict";
 /**
- * Negotiation engine — automatic price negotiation rules.
+ * Moteur de négociation — règles automatiques de réponse aux offres.
  *
- * Rules:
- *   offer >= 95% of listing price → accept
- *   offer >= 85% of listing price → counter-propose at 95%
- *   offer >= 70% of listing price → counter-propose at listing price
- *   offer < 70%                   → refuse
+ * Principe : NE JAMAIS refuser une vente sèchement.
+ *   - Offre ≥ 95% → acceptée
+ *   - Offre ≥ 85% → contre-proposition à 95%
+ *   - Offre ≥ 70% → contre-proposition au prix affiché
+ *   - Offre < 70% → contre-proposition au prix affiché (jamais de refus)
+ *
+ * Mode livraison : TOUJOURS proposer uniquement la livraison (jamais le retrait).
  */
 
-const ACCEPT_THRESHOLD = parseFloat(process.env.NEGO_ACCEPT_PCT ?? "0.95");
+const ACCEPT_THRESHOLD  = parseFloat(process.env.NEGO_ACCEPT_PCT  ?? "0.95");
 const COUNTER_THRESHOLD = parseFloat(process.env.NEGO_COUNTER_PCT ?? "0.85");
-const REFUSE_THRESHOLD = parseFloat(process.env.NEGO_REFUSE_PCT ?? "0.70");
 
-/**
- * @param {number} listingPriceEur
- * @param {number} offerPriceEur
- * @returns {{ decision: 'accept'|'counter'|'refuse', counterPriceEur?: number, ratio: number }}
- */
 function evaluateOffer(listingPriceEur, offerPriceEur) {
-  if (!listingPriceEur || listingPriceEur <= 0) {
+  if (!listingPriceEur || listingPriceEur <= 0)
     throw Object.assign(new Error("Prix annonce invalide"), { code: "INVALID_PRICE" });
-  }
-  if (!offerPriceEur || offerPriceEur <= 0) {
+  if (!offerPriceEur || offerPriceEur <= 0)
     throw Object.assign(new Error("Offre invalide"), { code: "INVALID_OFFER" });
-  }
 
   const ratio = offerPriceEur / listingPriceEur;
 
@@ -32,35 +27,42 @@ function evaluateOffer(listingPriceEur, offerPriceEur) {
   }
 
   if (ratio >= COUNTER_THRESHOLD) {
-    const counterPriceEur = _round(listingPriceEur * ACCEPT_THRESHOLD);
-    return { decision: "counter", counterPriceEur, ratio };
+    return { decision: "counter", counterPriceEur: _round(listingPriceEur * ACCEPT_THRESHOLD), ratio };
   }
 
-  if (ratio >= REFUSE_THRESHOLD) {
-    return { decision: "counter", counterPriceEur: listingPriceEur, ratio };
-  }
-
-  return { decision: "refuse", ratio };
+  // Offre basse ou très basse → on contre-propose au prix affiché, jamais de refus
+  return { decision: "counter", counterPriceEur: listingPriceEur, ratio };
 }
 
-/**
- * Build a polite reply message for the negotiation outcome.
- */
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
 function buildReply(decision, counterPriceEur, listingPriceEur) {
+  const livraisonNote = "Je fais uniquement en livraison btw 📦";
+
   switch (decision) {
     case "accept":
-      return "Parfait, votre offre est acceptée ! Je vous contacte pour finaliser la transaction.";
+      return _pick([
+        `Top, c'est ok pour moi ! ${livraisonNote} On finalise comment ?`,
+        `Marché conclu ! ${livraisonNote} Dites-moi comment vous voulez procéder 😊`,
+        `C'est bon pour moi ! ${livraisonNote} On règle ça comment ?`,
+      ]);
 
     case "counter":
-      return counterPriceEur < listingPriceEur
-        ? `Je peux faire un effort et descendre à ${counterPriceEur.toFixed(2)} €. C'est mon dernier prix.`
-        : `Je maintiens le prix à ${listingPriceEur.toFixed(2)} €, c'est déjà le prix le plus bas que je peux faire.`;
-
-    case "refuse":
-      return `Désolé, je ne peux pas descendre en dessous de ${listingPriceEur.toFixed(2)} €. Le prix est ferme.`;
+      if (counterPriceEur < listingPriceEur) {
+        return _pick([
+          `Honnêtement je peux faire ${counterPriceEur.toFixed(2)} € et c'est vraiment mon max. ${livraisonNote}`,
+          `Je peux descendre à ${counterPriceEur.toFixed(2)} €, c'est le mieux que je puisse faire 🙂 ${livraisonNote}`,
+          `${counterPriceEur.toFixed(2)} € c'est mon dernier prix, je ne peux pas aller plus bas. ${livraisonNote}`,
+        ]);
+      }
+      return _pick([
+        `Ah c'est difficile, j'en suis déjà à ${listingPriceEur.toFixed(2)} € qui est mon minimum. ${livraisonNote} Toujours intéressé(e) ?`,
+        `Je suis déjà au plus bas à ${listingPriceEur.toFixed(2)} €, j'ai pas vraiment de marge. ${livraisonNote} 😊`,
+        `${listingPriceEur.toFixed(2)} € c'est vraiment mon prix plancher malheureusement. ${livraisonNote} Dites-moi si ça vous va !`,
+      ]);
 
     default:
-      return "Je reviens vers vous rapidement.";
+      return `Merci pour votre intérêt ! ${livraisonNote} Dites-moi si vous avez des questions 😊`;
   }
 }
 
@@ -68,4 +70,4 @@ function _round(n) {
   return Math.round(n * 100) / 100;
 }
 
-module.exports = { evaluateOffer, buildReply, ACCEPT_THRESHOLD, COUNTER_THRESHOLD, REFUSE_THRESHOLD };
+module.exports = { evaluateOffer, buildReply, ACCEPT_THRESHOLD, COUNTER_THRESHOLD };

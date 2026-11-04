@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tyno Connect</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <div class="logo-name">TYNO</div>
+          <div class="logo-sub">CONNECT</div>
+        </div>
+      </div>
+      <div id="status-dot" class="status-dot disconnected" title="Statut connexion"></div>
+    </header>
+
+    <div class="status-bar">
+      <span id="status-text">Vérification…</span>
+      <span id="last-sync" class="muted"></span>
+    </div>
+
+    <div class="page-info" id="page-info">
+      <span id="page-platform" class="badge">—</span>
+      <span id="page-title" class="page-title-text"></span>
+    </div>
+
+    <div class="actions">
+      <button id="btn-import" class="btn btn-primary" disabled>
+        📦 Importer ce produit
+      </button>
+      <button id="btn-sync" class="btn btn-secondary">
+        🔄 Synchroniser
+      </button>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-btn" id="btn-dashboard">📊 Dashboard</button>
+      <button class="nav-btn" id="btn-options">⚙️ Paramètres</button>
+    </nav>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

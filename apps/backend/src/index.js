@@ -18,14 +18,29 @@ app.use("/admin", require("./routes/admin"));
 const MEDIA_DIR = process.env.MEDIA_DIR ?? require("path").join(__dirname, "../../data/media");
 app.use("/media", require("express").static(MEDIA_DIR));
 
+// Dashboard SPA
+app.use("/dashboard", express.static(path.join(__dirname, "../../frontend")));
+
 // Health check (no auth)
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-// Start job queue ticker
+// Start job queue ticker (legacy queue)
 const queue = require("./jobs/queue");
 require("./jobs/handlers"); // register handlers
 
 setInterval(() => queue.tick(), parseInt(process.env.JOB_INTERVAL_MS ?? "5000")).unref();
+
+// New worker-based job runner (phases E/F/G)
+if (process.env.NODE_ENV !== "test") {
+  const { startJobRunner } = require("./workers/job-runner");
+  startJobRunner();
+}
+
+// Nocturnal scheduler (phase J)
+if (process.env.NODE_ENV !== "test") {
+  const { startScheduler } = require("./scheduler");
+  startScheduler();
+}
 
 // On startup, re-queue unsent alerts (survive restart)
 const db = require("./db/db");
@@ -156,6 +171,31 @@ function scheduleAutoPublisher() {
 }
 
 scheduleAutoPublisher();
+
+// ─── Page /status (monitoring) ───────────────────────────────────────────────
+app.get("/status", (req, res) => {
+  try {
+    const activeSales   = db.prepare("SELECT COUNT(*) AS n FROM sales WHERE status NOT IN ('closed','cancelled')").get().n;
+    const draftListings = db.prepare("SELECT COUNT(*) AS n FROM listings WHERE status = 'draft'").get().n;
+    const activeListings= db.prepare("SELECT COUNT(*) AS n FROM listings WHERE status = 'active'").get().n;
+    const pendingJobs   = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'").get().n;
+    const failedJobs    = db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'failed' AND date(completed_at) = date('now')").get().n;
+    const lastJob       = db.prepare("SELECT operation, completed_at, status FROM jobs WHERE status IN ('done','failed') ORDER BY completed_at DESC LIMIT 1").get();
+    const unreadMsg     = db.prepare("SELECT COUNT(*) AS n FROM lbc_messages WHERE replied = 0").get()?.n ?? 0;
+
+    res.json({
+      ok: true,
+      uptime: Math.floor(process.uptime()),
+      ts: new Date().toISOString(),
+      sales:    { active: activeSales },
+      listings: { active: activeListings, draft: draftListings },
+      jobs:     { pending: pendingJobs, failedToday: failedJobs, last: lastJob ?? null },
+      messages: { unread: unreadMsg },
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // Only start listening when run directly (not when imported by tests)
 if (require.main === module) {

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tyno Connect — Paramètres</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f13; color: #f1f1f4;
+      font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+      min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 32px 16px;
+    }
+    .card {
+      background: #16161d; border: 1px solid #2d2d3f; border-radius: 12px;
+      padding: 32px; width: 100%; max-width: 480px;
+    }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+    .logo-icon {
+      width: 40px; height: 40px; background: #f97316; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    h1 { font-size: 18px; font-weight: 700; }
+    .subtitle { font-size: 12px; color: #71717a; margin-top: 2px; }
+    .field { margin-bottom: 20px; }
+    label { display: block; font-size: 13px; color: #a1a1aa; margin-bottom: 6px; font-weight: 500; }
+    input {
+      width: 100%; padding: 10px 14px; background: #0f0f13; border: 1px solid #3a3a52;
+      border-radius: 8px; color: #f1f1f4; font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #f97316; }
+    input::placeholder { color: #52526e; }
+    .hint { font-size: 11px; color: #52526e; margin-top: 4px; }
+    .actions { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #f97316; color: #fff; flex: 1; }
+    .btn-danger { background: #1e1e28; color: #f87171; border: 1px solid #3a3a52; }
+    .status-box {
+      margin-top: 20px; padding: 12px 16px; border-radius: 8px; font-size: 13px;
+      display: none; align-items: center; gap: 8px;
+    }
+    .status-box.ok    { display: flex; background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.3); color: #4ade80; }
+    .status-box.error { display: flex; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); color: #f87171; }
+    .status-box.info  { display: flex; background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.3); color: #60a5fa; }
+    .saved-badge {
+      display: none; color: #4ade80; font-size: 12px; align-self: center;
+    }
+    .saved-badge.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <h1>Tyno Connect</h1>
+        <div class="subtitle">Configuration de la connexion</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="api-url">URL de votre serveur Tyno</label>
+      <input type="url" id="api-url" placeholder="https://mon-vps.mondomaine.fr" autocomplete="off" spellcheck="false">
+      <p class="hint">L'adresse de votre backend Tyno Entreprise (sans slash final)</p>
+    </div>
+
+    <div class="field">
+      <label for="api-token">Token API</label>
+      <input type="password" id="api-token" placeholder="Votre token Tyno (depuis Paramètres → API)" autocomplete="off" spellcheck="false">
+      <p class="hint">Généré dans votre dashboard Tyno — ne partagez jamais ce token</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-save">💾 Enregistrer et tester</button>
+      <button class="btn btn-danger" id="btn-disconnect">🔌 Déconnecter</button>
+      <span class="saved-badge" id="saved-badge">✓ Sauvegardé</span>
+    </div>
+
+    <div class="status-box" id="status-box">
+      <span id="status-icon"></span>
+      <span id="status-msg"></span>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
