@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Orbis — Tableau de bord</title>
+<title>Tyno Entreprise — Tableau de bord</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
@@ -78,12 +79,13 @@ aside {
   background: color-mix(in srgb, var(--surface) 60%, transparent); backdrop-filter: blur(12px);
 }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 6px; }
+.brand-mark svg { width: 26px; height: 26px; margin-top: 1px; }
 .brand-mark {
-  width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0;
   background: linear-gradient(140deg, var(--accent), #b8450f); color: #fff;
   font-family: var(--serif); font-size: 22px; font-weight: 600; box-shadow: 0 6px 18px -6px var(--accent);
 }
-.brand-name { font-family: var(--serif); font-size: 23px; font-weight: 600; letter-spacing: 0.2px; line-height: 1; }
+.brand-name { font-family: var(--serif); font-size: 21px; white-space: nowrap; font-weight: 600; letter-spacing: 0.2px; line-height: 1; }
 .brand-sub { font-size: 10.5px; color: var(--text-3); letter-spacing: 1.6px; text-transform: uppercase; margin-top: 4px; }
 aside nav { display: flex; flex-direction: column; gap: 3px; }
 .nav-label { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-3); padding: 0 10px 8px; }
@@ -398,6 +400,91 @@ tbody tr:hover { background: var(--surface-2); }
 #pending-card .card-head { flex-wrap: wrap; }
 @media (max-width: 820px) { .pend-steps { grid-template-columns: 1fr; } #pending-card .card-head .right { margin-left: 0; width: 100%; } }
 
+/* Entrepôt 3D */
+.live-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); animation: pulse 1.6s infinite; }
+.wh-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+.wh-card { padding: 0; overflow: hidden; position: relative; }
+.wh-scene { height: 620px; width: 100%; cursor: grab; touch-action: pan-y; position: relative;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 55%), radial-gradient(ellipse at 50% 110%, color-mix(in srgb, var(--blue) 12%, transparent), transparent 60%); }
+.wh-scene:active { cursor: grabbing; }
+.wh-scene canvas { display: block; }
+.wh-hud { position: absolute; top: 16px; left: 18px; right: 18px; display: flex; gap: 10px; pointer-events: none; z-index: 2; flex-wrap: wrap; }
+.wh-hud .live { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  background: color-mix(in srgb, var(--red) 16%, var(--surface)); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
+.wh-hud .live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 1.4s infinite; }
+.wh-hud .stat { padding: 6px 12px; border-radius: 20px; font-size: 12px; background: color-mix(in srgb, var(--surface) 80%, transparent); border: 1px solid var(--border); color: var(--text-2); backdrop-filter: blur(6px); }
+.wh-hud .stat b { color: var(--text); }
+.wh-hud .right { margin-left: auto; pointer-events: auto; display: flex; gap: 6px; }
+.wh-legend { position: absolute; bottom: 14px; left: 18px; right: 18px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; z-index: 2; }
+.wh-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 5px 10px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 80%, transparent); border: 1px solid var(--border); color: var(--text-2); backdrop-filter: blur(6px); }
+.wh-legend i { width: 9px; height: 9px; border-radius: 3px; }
+.wh-feed { display: flex; flex-direction: column; gap: 0; max-height: 560px; overflow-y: auto; }
+.wh-ev { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); animation: fade .4s ease; }
+.wh-ev:last-child { border-bottom: none; }
+.wh-ev .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; font-size: 13px; }
+.wh-ev .tx { font-size: 12.5px; }
+.wh-ev .tm { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.wh-panel { position: absolute; right: 16px; top: 64px; width: 250px; z-index: 3; background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px; display: none; box-shadow: 0 16px 40px -16px rgba(0,0,0,.6); }
+.wh-panel.show { display: block; animation: fade .2s; }
+.wh-panel .x { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; }
+@media (max-width: 1100px) { .wh-wrap { grid-template-columns: 1fr; } .wh-feed { max-height: 320px; } }
+@media (max-width: 820px) { .wh-scene { height: 440px; } .wh-panel { left: 12px; right: 12px; width: auto; top: auto; bottom: 12px; } }
+
+/* Gamification */
+.game-bar { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; margin-bottom: 16px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface) 55%); }
+.lvl-badge { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; position: relative;
+  background: conic-gradient(from 200deg, var(--accent), var(--gold), var(--accent)); box-shadow: 0 10px 30px -10px var(--accent); }
+.lvl-badge b { width: 56px; height: 56px; border-radius: 15px; background: var(--surface); display: grid; place-items: center; font-size: 24px; font-weight: 800; }
+.lvl-badge small { position: absolute; bottom: -8px; font-size: 9.5px; font-weight: 800; letter-spacing: 1px; background: var(--accent); color: #fff; padding: 1px 7px; border-radius: 10px; }
+.lvl-name { font-family: var(--serif); font-size: 26px; font-weight: 600; line-height: 1.1; }
+.xp-track { height: 10px; border-radius: 8px; background: var(--surface-3); overflow: hidden; margin: 10px 0 6px; position: relative; }
+.xp-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--accent), var(--gold)); position: relative; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.xp-fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: shine 2.4s infinite; }
+@keyframes shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.xp-meta { font-size: 12px; color: var(--text-2); display: flex; gap: 10px; flex-wrap: wrap; }
+.game-stats { display: flex; gap: 10px; }
+.gstat { text-align: center; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); min-width: 84px; }
+.gstat .v { font-size: 20px; font-weight: 750; }
+.gstat .l { font-size: 11px; color: var(--text-3); }
+.achv { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.achv span { font-size: 11.5px; padding: 4px 9px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-3); background: var(--surface-2); }
+.achv span.on { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); }
+.levelup { position: fixed; inset: 0; display: grid; place-items: center; z-index: 80; pointer-events: none; }
+.levelup div { text-align: center; animation: pop 2.6s ease forwards; }
+.levelup .big { font-family: var(--serif); font-size: 64px; font-weight: 600; color: var(--gold); text-shadow: 0 0 40px var(--accent); }
+.levelup .sm { font-size: 16px; font-weight: 600; }
+@keyframes pop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+@media (max-width: 1100px) { .game-bar { grid-template-columns: auto 1fr; } .game-stats { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .game-stats { flex-wrap: wrap; } .gstat { flex: 1; min-width: 70px; } .lvl-name { font-size: 21px; } }
+
+.challenges { display: flex; flex-direction: column; gap: 10px; }
+.chal { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.chal .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 17px; background: var(--surface-3); }
+.chal .t { font-size: 13px; font-weight: 600; }
+.chal .bar { height: 6px; border-radius: 5px; background: var(--surface-3); margin-top: 7px; overflow: hidden; }
+.chal .bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--blue), var(--accent)); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+.chal .p { font-size: 12px; font-weight: 650; text-align: right; white-space: nowrap; }
+.chal .p small { display: block; font-weight: 500; color: var(--text-3); font-size: 11px; }
+.chal.done { border-color: color-mix(in srgb, var(--green) 40%, transparent); background: linear-gradient(120deg, var(--green-soft), var(--surface-2) 60%); }
+.chal.done .bar i { background: var(--green); }
+.chal.done .ic { background: var(--green-soft); }
+.streak { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 20px; font-size: 12.5px; font-weight: 700; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+.goal { position: relative; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); overflow: hidden; }
+.goal .amt { font-size: 17px; font-weight: 750; letter-spacing: -0.3px; }
+.goal .who { font-size: 11.5px; color: var(--text-3); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+.goal .ico { position: absolute; top: 10px; right: 10px; font-size: 14px; }
+.goal.done { border-color: color-mix(in srgb, var(--green) 40%, transparent); background: linear-gradient(150deg, var(--green-soft), var(--surface-2) 70%); }
+.goal.done .amt { color: var(--green); }
+.goal.done .who { color: var(--text-2); }
+.goal.cur { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.goal.cur .amt { color: var(--accent); }
+.goal.lock { opacity: .55; }
+.goal .bar { height: 4px; border-radius: 4px; background: var(--surface-3); margin-top: 8px; overflow: hidden; }
+.goal .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+.vest { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -559,18 +646,20 @@ th.sort.on { color: var(--accent); }
   <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5v9L12 22l-9-3.5z"/><path d="M3 9.5 12 14l9-4.5M12 14v8"/><path d="M7.5 7 16.5 12"/></symbol>
   <symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6z"/></symbol>
 </svg>
 
 <div class="app">
   <aside>
     <div class="brand" id="brand" title="Cliquer pour renommer le projet">
-      <div class="brand-mark" id="brand-mark">O</div>
-      <div><div class="brand-name" id="brand-name">Orbis</div><div class="brand-sub">Pilotage</div></div>
+      <div class="brand-mark" id="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/><path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".78"/><path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".56"/><path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.4" stroke-linecap="round"/><path d="M32 33V54" stroke="#b8450f" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+      <div><div class="brand-name" id="brand-name">Tyno Entreprise</div><div class="brand-sub">Pilotage</div></div>
     </div>
     <nav>
       <div class="nav-label">Menu</div>
       <button class="nav-btn active" data-view="overview"><svg><use href="#i-home"/></svg>Vue d'ensemble</button>
+      <button class="nav-btn" data-view="warehouse"><svg><use href="#i-cube"/></svg>Entrepôt 3D<span class="live-dot"></span></button>
       <button class="nav-btn" data-view="products"><svg><use href="#i-box"/></svg>Produits</button>
       <button class="nav-btn" data-view="sales"><svg><use href="#i-bag"/></svg>Ventes<span class="count" id="nav-action-count"></span></button>
       <button class="nav-btn" data-view="compta"><svg><use href="#i-book"/></svg>Comptabilité</button>
@@ -662,7 +751,8 @@ th.sort.on { color: var(--accent); }
         <div class="scene-head">
           <div><div class="card-title">Tes ventes en 3D</div><div class="card-sub" id="scene-sub">revenus et marge par jour</div></div>
           <div class="right legend"><span><i style="background:var(--accent)"></i>Revenus</span><span><i style="background:var(--green)"></i>Marge</span>
-            <button class="btn" id="scene-spin" style="margin-left:6px">Pause</button></div>
+            <button class="btn" id="scene-spin" style="margin-left:6px">Pause</button>
+            <a class="btn primary" href="#entrepot" style="text-decoration:none"><svg width="13" height="13"><use href="#i-cube"/></svg>Entrepôt live</a></div>
         </div>
         <div class="scene" id="scene"><div class="scene-tip" id="scene-tip"></div></div>
         <div class="scene-hint">Glisse pour tourner · molette pour zoomer</div>
@@ -697,6 +787,37 @@ th.sort.on { color: var(--accent); }
         <div class="card">
           <div class="card-head"><div><div class="card-title">Activité récente</div></div></div>
           <div class="feed" id="feed"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Entrepôt 3D ─────────────────────────────────── -->
+    <section class="view" id="v-warehouse">
+      <div class="card game-bar" id="game-bar"></div>
+      <div class="grid row-2b" style="margin-bottom:16px">
+        <div class="card"><div class="card-head"><div><div class="card-title">⚡ Défis du jour</div><div class="card-sub" id="day-sub"></div></div><div class="right" id="streak"></div></div><div class="challenges" id="day-ch"></div></div>
+        <div class="card"><div class="card-head"><div><div class="card-title">🏆 Défis de la semaine</div><div class="card-sub" id="week-sub"></div></div></div><div class="challenges" id="week-ch"></div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><div><div class="card-title">🎯 Tableau des objectifs</div>
+          <div class="card-sub">Chaque palier de bénéfice net atteint = un nouvel employé dans ton entrepôt</div></div>
+          <div class="right" id="goal-next"></div></div>
+        <div class="goals" id="goals"></div>
+      </div>
+      <div class="wh-wrap">
+        <div class="card wh-card">
+          <div class="wh-hud">
+            <span class="live"><i></i>EN DIRECT</span>
+            <span class="stat" id="wh-s1"></span><span class="stat" id="wh-s2"></span><span class="stat" id="wh-s3"></span>
+            <div class="right"><button class="btn" id="wh-spin">Pause</button><button class="btn" id="wh-reset">Recentrer</button></div>
+          </div>
+          <div class="wh-scene" id="wh-scene"></div>
+          <div class="wh-panel" id="wh-panel"></div>
+          <div class="wh-legend" id="wh-legend"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Ce qui se passe</div><div class="card-sub">activité de l'entrepôt</div></div></div>
+          <div class="wh-feed" id="wh-feed"></div>
         </div>
       </div>
     </section>
@@ -1114,6 +1235,7 @@ function renderAll() {
   autoInvoices();
   renderFacturation();
   renderProducts();
+  updateWarehouse();
   const n = state.dash?.salesNeedingAction?.length ?? 0;
   $("#nav-action-count").textContent = n || "";
 }
@@ -1316,13 +1438,12 @@ function renderAccounts() {
 
 // ═══ Nom du projet ═════════════════════════════════════════════════════════
 function applyBrand() {
-  const n = store.get("hermes_brand", "Orbis");
+  const n = store.get("hermes_brand", "Tyno Entreprise");
   $("#brand-name").textContent = n;
-  $("#brand-mark").textContent = (n.trim()[0] || "O").toUpperCase();
   document.title = `${n} — Tableau de bord`;
 }
 $("#brand").onclick = () => {
-  const n = prompt("Nom de ton projet / entreprise :", store.get("hermes_brand", "Orbis"));
+  const n = prompt("Nom de ton projet / entreprise :", store.get("hermes_brand", "Tyno Entreprise"));
   if (n && n.trim()) { store.set("hermes_brand", n.trim().slice(0, 28)); applyBrand(); toast("Projet renommé ✓"); }
 };
 applyBrand();
@@ -1467,6 +1588,642 @@ function hover3d(e) {
   tip.style.left = Math.min(r.width - 180, e.clientX - r.left + 14) + "px";
   tip.style.top = Math.max(60, e.clientY - r.top - 20) + "px";
   tip.classList.add("show");
+}
+
+// ═══ Entrepôt 3D en direct ═════════════════════════════════════════════════
+// Chaque vente active = un colis posé sur le poste correspondant à son étape.
+const WH_STATIONS = [
+  { k: "confirmed", label: "Vente reçue", c: "#6aa5e8", icon: "€" },
+  { k: "order_placed", label: "Achat fournisseur", c: "#e6b04a", icon: "🛒" },
+  { k: "invoice", label: "Factures", c: "#b979e0", icon: "📄" },
+  { k: "tracking_added", label: "Expédition", c: "#e8702a", icon: "🚚" },
+  { k: "delivered", label: "Livré", c: "#4fbf8a", icon: "✓" },
+];
+const wh = { ok: false };
+function whLabel(text, sub, color) {
+  const cv = document.createElement("canvas");
+  cv.width = 512; cv.height = 192;
+  const g = cv.getContext("2d");
+  g.fillStyle = "rgba(15,13,12,0.82)";
+  const r = 36;
+  g.beginPath(); g.moveTo(r, 8); g.arcTo(504, 8, 504, 184, r); g.arcTo(504, 184, 8, 184, r); g.arcTo(8, 184, 8, 8, r); g.arcTo(8, 8, 504, 8, r); g.fill();
+  g.strokeStyle = color; g.lineWidth = 5; g.stroke();
+  g.fillStyle = "#f3ede6"; g.font = "600 54px Inter, sans-serif"; g.textAlign = "center";
+  g.fillText(text, 256, 88);
+  g.fillStyle = color; g.font = "700 50px Inter, sans-serif";
+  g.fillText(sub, 256, 152);
+  const tex = new THREE.CanvasTexture(cv);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
+  sp.scale.set(8, 3, 1);
+  return sp;
+}
+function whBox(w, h, d, color, opts = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: opts.r ?? 0.6, metalness: opts.m ?? 0.1, emissive: opts.e ?? 0x000000, emissiveIntensity: opts.ei ?? 0 }));
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function whParcel(scale = 1) {
+  const g = new THREE.Group();
+  const b = whBox(1.1 * scale, 0.8 * scale, 0.9 * scale, 0xb98a5a, { r: 0.9 });
+  const tape = whBox(1.12 * scale, 0.12 * scale, 0.25 * scale, 0xe8d3a8, { r: 0.7 });
+  tape.position.y = 0.4 * scale;
+  g.add(b, tape);
+  return g;
+}
+function whRobot(color) {
+  const g = new THREE.Group();
+  const body = whBox(1.4, 0.6, 1.4, 0x2a2623, { m: 0.5, r: 0.4 });
+  body.position.y = 0.45;
+  const top = whBox(1.2, 0.12, 1.2, color, { e: color, ei: 0.5 });
+  top.position.y = 0.8;
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 1.2 }));
+  eye.position.set(0, 0.5, 0.72);
+  const carry = whParcel(0.8);
+  carry.position.y = 1.2;
+  g.add(body, top, eye, carry);
+  g.userData.carry = carry;
+  return g;
+}
+function initWarehouse() {
+  if (wh.ok || wh.failed) return;
+  const host = $("#wh-scene");
+  if (!window.THREE) { wh.failed = true; host.innerHTML = '<div class="scene-fallback">Vue 3D indisponible</div>'; return; }
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch { wh.failed = true; host.innerHTML = '<div class="scene-fallback">Ton navigateur ne supporte pas la 3D (WebGL)</div>'; return; }
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(Math.min(1.5, devicePixelRatio));
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0c0b0a, 70, 140);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+  scene.add(new THREE.HemisphereLight(0xfff1e6, 0x141110, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  sun.position.set(18, 40, 22);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 30, bottom: -30 });
+  scene.add(sun);
+  const warm = new THREE.PointLight(0xe8702a, 0.8, 60);
+  warm.position.set(0, 14, -10);
+  scene.add(warm);
+
+  // Sol + quadrillage + murs
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(90, 60), new THREE.MeshStandardMaterial({ color: 0x1d1a17, roughness: 0.95 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  scene.add(floor);
+  const grid = new THREE.GridHelper(90, 45, 0x3a3430, 0x2a2623);
+  grid.position.y = 0.02; grid.material.transparent = true; grid.material.opacity = 0.5;
+  scene.add(grid);
+  const back = whBox(90, 14, 0.6, 0x151311);
+  back.position.set(0, 7, -22);
+  scene.add(back);
+  for (let i = -3; i <= 3; i++) {
+    const strip = whBox(6, 0.25, 0.1, 0xfff1e6, { e: 0xfff1e6, ei: 0.9 });
+    strip.position.set(i * 12, 10.2, -21.6);
+    scene.add(strip);
+  }
+  // Étagères au fond (débloquées selon le niveau de l'entreprise)
+  const shelves = [];
+  for (let i = -4; i <= 4; i++) {
+    const shelf = new THREE.Group();
+    for (let lvl = 0; lvl < 3; lvl++) {
+      const plank = whBox(7, 0.25, 2.4, 0x3a3430, { m: 0.4 });
+      plank.position.y = 1.2 + lvl * 2.6;
+      shelf.add(plank);
+      for (let k = 0; k < 4; k++) {
+        const pc = whParcel(0.9 + Math.random() * 0.3);
+        pc.position.set(-2.4 + k * 1.6, 1.8 + lvl * 2.6, 0);
+        pc.rotation.y = (Math.random() - 0.5) * 0.4;
+        pc.userData.slot = true;
+        pc.visible = false;
+        shelf.add(pc);
+      }
+    }
+    [-3.4, 3.4].forEach((x) => { const post = whBox(0.25, 8.4, 0.25, 0x4a433d, { m: 0.6 }); post.position.set(x, 4.2, 0); shelf.add(post); });
+    shelf.position.set(i * 9, 0, -18);
+    shelf.userData.order = Math.abs(i) * 2 + (i < 0 ? 1 : 0);
+    scene.add(shelf);
+    shelves.push(shelf);
+  }
+
+  // Enseigne au nom de l'entreprise
+  const signCv = document.createElement("canvas"); signCv.width = 1024; signCv.height = 160;
+  const signTex = new THREE.CanvasTexture(signCv);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 4), new THREE.MeshBasicMaterial({ map: signTex, transparent: true }));
+  sign.position.set(0, 12.6, -21.6);
+  scene.add(sign);
+  // Compteur d'annonces au-dessus des étagères
+  let shelfLabel = whLabel("Annonces en ligne", "0", "#4fbf8a");
+  shelfLabel.position.set(0, 10.6, -17);
+  scene.add(shelfLabel);
+  // Marquages au sol
+  [[0, 10.2, 70, 0.25], [0, -12.5, 80, 0.25], [0, 15.8, 70, 0.25]].forEach(([x, z, w, d]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: 0xe6b04a, transparent: true, opacity: 0.55 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.03, z); scene.add(m);
+  });
+  for (let x = -30; x <= 30; x += 4) {
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.18), new THREE.MeshBasicMaterial({ color: 0xf3ede6, transparent: true, opacity: 0.25 }));
+    dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.03, 13); scene.add(dash);
+  }
+  // Quai + camion de livraison (au bout du tapis)
+  const makeTruck = (color, text) => {
+    const truck = new THREE.Group();
+    const cargo = whBox(10, 5, 4.6, 0xf3ede6, { r: 0.5 }); cargo.position.set(0, 3.4, 0);
+    const stripeT = whBox(10.05, 0.6, 4.65, color, { e: color, ei: 0.3 }); stripeT.position.set(0, 2.2, 0);
+    const cab = whBox(3.2, 3.6, 4.4, color, { m: 0.3, r: 0.4 }); cab.position.set(6.6, 2.7, 0);
+    const glass = whBox(0.1, 1.4, 3.6, 0x6aa5e8, { e: 0x6aa5e8, ei: 0.3, m: 0.8, r: 0.1 }); glass.position.set(8.25, 3.4, 0);
+    truck.add(cargo, stripeT, cab, glass);
+    [[-3.2, 2.3], [-3.2, -2.3], [5.8, 2.3], [5.8, -2.3]].forEach(([x, z]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 18), new THREE.MeshStandardMaterial({ color: 0x151311, roughness: 0.9 }));
+      wheel.rotation.x = Math.PI / 2; wheel.position.set(x, 0.9, z); truck.add(wheel);
+    });
+    const tag = whLabel(text, "", "#" + new THREE.Color(color).getHexString());
+    tag.scale.set(6, 2.2, 1); tag.position.set(0, 7.2, 0);
+    truck.add(tag);
+    truck.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    scene.add(truck);
+    return truck;
+  };
+  [[36], [-36]].forEach(([x]) => { const dock = whBox(8, 1.2, 12, 0x262220); dock.position.set(x, 0.6, 7); scene.add(dock); });
+  const truck = makeTruck(0xe8702a, "Livraison client");
+  truck.rotation.y = Math.PI / 2;
+  truck.position.set(38.5, 0, 7);
+  const supplier = makeTruck(0x6aa5e8, "Fournisseur");
+  supplier.rotation.y = -Math.PI / 2;
+  supplier.position.set(-38.5, 0, 7);
+
+  // Tapis roulant
+  const beltTex = (() => {
+    const cv = document.createElement("canvas"); cv.width = 128; cv.height = 32;
+    const g = cv.getContext("2d"); g.fillStyle = "#26221f"; g.fillRect(0, 0, 128, 32);
+    g.fillStyle = "#3a3430"; for (let x = 0; x < 128; x += 16) g.fillRect(x, 0, 6, 32);
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(40, 1); return t;
+  })();
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(64, 0.4, 2.6), new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.8 }));
+  belt.position.set(0, 1.1, 7); belt.receiveShadow = true;
+  scene.add(belt);
+  [-1.5, 1.5].forEach((z) => { const rail = whBox(66, 0.3, 0.2, 0x4a433d, { m: 0.7, r: 0.3 }); rail.position.set(0, 1.35, 7 + z); scene.add(rail); });
+  for (let x = -32; x <= 32; x += 8) { const leg = whBox(0.3, 1, 2.2, 0x3a3430, { m: 0.6 }); leg.position.set(x, 0.5, 7); scene.add(leg); }
+
+  // Postes
+  const stations = WH_STATIONS.map((st, i) => {
+    const x = -26 + i * 13;
+    const g = new THREE.Group();
+    g.position.set(x, 0, 0);
+    const base = whBox(10, 0.5, 8, 0x262220, { m: 0.2 });
+    base.position.y = 0.25;
+    const glow = whBox(10.2, 0.08, 8.2, new THREE.Color(st.c).getHex(), { e: new THREE.Color(st.c).getHex(), ei: 0.6 });
+    glow.position.y = 0.03;
+    const desk = whBox(3.2, 1.6, 1.4, 0x3a3430, { m: 0.3 });
+    desk.position.set(0, 1.3, -3);
+    const screen = whBox(2.4, 1.4, 0.12, 0x0c0b0a, { e: new THREE.Color(st.c).getHex(), ei: 0.35 });
+    screen.position.set(0, 2.9, -3.3);
+    screen.rotation.x = -0.15;
+    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.5, 16), new THREE.MeshStandardMaterial({ color: st.c, emissive: st.c, emissiveIntensity: 0.9 }));
+    beacon.position.set(4.3, 1.05, -3.3);
+    const lamp = new THREE.PointLight(new THREE.Color(st.c), 0.6, 14);
+    lamp.position.set(0, 5, 0);
+    g.add(base, glow, desk, screen, beacon, lamp);
+    const label = whLabel(st.label, "0", st.c);
+    label.position.set(0, 7.6, -1);
+    g.add(label);
+    scene.add(g);
+    return { ...st, x, group: g, label, beacon, screen, parcels: [] };
+  });
+
+  // Colis qui défilent sur le tapis
+  const movers = Array.from({ length: 9 }, (_, i) => {
+    const p = whParcel(0.9);
+    p.position.set(-33 + i * 7.5, 1.75, 7);
+    p.rotation.y = Math.random() * 0.3;
+    scene.add(p);
+    return p;
+  });
+  // Robots
+  const robots = WH_STATIONS.slice(0, 4).map((st, i) => {
+    const r = whRobot(new THREE.Color(st.c).getHex());
+    r.position.set(-26 + i * 13, 0, 13);
+    scene.add(r);
+    r.userData.from = i; r.userData.to = i + 1; r.userData.t = Math.random();
+    r.userData.speed = 0.0025 + Math.random() * 0.0015;
+    return r;
+  });
+  // Bulles de message (réponses automatiques)
+  const bubbles = [];
+
+  Object.assign(wh, { ok: true, host, renderer, scene, camera, stations, movers, robots, bubbles, beltTex,
+    theta: 0, phi: 0.9, radius: 88, spin: false, t0: performance.now(), shelves, workers: [],
+    sign, signCv, signTex, truck, supplier, getShelfLabel: () => shelfLabel, setShelfLabel: (l) => (shelfLabel = l) });
+
+  let drag = null;
+  host.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, t: wh.theta, p: wh.phi, moved: false }; host.setPointerCapture(e.pointerId); });
+  host.addEventListener("pointermove", (e) => {
+    if (!drag) return whHover(e);
+    if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 4) drag.moved = true;
+    wh.theta = drag.t - (e.clientX - drag.x) * 0.006;
+    wh.phi = Math.max(0.3, Math.min(1.4, drag.p - (e.clientY - drag.y) * 0.005));
+  });
+  host.addEventListener("pointerup", (e) => { if (drag && !drag.moved) whClick(e); drag = null; });
+  host.addEventListener("wheel", (e) => { e.preventDefault(); wh.radius = Math.max(35, Math.min(120, wh.radius + e.deltaY * 0.06)); }, { passive: false });
+  $("#wh-spin").onclick = () => { wh.spin = !wh.spin; $("#wh-spin").textContent = wh.spin ? "Pause" : "Rotation"; };
+  $("#wh-spin").textContent = "Rotation";
+  $("#wh-reset").onclick = () => Object.assign(wh, { theta: 0, phi: 0.9, radius: 88 });
+  new ResizeObserver(() => whSize()).observe(host);
+  whSize();
+  updateWarehouse();
+
+  const loop = () => {
+    requestAnimationFrame(loop);
+    if (!host.offsetParent || document.hidden) return;
+    const t = (performance.now() - wh.t0) / 1000;
+    if (wh.spin && !drag) wh.theta += 0.0016;
+    camera.position.set(wh.radius * Math.sin(wh.phi) * Math.sin(wh.theta), wh.radius * Math.cos(wh.phi), wh.radius * Math.sin(wh.phi) * Math.cos(wh.theta));
+    camera.lookAt(0, 3.5, -1);
+    if (!reduceMotion) {
+      beltTex.offset.x -= 0.004;
+      movers.forEach((m) => { m.position.x += 0.06; if (m.position.x > 33) m.position.x = -33; });
+      robots.forEach((r) => {
+        const u = r.userData;
+        u.t += u.speed;
+        if (u.t >= 1) { u.t = 0; u.from = u.to; u.to = (u.to + 1) % WH_STATIONS.length; if (u.to === 0) { u.from = 0; u.to = 1; } }
+        const xa = -26 + u.from * 13, xb = -26 + u.to * 13;
+        const e = u.t < 0.5 ? 2 * u.t * u.t : 1 - Math.pow(-2 * u.t + 2, 2) / 2;
+        r.position.x = xa + (xb - xa) * e;
+        r.position.z = 13 + Math.sin(u.t * Math.PI) * 1.5;
+        r.position.y = Math.abs(Math.sin(t * 8 + u.from)) * 0.08;
+        r.rotation.y = Math.PI / 2 * Math.sign(xb - xa);
+      });
+      stations.forEach((st, i) => {
+        st.beacon.material.emissiveIntensity = 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + i));
+        st.screen.material.emissiveIntensity = 0.25 + 0.15 * Math.sin(t * 3 + i * 1.7);
+        st.parcels.forEach((p, j) => { p.position.y = p.userData.y + Math.sin(t * 2 + j) * 0.04; p.children[0].material.emissiveIntensity = p === wh.hover ? 0.4 : 0; });
+      });
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        b.position.y += 0.03; b.material.opacity -= 0.004;
+        if (b.material.opacity <= 0) { scene.remove(b); b.material.map.dispose(); b.material.dispose(); bubbles.splice(i, 1); }
+      }
+      if (Math.random() < 0.006) whBubble();
+      whAnimateWorkers(t);
+      // le camion part livrer toutes les ~14 s puis revient se garer au quai
+      const cyc = t % 14;
+      wh.truck.position.z = cyc < 9 ? 7 : cyc < 11.5 ? 7 + Math.pow((cyc - 9) / 2.5, 2) * 60 : 67 - ((cyc - 11.5) / 2.5) * 60;
+      wh.truck.visible = wh.truck.position.z < 60;
+      // le camion fournisseur arrive, décharge, repart (décalé)
+      const c2 = (t + 7) % 14;
+      wh.supplier.position.z = c2 < 2.5 ? 67 - Math.sqrt(c2 / 2.5) * 60 : c2 < 10 ? 7 : 7 + ((c2 - 10) / 4) * 60;
+      wh.supplier.visible = wh.supplier.position.z < 60;
+    }
+    renderer.render(scene, camera);
+  };
+  loop();
+}
+// ─── Ton entreprise : niveaux, employés, succès ────────────────────────────
+// Paliers de bénéfice net : chaque objectif atteint = 1 employé embauché
+const GOALS = [100, 350, 500, 1000, 1500, 2000, 3000, 4000, 5000, 7500, 10000, 12500, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
+const WORKER_NAMES = ["Léo", "Inès", "Hugo", "Jade", "Nolan", "Lina", "Sacha", "Maël", "Rose", "Adam", "Zoé", "Noah", "Alba", "Tom", "Lou", "Yanis", "Nina", "Enzo", "Mia", "Raphaël"];
+const LEVELS = [
+  { at: 0, name: "Garage", perk: "1 étagère, toi tout seul" },
+  { at: 350, name: "Atelier", perk: "+1 étagère" },
+  { at: 1000, name: "Petit entrepôt", perk: "+2 étagères, chariots élévateurs" },
+  { at: 3000, name: "Entrepôt", perk: "+2 étagères" },
+  { at: 7500, name: "Hub logistique", perk: "toutes les étagères" },
+  { at: 20000, name: "Plateforme régionale", perk: "statut légende" },
+  { at: 50000, name: "Empire", perk: "tu as gagné le jeu 👑" },
+];
+function companyStats() {
+  const sales = (state.dash?.activeSales ?? []).filter((s) => s.status !== "cancelled");
+  const rev = sales.reduce((a, s) => a + s.salePriceEur, 0);
+  const margin = sales.reduce((a, s) => a + s.salePriceEur - (s.actualCostEur ?? s.costEur), 0);
+  const profit = margin - sales.length * shipFee(); // bénéfice net (après port Temu)
+  let li = 0;
+  LEVELS.forEach((l, i) => { if (profit >= l.at) li = i; });
+  const cur = LEVELS[li], next = LEVELS[li + 1];
+  const accounts = state.accounts.length || new Set(sales.map((s) => s.accountId)).size;
+  const reached = GOALS.filter((g) => profit >= g).length;
+  const nextGoal = GOALS[reached];
+  const staff = 1 + reached; // toi + 1 employé par objectif atteint
+  const late = sales.filter((s) => (s.status === "confirmed" && daysSince(s.confirmedAt) >= 2)).length;
+  const ach = [
+    ["🥇 Première vente", sales.length >= 1],
+    ["🔟 10 ventes", sales.length >= 10],
+    ["💯 100 ventes", sales.length >= 100],
+    ["💶 1 000 € de CA", rev >= 1000],
+    ["💰 1 000 € de bénéfice", profit >= 1000],
+    ["👥 3 comptes", accounts >= 3],
+    ["🚚 20 colis livrés", sales.filter((s) => s.status === "delivered").length >= 20],
+    ["⏱️ Zéro retard", sales.length > 0 && late === 0],
+  ];
+  const prevGoal = GOALS[reached - 1] ?? 0;
+  return { sales, rev, margin, profit, li, cur, next, accounts, staff, reached, nextGoal, ach,
+    pct: next ? (profit - cur.at) / (next.at - cur.at) : 1,
+    goalPct: nextGoal ? (profit - prevGoal) / (nextGoal - prevGoal) : 1 };
+}
+function renderGame() {
+  const g = companyStats();
+  const brand = store.get("hermes_brand", "Tyno Entreprise");
+  const done = g.ach.filter(([, ok]) => ok).length;
+  $("#view-title").textContent = view === "warehouse" ? `Entrepôt ${brand}` : $("#view-title").textContent;
+  $("#game-bar").innerHTML = `
+    <div class="lvl-badge"><b>${g.li + 1}</b><small>NIVEAU</small></div>
+    <div style="min-width:0">
+      <div class="lvl-name">${esc(g.cur.name)} <span class="muted" style="font-family:var(--sans);font-size:13px;font-weight:500">· ${esc(brand)}</span></div>
+      <div class="xp-track"><div class="xp-fill" style="width:${Math.max(2, Math.min(100, g.pct * 100))}%"></div></div>
+      <div class="xp-meta">${g.next
+        ? `<span><b class="num" style="color:var(--text)">${eur(g.profit)}</b> de bénéfice / ${eur(g.next.at)}</span><span>encore <b class="num" style="color:var(--accent)">${eur(g.next.at - g.profit)}</b> pour « ${esc(g.next.name)} »</span><span class="muted">débloque : ${esc(g.next.perk)}</span>`
+        : `<span>Niveau max atteint — ${eur(g.profit)} de bénéfice 👑</span>`}</div>
+      <div class="achv">${g.ach.map(([l, ok]) => `<span class="${ok ? "on" : ""}">${l}</span>`).join("")}</div>
+    </div>
+    <div class="game-stats">
+      <div class="gstat"><div class="v num">${g.staff - 1}</div><div class="l">employés</div></div>
+      <div class="gstat"><div class="v num">${g.accounts}</div><div class="l">équipes</div></div>
+      <div class="gstat"><div class="v num">${done}/${g.ach.length}</div><div class="l">succès</div></div>
+    </div>`;
+  renderChallenges();
+  // Tableau des objectifs
+  const teamC = (state.accounts.length ? state.accounts : [{}]).map((_, i) => HUES[i % HUES.length]);
+  $("#goal-next").innerHTML = g.nextGoal
+    ? `<span class="badge b-accent" style="text-transform:none">Prochain : ${eur(g.nextGoal)} · encore ${eur(g.nextGoal - g.profit)}</span>`
+    : `<span class="badge b-green">Tous les objectifs atteints 🏆</span>`;
+  $("#goals").innerHTML = GOALS.map((amt, i) => {
+    const st = i < g.reached ? "done" : i === g.reached ? "cur" : "lock";
+    return `<div class="goal ${st}"><span class="ico">${st === "done" ? "✅" : st === "cur" ? "🎯" : "🔒"}</span>
+      <div class="amt num">${amt >= 1000 ? (amt / 1000).toString().replace(".", ",") + " k€" : amt + " €"}</div>
+      <div class="who"><span class="vest" style="background:${teamC[i % teamC.length]}"></span>${st === "done" ? `${WORKER_NAMES[i]} embauché·e` : `+1 employé·e`}</div>
+      ${st === "cur" ? `<div class="bar"><i style="width:${Math.max(3, g.goalPct * 100)}%"></i></div>` : ""}</div>`;
+  }).join("");
+  // Nouvel objectif atteint → célébration
+  const prevGoals = parseInt(store.get("hermes_goals", "-1"));
+  if (!DEMO && prevGoals >= 0 && g.reached > prevGoals) levelUp(`${eur(GOALS[g.reached - 1])} de bénéfice`, null, WORKER_NAMES[g.reached - 1]);
+  if (!DEMO) store.set("hermes_goals", String(g.reached));
+  // Passage de niveau
+  const prev = parseInt(store.get("hermes_level", "-1"));
+  if (!DEMO && prev >= 0 && g.li > prev) levelUp(g.cur.name, g.li + 1);
+  if (!DEMO) store.set("hermes_level", String(g.li));
+  return g;
+}
+// ─── Défis du jour / de la semaine ──────────────────────────────────────────
+function renderChallenges() {
+  const fee = shipFee();
+  const all = (state.dash?.activeSales ?? []).filter((x) => x.status !== "cancelled" && x.confirmedAt);
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(dayStart); weekStart.setDate(dayStart.getDate() - ((dayStart.getDay() + 6) % 7)); // lundi
+  const profitOf = (arr) => arr.reduce((a, x) => a + x.salePriceEur - (x.actualCostEur ?? x.costEur) - fee, 0);
+  const today = all.filter((x) => new Date(x.confirmedAt) >= dayStart);
+  const week = all.filter((x) => new Date(x.confirmedAt) >= weekStart);
+  const pend = (state.dash?.activeSales ?? []);
+  const toOrder = pend.filter((x) => x.status === "confirmed").length;
+  const late = pend.filter((x) => x.status === "confirmed" && daysSince(x.confirmedAt) >= 2).length;
+  const shippedWeek = pend.filter((x) => ["tracking_added", "delivered"].includes(x.status) && new Date(x.updatedAt ?? x.confirmedAt) >= weekStart).length;
+  const newListingsWeek = (state.listings ?? []).filter((l) => l.published_at && new Date(l.published_at) >= weekStart).length;
+  // Série : jours consécutifs avec au moins une vente
+  const days = new Set(all.map((x) => x.confirmedAt.slice(0, 10)));
+  let streak = 0;
+  for (let d = new Date(dayStart); ; d.setDate(d.getDate() - 1)) {
+    const k = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (days.has(k)) streak++; else if (streak || d < dayStart) break;
+    if (streak > 365) break;
+  }
+  const dayCh = [
+    ["🛍️", "Faire 1 vente aujourd'hui", today.length, 1, (v) => `${v} / 1`],
+    ["💶", "30 € de bénéfice aujourd'hui", profitOf(today), 30, (v) => eur(v)],
+    ["📦", "Commander toutes les ventes en attente", toOrder === 0 ? 1 : 0, 1, () => (toOrder ? `${toOrder} à commander` : "✓")],
+    ["⏱️", "Aucune vente en retard", late === 0 ? 1 : 0, 1, () => (late ? `${late} en retard` : "✓")],
+  ];
+  const weekCh = [
+    ["💰", "100 € de bénéfice cette semaine", profitOf(week), 100, (v) => eur(v)],
+    ["🔥", "250 € de bénéfice (défi expert)", profitOf(week), 250, (v) => eur(v)],
+    ["🛍️", "10 ventes cette semaine", week.length, 10, (v) => `${v} / 10`],
+    ["🚚", "Expédier 8 colis", shippedWeek, 8, (v) => `${v} / 8`],
+    ["📢", "Mettre 15 annonces en ligne", newListingsWeek, 15, (v) => `${v} / 15`],
+  ];
+  const row = ([ic, t, v, goal, fmt]) => {
+    const done = v >= goal, pct = Math.max(0, Math.min(1, v / goal));
+    return `<div class="chal ${done ? "done" : ""}"><span class="ic">${done ? "✅" : ic}</span>
+      <div style="min-width:0"><div class="t">${t}</div><div class="bar"><i style="width:${Math.max(3, pct * 100)}%"></i></div></div>
+      <div class="p num">${fmt(v)}<small>${done ? "réussi !" : Math.round(pct * 100) + " %"}</small></div></div>`;
+  };
+  $("#day-ch").innerHTML = dayCh.map(row).join("");
+  $("#week-ch").innerHTML = weekCh.map(row).join("");
+  const dd = dayCh.filter((c) => c[2] >= c[3]).length, wd = weekCh.filter((c) => c[2] >= c[3]).length;
+  const endDay = new Date(dayStart.getTime() + 86400000), endWeek = new Date(weekStart.getTime() + 7 * 86400000);
+  const hLeft = Math.max(0, Math.ceil((endDay - now) / 3600000)), dLeft = Math.max(1, Math.ceil((endWeek - now) / 86400000));
+  $("#day-sub").textContent = `${dd}/${dayCh.length} réussis · se termine dans ${hLeft} h`;
+  $("#week-sub").textContent = `${wd}/${weekCh.length} réussis · encore ${dLeft} jour${dLeft > 1 ? "s" : ""} (lundi → dimanche)`;
+  $("#streak").innerHTML = `<span class="streak">🔥 ${streak} jour${streak > 1 ? "s" : ""} d'affilée</span>`;
+}
+function levelUp(name, n, worker) {
+  const el = document.createElement("div");
+  el.className = "levelup";
+  el.innerHTML = `<div><div class="sm">${n ? `NIVEAU ${n} DÉBLOQUÉ` : "OBJECTIF ATTEINT"}</div><div class="big">${esc(name)}</div>
+    <div class="sm">${worker ? `${esc(worker)} rejoint ton entrepôt 🎉` : "Ton entrepôt s'agrandit 🎉"}</div></div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2700);
+}
+function whWorker(vest) {
+  const g = new THREE.Group();
+  const skin = [0xf1c7a3, 0xd9a27a, 0xa86f4a, 0x7a4a2e][Math.floor(Math.random() * 4)];
+  const legL = whBox(0.32, 1, 0.32, 0x2b3445); legL.position.set(-0.2, 0.5, 0); legL.geometry.translate(0, -0.5, 0); legL.position.y = 1;
+  const legR = whBox(0.32, 1, 0.32, 0x2b3445); legR.geometry.translate(0, -0.5, 0); legR.position.set(0.2, 1, 0);
+  const torso = whBox(0.9, 1.05, 0.5, vest, { e: vest, ei: 0.15 }); torso.position.y = 1.55;
+  const stripe = whBox(0.92, 0.1, 0.52, 0xf5f5f0, { e: 0xffffff, ei: 0.6 }); stripe.position.y = 1.45;
+  const armL = whBox(0.24, 0.9, 0.24, vest); armL.geometry.translate(0, -0.4, 0); armL.position.set(-0.58, 2, 0);
+  const armR = whBox(0.24, 0.9, 0.24, vest); armR.geometry.translate(0, -0.4, 0); armR.position.set(0.58, 2, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })); head.position.y = 2.45; head.castShadow = true;
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.4 })); helmet.position.y = 2.52;
+  const box = whParcel(0.7); box.position.set(0, 1.75, 0.55); box.visible = false;
+  g.add(legL, legR, torso, stripe, armL, armR, head, helmet, box);
+  g.userData = { legL, legR, armL, armR, box, phase: Math.random() * 6, speed: 0.05 + Math.random() * 0.03, wait: 0, target: null };
+  g.scale.setScalar(0.95);
+  return g;
+}
+function whPickTarget(w) {
+  const spots = [
+    ...wh.stations.map((st) => ({ x: st.x + (Math.random() - 0.5) * 6, z: 3.8 + Math.random() * 1.2, carry: Math.random() > 0.4 })),
+    ...Array.from({ length: 4 }, () => ({ x: (Math.random() - 0.5) * 70, z: -14.5, carry: true })),
+    { x: (Math.random() - 0.5) * 60, z: 10 + Math.random() * 4, carry: false },
+  ];
+  w.userData.target = spots[Math.floor(Math.random() * spots.length)];
+}
+function whStaff() {
+  if (!wh.ok) return;
+  const g = companyStats();
+  const teamColors = (state.accounts.length ? state.accounts : [{ accountId: "x" }]).map((_, i) => new THREE.Color(HUES[i % HUES.length]).getHex());
+  while (wh.workers.length < g.staff) {
+    const i = wh.workers.length;
+    const w = whWorker(teamColors[i % teamColors.length]);
+    w.position.set((Math.random() - 0.5) * 60, 0, 10 + Math.random() * 4);
+    whPickTarget(w);
+    wh.scene.add(w);
+    wh.workers.push(w);
+  }
+  while (wh.workers.length > g.staff) wh.scene.remove(wh.workers.pop());
+  // Étagères débloquées selon le niveau
+  const visibleShelves = [1, 3, 5, 7, 9, 9, 9][g.li];
+  wh.shelves.forEach((sh) => (sh.visible = sh.userData.order < visibleShelves));
+  // Chaque carton sur une étagère = une annonce en ligne
+  const online = (state.listings ?? []).filter((l) => l.status === "published" && !l.sale_id).length;
+  const slots = wh.shelves.filter((sh) => sh.visible).sort((a, b) => a.userData.order - b.userData.order).flatMap((sh) => sh.children.filter((c) => c.userData.slot));
+  wh.shelves.forEach((sh) => sh.children.forEach((c) => { if (c.userData.slot) c.visible = false; }));
+  slots.slice(0, online).forEach((c) => (c.visible = true));
+  const old = wh.getShelfLabel();
+  const nl = whLabel("Annonces en ligne", `${online}${online > slots.length ? " (étagères pleines !)" : ""}`, "#4fbf8a");
+  nl.position.copy(old.position); nl.scale.set(online > slots.length ? 11 : 8, 3, 1);
+  wh.scene.remove(old); old.material.map.dispose(); old.material.dispose();
+  wh.scene.add(nl); wh.setShelfLabel(nl);
+  // Enseigne
+  const brand = store.get("hermes_brand", "Tyno Entreprise");
+  const sg = wh.signCv.getContext("2d");
+  sg.clearRect(0, 0, 1024, 160);
+  sg.fillStyle = "#e8702a"; sg.fillRect(0, 0, 1024, 160);
+  sg.fillStyle = "#fff"; sg.textAlign = "center"; sg.textBaseline = "middle";
+  let fs = 92; do { sg.font = `600 ${fs}px 'Cormorant Garamond', Georgia, serif`; fs -= 4; } while (sg.measureText(`${brand} · ${g.cur.name}`).width > 960 && fs > 30);
+  sg.fillText(`${brand} · ${g.cur.name}`, 512, 84);
+  wh.signTex.needsUpdate = true;
+  // Chariots élévateurs à partir du niveau 3
+  wh.robots.forEach((r, i) => (r.visible = g.li >= 2 || i === 0));
+}
+function whAnimateWorkers(t) {
+  wh.workers.forEach((w) => {
+    const u = w.userData;
+    if (u.wait > 0) {
+      u.wait -= 1;
+      u.legL.rotation.x = u.legR.rotation.x = 0;
+      u.armL.rotation.x = u.armR.rotation.x = u.box.visible ? -1.2 : 0;
+      if (u.wait <= 0) { u.box.visible = u.target.carry ? !u.box.visible : false; whPickTarget(w); }
+      return;
+    }
+    const dx = u.target.x - w.position.x, dz = u.target.z - w.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.3) { u.wait = 60 + Math.floor(Math.random() * 120); return; }
+    const nx = dx / d, nz = dz / d;
+    w.position.x += nx * u.speed; w.position.z += nz * u.speed;
+    w.rotation.y = Math.atan2(nx, nz);
+    const sw = Math.sin(t * 9 + u.phase) * 0.6;
+    u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
+    u.armL.rotation.x = u.box.visible ? -1.2 : -sw * 0.8; u.armR.rotation.x = u.box.visible ? -1.2 : sw * 0.8;
+    w.position.y = Math.abs(Math.sin(t * 9 + u.phase)) * 0.06;
+  });
+}
+function whSize() {
+  if (!wh.ok) return;
+  const w = wh.host.clientWidth, h = wh.host.clientHeight;
+  if (!w || !h) return;
+  wh.renderer.setSize(w, h);
+  wh.camera.aspect = w / h;
+  wh.camera.updateProjectionMatrix();
+}
+function whBubble(text) {
+  if (!wh.ok) return;
+  const msgs = ["💬 Réponse envoyée", "💬 « Toujours dispo ? » → Oui !", "💬 Offre acceptée", "📦 Colis préparé", "📄 Facture créée", "✅ Suivi envoyé"];
+  const t = text ?? msgs[Math.floor(Math.random() * msgs.length)];
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 110;
+  const g = cv.getContext("2d");
+  g.fillStyle = "rgba(255,253,250,0.95)";
+  g.beginPath(); g.roundRect ? g.roundRect(4, 4, 504, 102, 40) : g.rect(4, 4, 504, 102); g.fill();
+  g.fillStyle = "#1c1814"; g.textAlign = "center"; g.textBaseline = "middle";
+  let bf = 44; do { g.font = `600 ${bf}px Inter, sans-serif`; bf -= 2; } while (g.measureText(t).width > 470 && bf > 20);
+  g.fillText(t, 256, 57);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 1, depthWrite: false }));
+  sp.scale.set(7, 1.5, 1);
+  const st = wh.stations[Math.floor(Math.random() * wh.stations.length)];
+  sp.position.set(st.x + (Math.random() - 0.5) * 4, 4, 1);
+  wh.scene.add(sp);
+  wh.bubbles.push(sp);
+  whFeedPush(t, st.c);
+}
+const whFeedLog = [];
+function whFeedPush(text, color, when = new Date().toISOString()) {
+  whFeedLog.unshift({ text, color, when });
+  whFeedLog.length = Math.min(whFeedLog.length, 40);
+  if (view === "warehouse") renderWhFeed();
+}
+function renderWhFeed() {
+  $("#wh-feed").innerHTML = whFeedLog.map((e) => `<div class="wh-ev"><span class="ic" style="background:color-mix(in srgb, ${e.color} 18%, transparent);color:${e.color}">●</span>
+    <div><div class="tx">${esc(e.text)}</div><div class="tm">${ago(e.when)}</div></div></div>`).join("") || `<div class="empty">En attente d'activité…</div>`;
+}
+function whStationOf(s) {
+  if (s.status === "delivered") return "delivered";
+  if (s.status === "tracking_added") return "tracking_added";
+  if (s.status === "order_placed") return invNumbers()[s.saleId] ? "invoice" : "order_placed";
+  return "confirmed";
+}
+function updateWarehouse() {
+  const sales = (state.dash?.activeSales ?? []).filter((s) => s.status !== "cancelled");
+  const counts = Object.fromEntries(WH_STATIONS.map((st) => [st.k, 0]));
+  const money = Object.fromEntries(WH_STATIONS.map((st) => [st.k, 0]));
+  sales.forEach((s) => { const k = whStationOf(s); counts[k]++; money[k] += s.salePriceEur; });
+  $("#wh-s1").innerHTML = `<b>${sales.filter((s) => PENDING.includes(s.status)).length}</b> colis en cours`;
+  $("#wh-s2").innerHTML = `<b>${eur(sales.filter((s) => PENDING.includes(s.status)).reduce((a, s) => a + s.salePriceEur, 0))}</b> en route`;
+  $("#wh-s3").innerHTML = `<b>${state.dash?.salesNeedingAction?.length ?? 0}</b> à traiter`;
+  $("#wh-legend").innerHTML = WH_STATIONS.map((st) => `<span><i style="background:${st.c}"></i>${st.label} · <b class="num">${counts[st.k]}</b> · ${eurShort(money[st.k])}</span>`).join("");
+  if (!whFeedLog.length) {
+    (state.dash?.recentActivity ?? []).slice(0, 10).reverse().forEach((a) => whFeedLog.unshift({
+      text: a.type === "sale_confirmed" ? `🛍️ Nouvelle vente ${String(a.saleId ?? "").slice(0, 12)}` : `📢 Annonce publiée ${String(a.listingId ?? "").slice(0, 12)}`,
+      color: a.type === "sale_confirmed" ? "#6aa5e8" : "#4fbf8a", when: a.timestamp }));
+  }
+  if (view === "warehouse") renderWhFeed();
+  renderGame();
+  if (!wh.ok) return;
+  whStaff();
+  wh.stations.forEach((st) => {
+    st.parcels.forEach((p) => wh.scene.remove(p));
+    st.parcels = [];
+    const list = sales.filter((s) => whStationOf(s) === st.k).slice(0, 30);
+    list.forEach((s, j) => {
+      const p = whParcel(1);
+      const col = j % 5, row = Math.floor(j / 5) % 3, lvl = Math.floor(j / 15);
+      p.position.set(st.x - 3.2 + col * 1.6, 0, -0.4 + row * 1.5);
+      p.userData = { y: 0.9 + lvl * 0.85, sale: s };
+      p.position.y = p.userData.y;
+      p.rotation.y = ((j * 37) % 10 - 5) * 0.03;
+      p.children.forEach((c) => (c.userData.root = p));
+      wh.scene.add(p);
+      st.parcels.push(p);
+    });
+    const old = st.label;
+    st.label = whLabel(st.label.userData?.t ?? st.label, `${counts[st.k]} · ${eurShort(money[st.k])}`, st.c);
+    st.label.userData.t = WH_STATIONS.find((x) => x.k === st.k).label;
+    st.label.position.copy(old.position);
+    st.group.remove(old); old.material.map.dispose(); old.material.dispose();
+    st.group.add(st.label);
+  });
+}
+function whPick(e) {
+  const r = wh.host.getBoundingClientRect();
+  const v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(v, wh.camera);
+  const objs = wh.stations.flatMap((st) => st.parcels.flatMap((p) => p.children));
+  return ray.intersectObjects(objs)[0]?.object?.userData.root ?? null;
+}
+function whHover(e) { if (!wh.ok) return; wh.hover = whPick(e); wh.host.style.cursor = wh.hover ? "pointer" : ""; }
+function whClick(e) {
+  const p = whPick(e);
+  const panel = $("#wh-panel");
+  if (!p) return panel.classList.remove("show");
+  const s = p.userData.sale;
+  const k = whStationOf(s);
+  const st = WH_STATIONS.find((x) => x.k === k);
+  const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
+  const t = itemTitles()[s.temuItemId] || s.productTitle || "Colis";
+  panel.innerHTML = `<button class="x" onclick="this.parentElement.classList.remove('show')">×</button>
+    <div style="font-size:11px;color:${st.c};font-weight:700;letter-spacing:1px;text-transform:uppercase">${st.label}</div>
+    <div style="font-weight:600;margin:4px 0 2px">${esc(t)}</div>
+    <div class="mono" style="margin-bottom:10px">${esc(s.saleId)}</div>
+    <div class="split-row"><span class="muted">Prix</span><span class="v num">${eur(s.salePriceEur)}</span></div>
+    <div class="split-row"><span class="muted">Marge</span><span class="v num pos">${eur(s.salePriceEur - (s.actualCostEur ?? s.costEur))}</span></div>
+    <div class="split-row"><span class="muted">Acheteur</span><span class="v">${esc(s.buyerName ?? "—")}</span></div>
+    <div class="split-row"><span class="muted">Compte</span><span class="v">${esc(accLabel[s.accountId] ?? s.accountId)}</span></div>
+    <div class="split-row"><span class="muted">Vendue</span><span class="v">${ago(s.confirmedAt)}</span></div>
+    ${s.trackingNumber ? `<div class="split-row"><span class="muted">Suivi</span><a class="v track-link mono" href="${trackUrl(s.trackingNumber)}" target="_blank" rel="noopener">${esc(s.trackingNumber)} ↗</a></div>` : ""}
+    <div style="display:flex;gap:6px;margin-top:12px">
+      ${s.trackingNumber || s.status === "delivered" ? "" : `<button class="btn primary" onclick="openTrack('${esc(s.saleId)}')"><svg width="12" height="12"><use href="#i-truck"/></svg>Suivi</button>`}
+      <button class="btn" onclick="invoice(['${esc(s.saleId)}'])"><svg width="12" height="12"><use href="#i-file"/></svg>Facture</button>
+    </div>`;
+  panel.classList.add("show");
 }
 
 // ═══ Détail d'un compte ════════════════════════════════════════════════════
@@ -1652,7 +2409,7 @@ function invoice(ids) {
     const item = titleOf[s.listingId] || s.productTitle || byItem[s.temuItemId] || "Article";
     return `<section class="page">
       <header>
-        <div><div class="seller">${esc(st.name)}</div>${st.company && (st.first || st.last) ? `<div class="muted">${esc([st.first, st.last].filter(Boolean).join(" "))}</div>` : ""}${st.address ? `<div class="muted">${esc(st.address)}</div>` : ""}
+        <div><div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="${location.origin}/logo.svg" width="44" height="44" alt="" style="border-radius:11px" /><div class="seller" style="margin:0">${esc(st.name)}</div></div>${st.company && (st.first || st.last) ? `<div class="muted">${esc([st.first, st.last].filter(Boolean).join(" "))}</div>` : ""}${st.address ? `<div class="muted">${esc(st.address)}</div>` : ""}
           ${st.siret ? `<div class="muted">SIRET ${esc(st.siret)}</div>` : ""}${st.vatNumber ? `<div class="muted">N° TVA ${esc(st.vatNumber)}</div>` : ""}${st.email ? `<div class="muted">${esc(st.email)}</div>` : ""}</div>
         <div class="right"><div class="title">Facture</div><div class="num">${esc(num)}</div></div>
       </header>
@@ -2372,8 +3129,8 @@ function toast(msg) {
 }
 
 // ═══ Navigation, thème, période ════════════════════════════════════════════
-const TITLES = { products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes Leboncoin" };
-const HASH = { products: "produits", overview: "", sales: "ventes", compta: "compta", facturation: "facturation", listings: "annonces", accounts: "comptes" };
+const TITLES = { warehouse: "Entrepôt en direct", products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes Leboncoin" };
+const HASH = { warehouse: "entrepot", products: "produits", overview: "", sales: "ventes", compta: "compta", facturation: "facturation", listings: "annonces", accounts: "comptes" };
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   if (h.startsWith("compte/")) { accId = h.slice(7); return go("account", true); }
@@ -2389,6 +3146,7 @@ function go(v, fromHash = false) {
   $$(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
   $("#view-title").textContent = TITLES[v] ?? "";
   if (v === "account") renderAccount();
+  if (v === "warehouse") { initWarehouse(); renderWhFeed(); setTimeout(whSize, 30); }
   $("#period-seg").style.display = v === "overview" ? "" : "none";
   if (v === "overview" && state.fin) chart(fillDays(state.fin.daily ?? [], period));
   window.scrollTo({ top: 0, behavior: "smooth" });

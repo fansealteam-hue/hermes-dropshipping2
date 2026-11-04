@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tyno Entreprise">
+  <defs>
+    <linearGradient id="tyno-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f08a3e"/>
+      <stop offset="1" stop-color="#b8450f"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#tyno-bg)"/>
+  <!-- Colis isométrique : le dessus forme la barre du T, l'arête centrale en est le pied -->
+  <path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/>
+  <path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".78"/>
+  <path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".56"/>
+  <path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M32 33V54" stroke="#b8450f" stroke-width="2.6" stroke-linecap="round"/>
+</svg>
