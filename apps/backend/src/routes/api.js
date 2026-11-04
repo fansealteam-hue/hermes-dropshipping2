@@ -167,6 +167,11 @@ router.get("/listings", (req, res) => {
 // ─── Sales ────────────────────────────────────────────────────────────────────
 
 router.get("/sales", (req, res) => {
+  // ?all=1 : tout l'historique (compta, factures, déclaration) — y compris les ventes clôturées
+  if (req.query.all === "1") {
+    const { getAllSales } = require("../services/sales");
+    return res.json({ ok: true, data: getAllSales() });
+  }
   const sales = getActiveSales();
   res.json({ ok: true, data: sales });
 });
@@ -512,6 +517,16 @@ router.post("/withdrawals/:id/status", (req, res) => {
 router.get("/conversations", (req, res) => {
   const { listConversations } = require("../services/conversations");
   res.json({ ok: true, data: listConversations({ limit: req.query.limit }) });
+});
+
+// Réponse écrite à la main (envoyée depuis Leboncoin) : on l'ajoute au fil
+router.post("/conversations/:id/reply", (req, res) => {
+  const body = String(req.body?.body ?? "").trim();
+  if (!body) return res.status(400).json({ ok: false, error: "Message vide" });
+  const { addManualReply } = require("../services/conversations");
+  const m = addManualReply(req.params.id, body.slice(0, 2000));
+  if (!m) return res.status(404).json({ ok: false, error: "Conversation introuvable" });
+  res.status(201).json({ ok: true, data: m });
 });
 
 router.get("/conversations/:id", (req, res) => {

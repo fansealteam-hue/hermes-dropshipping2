@@ -109,6 +109,10 @@ app.get("/api/conversations", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/conversations?${new URLSearchParams(req.query).toString()}`)
 );
 
+app.post("/api/conversations/:id/reply", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/conversations/${encodeURIComponent(req.params.id)}/reply`, "POST", req.body)
+);
+
 app.get("/api/conversations/:id", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/conversations/${encodeURIComponent(req.params.id)}`)
 );

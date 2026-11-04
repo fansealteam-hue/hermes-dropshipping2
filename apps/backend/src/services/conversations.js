@@ -87,7 +87,7 @@ function listConversations({ limit = 100 } = {}) {
     const out = lastOut.get(r.conversation_id);
     const li = r.listing_id ? listing.get(r.listing_id) : null;
     // À toi de répondre : dernier message de l'acheteur sans réponse, ou réponse escaladée/suspendue
-    const needsYou = l.direction === "in" || (out && out.action !== "send");
+    const needsYou = l.direction === "in" || (out && !["send", "manual"].includes(out.action));
     return {
       conversationId: r.conversation_id,
       accountId: r.account_id ?? undefined,
@@ -109,6 +109,17 @@ function listConversations({ limit = 100 } = {}) {
   });
 }
 
+function addManualReply(conversationId, body) {
+  init();
+  const first = db.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 1").get(conversationId);
+  if (!first) return null;
+  const id = `msg_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO messages (message_id, conversation_id, account_id, listing_id, buyer_name, direction, body, action, created_at)
+              VALUES (?, ?, ?, ?, ?, 'out', ?, 'manual', ?)`).run(id, conversationId, first.account_id, first.listing_id, first.buyer_name, body, now);
+  return rowToMessage(db.prepare("SELECT * FROM messages WHERE message_id = ?").get(id));
+}
+
 function getConversation(conversationId) {
   init();
   const msgs = db.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC").all(conversationId);
@@ -116,4 +127,4 @@ function getConversation(conversationId) {
   return { conversationId, messages: msgs.map(rowToMessage) };
 }
 
-module.exports = { logExchange, listConversations, getConversation };
+module.exports = { logExchange, listConversations, getConversation, addManualReply };

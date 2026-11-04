@@ -78,6 +78,10 @@ function getActiveSales() {
   ).all().map(rowToSale);
 }
 
+function getAllSales() {
+  return db.prepare("SELECT * FROM sales ORDER BY confirmed_at DESC").all().map(rowToSale);
+}
+
 function getSalesNeedingAction() {
   return db.prepare(
     "SELECT * FROM sales WHERE manual_action_required = 1 AND status != 'closed'"
@@ -174,4 +178,4 @@ function rowToSale(row) {
   };
 }
 
-module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery, markOrdered };
+module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery, markOrdered, getAllSales };

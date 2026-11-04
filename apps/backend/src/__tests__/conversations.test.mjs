@@ -43,3 +43,14 @@ test("une offre est comptée et stocke le montant", () => {
   assert.equal(m[1].decision, "counter");
   assert.equal(conv.getConversation("nope"), null);
 });
+
+test("réponse manuelle : ajoutée au fil, la conversation n'attend plus le vendeur", () => {
+  const before = conv.listConversations().find((x) => x.needsYou);
+  assert.ok(before);
+  const m = conv.addManualReply(before.conversationId, "Je regarde ça et je reviens vers vous");
+  assert.equal(m.direction, "out");
+  assert.equal(m.action, "manual");
+  const after = conv.listConversations().find((x) => x.conversationId === before.conversationId);
+  assert.equal(after.needsYou, false);
+  assert.equal(conv.addManualReply("inconnue", "x"), null);
+});
