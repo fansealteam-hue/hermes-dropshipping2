@@ -1833,18 +1833,53 @@ function whParcel(scale = 1) {
   g.add(b, tape);
   return g;
 }
-function whRobot(color) {
+// Textures procédurales (canvas) réutilisées
+const whTex = {};
+function whCanvasTex(key, w, h, draw, repeat) {
+  if (whTex[key]) return whTex[key];
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  draw(cv.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (repeat) t.repeat.set(repeat[0], repeat[1]);
+  t.anisotropy = 4;
+  return (whTex[key] = t);
+}
+function whPallet(w = 2.2, d = 1.8, wood = 0x9b7448) {
   const g = new THREE.Group();
-  const body = whBox(1.4, 0.6, 1.4, 0x2a2623, { m: 0.5, r: 0.4 });
-  body.position.y = 0.45;
-  const top = whBox(1.2, 0.12, 1.2, color, { e: color, ei: 0.5 });
-  top.position.y = 0.8;
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 1.2 }));
-  eye.position.set(0, 0.5, 0.72);
-  const carry = whParcel(0.8);
-  carry.position.y = 1.2;
-  g.add(body, top, eye, carry);
-  g.userData.carry = carry;
+  [-1, 0, 1].forEach((k) => { const sk = whBox(w, 0.16, 0.32, 0x7d5c37, { r: 0.95 }); sk.position.set(0, 0.08, k * (d / 2 - 0.16)); g.add(sk); });
+  for (let i = 0; i < 5; i++) { const pl = whBox(w / 5 - 0.06, 0.08, d, wood, { r: 0.9 }); pl.position.set(-w / 2 + (w / 5) * (i + 0.5), 0.2, 0); g.add(pl); }
+  return g;
+}
+function whRobot(color) {
+  // Chariot élévateur
+  const g = new THREE.Group();
+  const yellow = 0xf2b51d;
+  const body = whBox(1.6, 0.9, 2.4, yellow, { r: 0.45, m: 0.2 }); body.position.set(0, 0.85, -0.2);
+  const weight = whBox(1.6, 0.7, 0.6, 0x2a2623, { r: 0.6, m: 0.4 }); weight.position.set(0, 0.9, -1.45);
+  const seat = whBox(0.8, 0.5, 0.7, 0x151311); seat.position.set(0, 1.55, -0.5);
+  const guard = new THREE.Group();
+  [[-0.7, 0.3], [0.7, 0.3], [-0.7, -1.1], [0.7, -1.1]].forEach(([x, z]) => { const post = whBox(0.1, 1.9, 0.1, 0x151311, { m: 0.6 }); post.position.set(x, 2.25, z); guard.add(post); });
+  const roof = whBox(1.6, 0.08, 1.6, 0x151311, { m: 0.6 }); roof.position.set(0, 3.2, -0.4); guard.add(roof);
+  const mast = whBox(1.1, 3.2, 0.18, 0x3a3430, { m: 0.7, r: 0.3 }); mast.position.set(0, 1.9, 1.15);
+  const forks = new THREE.Group();
+  [-0.35, 0.35].forEach((x) => { const f = whBox(0.14, 0.08, 1.4, 0x6b6560, { m: 0.8, r: 0.3 }); f.position.set(x, 0, 0.75); forks.add(f); });
+  forks.position.set(0, 0.35, 1.2);
+  const load = new THREE.Group();
+  const pal = whPallet(1.4, 1.2); load.add(pal);
+  const box = whParcel(1); box.position.y = 0.66; load.add(box);
+  load.position.set(0, 0.04, 0.75); forks.add(load);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), new THREE.MeshStandardMaterial({ color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 1.4 }));
+  lamp.position.set(0, 3.3, -0.4);
+  const stripe = whBox(1.62, 0.12, 2.42, color, { e: color, ei: 0.5 }); stripe.position.set(0, 0.55, -0.2);
+  g.add(body, weight, seat, guard, mast, forks, lamp, stripe);
+  [[-0.8, 0.6], [0.8, 0.6], [-0.8, -1.2], [0.8, -1.2]].forEach(([x, z]) => {
+    const wl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.34, 16), new THREE.MeshStandardMaterial({ color: 0x151311, roughness: 0.9 }));
+    wl.rotation.z = Math.PI / 2; wl.position.set(x, 0.42, z); wl.castShadow = true; g.add(wl);
+  });
+  g.userData.carry = load;
+  g.userData.forks = forks;
+  g.scale.setScalar(0.9);
   return g;
 }
 function initWarehouse() {
@@ -1859,52 +1894,114 @@ function initWarehouse() {
   renderer.setPixelRatio(Math.min(1.5, devicePixelRatio));
   host.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0c0b0a, 70, 140);
+  scene.fog = new THREE.Fog(0x15120f, 95, 190);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
-  scene.add(new THREE.HemisphereLight(0xfff1e6, 0x141110, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  scene.add(new THREE.HemisphereLight(0xfff4ea, 0x2a221c, 0.7));
+  const sun = new THREE.DirectionalLight(0xfff6ee, 0.85);
   sun.position.set(18, 40, 22);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 30, bottom: -30 });
   scene.add(sun);
-  const warm = new THREE.PointLight(0xe8702a, 0.8, 60);
+  const warm = new THREE.PointLight(0xe8702a, 0.5, 60);
   warm.position.set(0, 14, -10);
   scene.add(warm);
+  // Lumière froide venant des portes de quai
+  [-1, 1].forEach((sgn) => { const dl = new THREE.PointLight(0x9cc6ff, 0.6, 40); dl.position.set(sgn * 40, 7, 7); scene.add(dl); });
 
   // Sol + quadrillage + murs
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(90, 60), new THREE.MeshStandardMaterial({ color: 0x1d1a17, roughness: 0.95 }));
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  // Sol en béton ciré (taches, joints de dilatation)
+  const concrete = whCanvasTex("concrete", 512, 512, (g, w, h) => {
+    g.fillStyle = "#3a3530"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { const v = 40 + Math.random() * 30; g.fillStyle = `rgba(${v + 18},${v + 12},${v + 6},${Math.random() * 0.25})`; const r = Math.random() * 3; g.fillRect(Math.random() * w, Math.random() * h, r, r); }
+    for (let i = 0; i < 10; i++) { const cx = Math.random() * w, cy = Math.random() * h, r = 50 + Math.random() * 80; const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, "rgba(20,16,12,.12)"); gr.addColorStop(1, "rgba(20,16,12,0)"); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = "rgba(15,12,10,.55)"; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);
+  }, [7, 5]);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(92, 64), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.42, metalness: 0.18 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.z = 4; floor.receiveShadow = true;
   scene.add(floor);
-  const grid = new THREE.GridHelper(90, 45, 0x3a3430, 0x2a2623);
-  grid.position.y = 0.02; grid.material.transparent = true; grid.material.opacity = 0.5;
-  scene.add(grid);
-  const back = whBox(90, 14, 0.6, 0x151311);
-  back.position.set(0, 7, -22);
-  scene.add(back);
+  // Bardage métallique (murs)
+  const cladding = whCanvasTex("cladding", 256, 256, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, w, 0);
+    for (let i = 0; i <= 8; i++) { gr.addColorStop(i / 8, i % 2 ? "#3c4148" : "#2c3036"); }
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = "rgba(255,255,255,.04)"; for (let x = 0; x < w; x += 32) g.fillRect(x + 2, 0, 3, h);
+  }, [22, 1]);
+  const wallMat = new THREE.MeshStandardMaterial({ map: cladding, roughness: 0.55, metalness: 0.45 });
+  const back = new THREE.Mesh(new THREE.BoxGeometry(92, 20, 0.6), wallMat); back.position.set(0, 10, -22); back.receiveShadow = true; scene.add(back);
+  const plinth = whBox(92, 1.4, 0.7, 0x4a4540, { r: 0.8 }); plinth.position.set(0, 0.7, -21.7); scene.add(plinth);
+  const hazard = whCanvasTex("hazard", 128, 32, (g, w, h) => {
+    g.fillStyle = "#f2b51d"; g.fillRect(0, 0, w, h); g.fillStyle = "#151311";
+    for (let x = -h; x < w; x += 32) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 16, h); g.lineTo(x + 16 + h, 0); g.lineTo(x + h, 0); g.fill(); }
+  }, [1, 1]);
+  // Murs latéraux avec portes de quai (rideau relevé)
+  [-1, 1].forEach((sgn) => {
+    const x = sgn * 46;
+    // deux pans de mur de part et d'autre de la porte (z 2 → 12)
+    [[-10, 24], [24, 24]].forEach(([zc, len]) => { const sw = new THREE.Mesh(new THREE.BoxGeometry(0.6, 20, len), wallMat); sw.position.set(x, 10, zc); sw.receiveShadow = true; scene.add(sw); });
+    const header = new THREE.Mesh(new THREE.BoxGeometry(0.6, 9, 10), wallMat); header.position.set(x, 15.5, 7); scene.add(header);
+    const frameM = new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.6 });
+    [2, 12].forEach((z) => { const post = new THREE.Mesh(new THREE.BoxGeometry(0.8, 11, 0.6), frameM); post.position.set(x - sgn * 0.2, 5.5, z); scene.add(post); });
+    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 10.4, 16), new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: 0.7, roughness: 0.35 }));
+    roll.rotation.x = Math.PI / 2; roll.position.set(x - sgn * 0.9, 11.4, 7); scene.add(roll);
+    const outside = new THREE.Mesh(new THREE.PlaneGeometry(10, 11), new THREE.MeshBasicMaterial({ color: 0x9cc6ff, transparent: true, opacity: 0.18 }));
+    outside.rotation.y = -sgn * Math.PI / 2; outside.position.set(x + sgn * 0.4, 5.5, 7); scene.add(outside);
+    const sign = whBox(0.1, 0.9, 3.2, 0x23935f, { e: 0x23935f, ei: 0.6 }); sign.position.set(x - sgn * 0.4, 12.6, 1.2); scene.add(sign);
+  });
+  // Charpente métallique + lampes industrielles
+  for (let z = -20; z <= -4; z += 8) {
+    const beam = whBox(92, 0.7, 0.5, 0x4a4f57, { m: 0.75, r: 0.35 }); beam.position.set(0, 19.4, z); scene.add(beam);
+  }
+  [-30, -10, 10, 30].forEach((x) => {
+    const cord = whBox(0.05, 3.4, 0.05, 0x151311); cord.position.set(x, 17.6, -10); scene.add(cord);
+    if (Math.abs(x) < 15) cord.visible = false; // pas de fil devant l'enseigne
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(1.3, 0.9, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0x2c3036, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide }));
+    shade.position.set(x, 15.7, -10); scene.add(shade);
+    const bulb = new THREE.Mesh(new THREE.CircleGeometry(1.05, 20), new THREE.MeshBasicMaterial({ color: 0xfff1d6 }));
+    bulb.rotation.x = Math.PI / 2; bulb.position.set(x, 15.26, -10); scene.add(bulb);
+    const pl = new THREE.PointLight(0xffe2b8, 0.55, 34); pl.position.set(x, 14.6, -8); scene.add(pl);
+  });
+  // Bandeaux lumineux au mur
   for (let i = -3; i <= 3; i++) {
     const strip = whBox(6, 0.25, 0.1, 0xfff1e6, { e: 0xfff1e6, ei: 0.9 });
-    strip.position.set(i * 12, 10.2, -21.6);
+    strip.position.set(i * 12, 17.2, -21.6);
     scene.add(strip);
   }
+  // Extincteurs + plots de sécurité
+  [-40, 40].forEach((x) => {
+    const ext = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 14), new THREE.MeshStandardMaterial({ color: 0xd62d20, roughness: 0.35, metalness: 0.2 }));
+    ext.position.set(x, 1.6, -21.3); scene.add(ext);
+    const panel = whBox(0.9, 0.9, 0.05, 0xd62d20, { e: 0xd62d20, ei: 0.4 }); panel.position.set(x, 3.2, -21.6); scene.add(panel);
+  });
+  [[-33, 2], [-33, 12], [33, 2], [33, 12]].forEach(([x, z]) => {
+    const bol = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.6, 14), new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.5 }));
+    bol.position.set(x, 0.8, z); bol.castShadow = true; scene.add(bol);
+  });
   // Étagères au fond (débloquées selon le niveau de l'entreprise)
   const shelves = [];
   for (let i = -4; i <= 4; i++) {
     const shelf = new THREE.Group();
     for (let lvl = 0; lvl < 3; lvl++) {
-      const plank = whBox(7, 0.25, 2.4, 0x3a3430, { m: 0.4 });
-      plank.position.y = 1.2 + lvl * 2.6;
-      shelf.add(plank);
+      // lisses orange avant/arrière + platelage grillagé + palette
+      [-1.15, 1.15].forEach((z) => { const beamR = whBox(7, 0.32, 0.16, 0xe8702a, { m: 0.4, r: 0.4 }); beamR.position.set(0, 1.08 + lvl * 2.6, z); shelf.add(beamR); });
+      const deck = whBox(6.8, 0.05, 2.3, 0x6b6560, { m: 0.6, r: 0.5 }); deck.position.y = 1.22 + lvl * 2.6; shelf.add(deck);
+      const pal = whPallet(6.6, 2.1); pal.position.y = 1.25 + lvl * 2.6; shelf.add(pal);
+      const plank = { position: {} }; // compat
       for (let k = 0; k < 4; k++) {
         const pc = whParcel(0.9 + Math.random() * 0.3);
-        pc.position.set(-2.4 + k * 1.6, 1.8 + lvl * 2.6, 0);
+        pc.position.set(-2.4 + k * 1.6, 1.92 + lvl * 2.6, 0);
         pc.rotation.y = (Math.random() - 0.5) * 0.4;
         pc.userData.slot = true;
         pc.visible = false;
         shelf.add(pc);
       }
     }
-    [-3.4, 3.4].forEach((x) => { const post = whBox(0.25, 8.4, 0.25, 0x4a433d, { m: 0.6 }); post.position.set(x, 4.2, 0); shelf.add(post); });
+    // montants bleus (cadres avant/arrière avec entretoises)
+    [-3.5, 3.5].forEach((x) => {
+      [-1.15, 1.15].forEach((z) => { const post = whBox(0.22, 8.8, 0.22, 0x2f5fa8, { m: 0.45, r: 0.4 }); post.position.set(x, 4.4, z); shelf.add(post); });
+      for (let y = 0.8; y < 8.5; y += 1.6) { const br = whBox(0.08, 0.08, 2.3, 0x2f5fa8, { m: 0.45 }); br.position.set(x, y, 0); br.rotation.x = 0.5; shelf.add(br); }
+      const foot = whBox(0.5, 0.1, 2.7, 0x2a2623); foot.position.set(x, 0.05, 0); shelf.add(foot);
+    });
     shelf.position.set(i * 9, 0, -18);
     shelf.userData.order = Math.abs(i) * 2 + (i < 0 ? 1 : 0);
     scene.add(shelf);
@@ -1968,7 +2065,9 @@ function initWarehouse() {
   belt.position.set(0, 1.1, 7); belt.receiveShadow = true;
   scene.add(belt);
   [-1.5, 1.5].forEach((z) => { const rail = whBox(66, 0.3, 0.2, 0x4a433d, { m: 0.7, r: 0.3 }); rail.position.set(0, 1.35, 7 + z); scene.add(rail); });
-  for (let x = -32; x <= 32; x += 8) { const leg = whBox(0.3, 1, 2.2, 0x3a3430, { m: 0.6 }); leg.position.set(x, 0.5, 7); scene.add(leg); }
+  for (let x = -32; x <= 32; x += 8) { const leg = whBox(0.3, 1, 2.2, 0x5b6069, { m: 0.7, r: 0.3 }); leg.position.set(x, 0.5, 7); scene.add(leg); }
+  [-1.6, 1.6].forEach((z) => { const guardB = whBox(64, 0.35, 0.12, 0xf2b51d, { r: 0.5 }); guardB.position.set(0, 1.62, 7 + z); scene.add(guardB); });
+  for (let x = -31.5; x <= 31.5; x += 1.5) { const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0x8a9099, metalness: 0.8, roughness: 0.3 })); roller.rotation.x = Math.PI / 2; roller.position.set(x, 0.86, 7); scene.add(roller); }
 
   // Postes
   const stations = WH_STATIONS.map((st, i) => {
@@ -1986,9 +2085,11 @@ function initWarehouse() {
     screen.rotation.x = -0.15;
     const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.5, 16), new THREE.MeshStandardMaterial({ color: st.c, emissive: st.c, emissiveIntensity: 0.9 }));
     beacon.position.set(4.3, 1.05, -3.3);
-    const lamp = new THREE.PointLight(new THREE.Color(st.c), 0.6, 14);
-    lamp.position.set(0, 5, 0);
-    g.add(base, glow, desk, screen, beacon, lamp);
+    const pal = whPallet(8, 4.6, 0x6e5233); pal.position.set(0, 0.5, 1.1);
+    const mat = whBox(3.6, 0.05, 1.8, 0x151311, { r: 0.95 }); mat.position.set(0, 0.53, -3.6);
+    const kb = whBox(1.2, 0.06, 0.45, 0x2a2623); kb.position.set(0, 2.13, -2.7);
+    const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 14), new THREE.MeshStandardMaterial({ color: 0x151311 })); stool.position.set(-1.6, 1.5, -2);
+    g.add(base, glow, desk, screen, beacon, pal, mat, kb, stool);
     const label = whLabel(st.label, "0", st.c);
     label.position.set(0, 7.6, -1);
     g.add(label);
@@ -2055,7 +2156,8 @@ function initWarehouse() {
         const e = u.t < 0.5 ? 2 * u.t * u.t : 1 - Math.pow(-2 * u.t + 2, 2) / 2;
         r.position.x = xa + (xb - xa) * e;
         r.position.z = 13 + Math.sin(u.t * Math.PI) * 1.5;
-        r.position.y = Math.abs(Math.sin(t * 8 + u.from)) * 0.08;
+        r.position.y = Math.abs(Math.sin(t * 6 + u.from)) * 0.025;
+        if (r.userData.forks) r.userData.forks.position.y = 0.35 + Math.max(0, Math.sin(u.t * Math.PI * 2 + u.from)) * 0.9;
         r.rotation.y = Math.PI / 2 * Math.sign(xb - xa);
       });
       stations.forEach((st, i) => {
@@ -2238,7 +2340,12 @@ function whWorker(vest) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })); head.position.y = 2.45; head.castShadow = true;
   const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.4 })); helmet.position.y = 2.52;
   const box = whParcel(0.7); box.position.set(0, 1.75, 0.55); box.visible = false;
-  g.add(legL, legR, torso, stripe, armL, armR, head, helmet, box);
+  [legL, legR].forEach((lg) => { const boot = whBox(0.36, 0.2, 0.5, 0x151311); boot.position.set(0, -0.92, 0.08); lg.add(boot); });
+  [armL, armR].forEach((ar) => { const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })); hand.position.y = -0.88; ar.add(hand); });
+  const stripe2 = whBox(0.92, 0.1, 0.52, 0xf5f5f0, { e: 0xffffff, ei: 0.6 }); stripe2.position.y = 1.75;
+  const collar = whBox(0.5, 0.12, 0.3, 0x2b3445); collar.position.y = 2.1;
+  const visor = whBox(0.5, 0.05, 0.25, 0xf2c230); visor.position.set(0, 2.5, 0.32);
+  g.add(legL, legR, torso, stripe, stripe2, collar, armL, armR, head, helmet, visor, box);
   g.userData = { legL, legR, armL, armR, box, phase: Math.random() * 6, speed: 0.05 + Math.random() * 0.03, wait: 0, target: null };
   g.scale.setScalar(0.95);
   return g;
@@ -2386,7 +2493,7 @@ function updateWarehouse() {
       const p = whParcel(1);
       const col = j % 5, row = Math.floor(j / 5) % 3, lvl = Math.floor(j / 15);
       p.position.set(st.x - 3.2 + col * 1.6, 0, -0.4 + row * 1.5);
-      p.userData = { y: 0.9 + lvl * 0.85, sale: s };
+      p.userData = { y: 1.2 + lvl * 0.85, sale: s };
       p.position.y = p.userData.y;
       p.rotation.y = ((j * 37) % 10 - 5) * 0.03;
       p.children.forEach((c) => (c.userData.root = p));
