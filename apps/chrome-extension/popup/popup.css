@@ -1,0 +1,71 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 320px; min-height: 400px;
+  background: #0f0f13; color: #f1f1f4;
+  font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+}
+
+.container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Header */
+header { display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 36px; height: 36px; background: #f97316; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.logo-name { font-size: 15px; font-weight: 700; color: #f1f1f4; line-height: 1; }
+.logo-sub { font-size: 10px; color: #f97316; font-family: monospace; letter-spacing: 1px; }
+
+.status-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+.status-dot.connected    { background: #4ade80; color: #4ade80; }
+.status-dot.disconnected { background: #f87171; color: #f87171; }
+.status-dot.checking     { background: #facc15; color: #facc15; animation: pulse 1s infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Status bar */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #16161d; border: 1px solid #2d2d3f; border-radius: 8px;
+  padding: 8px 12px; font-size: 13px;
+}
+.muted { color: #71717a; font-size: 11px; }
+
+/* Page info */
+.page-info {
+  display: flex; align-items: center; gap: 8px;
+  background: #16161d; border: 1px solid #2d2d3f; border-radius: 8px;
+  padding: 8px 12px; min-height: 36px;
+}
+.badge {
+  background: rgba(249,115,22,.15); color: #fb923c;
+  border: 1px solid rgba(249,115,22,.3); border-radius: 999px;
+  padding: 2px 8px; font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.page-title-text { font-size: 12px; color: #a1a1aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+
+/* Buttons */
+.actions { display: flex; flex-direction: column; gap: 8px; }
+.btn {
+  width: 100%; padding: 10px 16px; border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:not(:disabled):hover { opacity: .9; transform: translateY(-1px); }
+.btn:not(:disabled):active { transform: translateY(0); }
+.btn-primary { background: #f97316; color: #fff; }
+.btn-secondary { background: #252533; color: #f1f1f4; border: 1px solid #3a3a52; }
+
+/* Nav */
+.nav { display: flex; gap: 8px; }
+.nav-btn {
+  flex: 1; padding: 8px; background: #16161d; border: 1px solid #2d2d3f;
+  border-radius: 8px; color: #a1a1aa; font-size: 12px; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.nav-btn:hover { background: #252533; color: #f1f1f4; }
