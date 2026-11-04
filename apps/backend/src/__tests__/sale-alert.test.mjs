@@ -101,3 +101,21 @@ test("envoi : appelle l'API Telegram pour chaque chat autorisé", async () => {
   assert.equal(calls[0].body.parse_mode, "HTML");
   assert.match(calls[0].body.caption, /Rupture de stock/);
 });
+
+test("photo /media/… de l'annonce : lue dans MEDIA_DIR puis uploadée", async () => {
+  const fs = require("fs"), os = require("os"), path = require("path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "media-"));
+  fs.writeFileSync(path.join(dir, "annonce.jpg"), Buffer.from([0xff, 0xd8, 0xff]));
+  process.env.MEDIA_DIR = dir;
+  process.env.TELEGRAM_BOT_TOKEN = "123:abc";
+  process.env.TELEGRAM_ALLOWED_CHAT_IDS = "111";
+  db.prepare("UPDATE listings SET media_urls = ? WHERE listing_id = 'l'").run(JSON.stringify(["/media/annonce.jpg"]));
+  db.prepare("UPDATE variants SET image_urls = '[]'").run();
+  const calls = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => { calls.push({ url, form: opts.body instanceof FormData }); return { status: 200, json: async () => ({ ok: true, result: {} }) }; };
+  try { await alert.sendSaleAlert("s_out"); } finally { globalThis.fetch = orig; delete process.env.MEDIA_DIR; }
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /sendPhoto$/);
+  assert.equal(calls[0].form, true, "fichier local envoyé en upload");
+});

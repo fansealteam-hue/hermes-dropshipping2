@@ -146,12 +146,13 @@ router.get("/listings", (req, res) => {
       l.title, l.price_eur_cents, l.cost_eur_cents,
       l.delivery_fee_eur_cents, l.delivery_option,
       l.status, l.published_at, l.created_at,
-      l.repricing_count, l.leboncoin_ad_id,
-      p.title AS product_title,
+      l.repricing_count, l.leboncoin_ad_id, l.media_urls,
+      p.title AS product_title, v.image_urls AS variant_images,
       s.sale_id, s.sale_price_eur_cents, s.confirmed_at AS sold_at,
       s.status AS sale_status
     FROM listings l
     LEFT JOIN products p ON p.temu_item_id = l.temu_item_id
+    LEFT JOIN variants v ON v.variant_id = l.variant_id
     LEFT JOIN sales s ON s.listing_id = l.listing_id
       AND s.status NOT IN ('cancelled')
     ${where}

@@ -43,6 +43,20 @@ async function proxyApi(req, res, backendPath, method = "GET", body = null) {
   }
 }
 
+// ─── Photos produits (servies par le backend dans /media) ─────────────────────
+app.get("/media/:file", async (req, res) => {
+  if (!/^[\w.-]+$/.test(req.params.file)) return res.status(400).end();
+  try {
+    const r = await fetch(`${API_BASE}/media/${req.params.file}`);
+    if (!r.ok) return res.status(r.status).end();
+    res.set("Content-Type", r.headers.get("content-type") ?? "image/jpeg");
+    res.set("Cache-Control", "public, max-age=86400");
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch {
+    res.status(502).end();
+  }
+});
+
 // ─── API routes ───────────────────────────────────────────────────────────────
 
 app.get("/api/dashboard", requireAuth, (req, res) =>

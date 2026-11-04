@@ -787,6 +787,24 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
   .ma-row > :nth-child(4), .ma-row > :nth-child(5) { display: none; }
 }
 
+/* Photos produits */
+.prod-thumb { position: relative; overflow: hidden; }
+.prod-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.prod-thumb.has-img { background: #fff; box-shadow: 0 0 0 1px var(--border-strong); }
+.prod-thumb.has-img span { visibility: hidden; }
+.prod-thumb.lg { width: 48px; height: 48px; border-radius: 12px; font-size: 14px; }
+.pr-item .prod-thumb { width: 38px; height: 38px; }
+
+/* Graphiques : animations d'entrée */
+.bar-anim { transform-box: fill-box; transform-origin: bottom; animation: growUp .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes growUp { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.line-anim { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawLine 1.1s .25s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+.glow-line { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--green) 70%, transparent)); }
+.area-anim { animation: fadeIn .9s .4s both; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bar-anim, .line-anim, .area-anim { animation: none; stroke-dashoffset: 0; } }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -1650,6 +1668,7 @@ function hideBanner() { if (!DEMO) $("#banner").className = "banner"; }
 
 // ═══ Render ════════════════════════════════════════════════════════════════
 function renderAll() {
+  buildImages();
   document.querySelectorAll(".skeleton").forEach((el) => el.classList.remove("skeleton"));
   renderOverview();
   renderSales();
@@ -1738,7 +1757,7 @@ function renderOverview() {
   const maxRev = Math.max(1, ...tp.map((p) => p.revenueEur));
   $("#top-products").innerHTML = tp.map((p) => `
     <tr>
-      <td><div class="prod"><div class="prod-thumb">${initials(p.title)}</div>
+      <td><div class="prod">${thumb({ item: p.temuItemId }, p.title)}
         <div style="min-width:0"><div class="prod-name" title="${esc(p.title)}">${esc(p.title)}</div>
         <div class="prod-meta">${p.revenueEur ? Math.round((p.marginEur / p.revenueEur) * 100) : 0} % de marge</div></div></div></td>
       <td class="r num">${p.salesCount}</td>
@@ -1786,7 +1805,9 @@ function renderSales() {
   $("#sales-table").innerHTML = rows.map((v) => {
     const m = v.salePriceEur - (v.actualCostEur ?? v.costEur);
     return `<tr>
-      <td><div class="mono" style="color:var(--text)">${esc(v.saleId.slice(0, 14))}</div><div class="prod-meta">${esc(v.buyerName ?? "")}${v.deliveryAddress ? " · " + esc(v.deliveryAddress) : ""}</div></td>
+      <td><div class="prod">${thumb({ listing: v.listingId, item: v.temuItemId }, saleTitle(v))}<div style="min-width:0">
+        <div class="prod-name" style="max-width:220px" title="${esc(saleTitle(v))}">${esc(saleTitle(v))}</div>
+        <div class="prod-meta">${esc(v.buyerName ?? "")}${v.deliveryAddress ? " · " + esc(v.deliveryAddress) : ""} · <span class="mono">${esc(v.saleId.slice(0, 10))}</span></div></div></div></td>
       <td>${badge(SALE_STATUS, v.status)}${v.manualActionRequired ? ` <span class="badge b-red" title="${esc(v.manualActionNote ?? "")}">Action</span>` : ""}</td>
       <td class="muted">${esc(accLabel[v.accountId] ?? v.accountId ?? "—")}</td>
       <td class="r num">${eur(v.salePriceEur)}</td>
@@ -1855,7 +1876,7 @@ function renderListings() {
     const m = (l.price_eur_cents - l.cost_eur_cents) / 100;
     const t = l.title || l.product_title || l.listing_id;
     return `<tr>
-      <td><div class="prod"><div class="prod-thumb">${initials(t)}</div><div style="min-width:0">
+      <td><div class="prod">${thumb({ listing: l.listing_id, item: l.temu_item_id }, t)}<div style="min-width:0">
         <div class="prod-name" title="${esc(t)}">${esc(t)}</div><div class="prod-meta mono">${esc(l.listing_id.slice(0, 14))}</div></div></div></td>
       <td>${l.sale_id ? badge(LIST_STATUS, "sold") : badge(LIST_STATUS, l.status)}</td>
       <td class="muted">${esc(accLabel[l.account_id] ?? l.account_id ?? "—")}</td>
@@ -3181,12 +3202,12 @@ function renderAccount() {
   const top = {};
   ok.forEach((s) => {
     const t = titleOf[s.listingId] || s.productTitle || byItem[s.temuItemId] || s.temuItemId || "Produit";
-    const o = (top[t] ??= { t, n: 0, rev: 0 });
+    const o = (top[t] ??= { t, n: 0, rev: 0, item: s.temuItemId, listing: s.listingId });
     o.n++; o.rev += s.salePriceEur;
   });
   const topArr = Object.values(top).sort((x, y) => y.rev - x.rev).slice(0, 8);
   $("#acc-top").innerHTML = topArr.map((p) => `<tr>
-      <td><div class="prod"><div class="prod-thumb">${initials(p.t)}</div><div class="prod-name" title="${esc(p.t)}">${esc(p.t)}</div></div></td>
+      <td><div class="prod">${thumb({ listing: p.listing, item: p.item }, p.t)}<div class="prod-name" title="${esc(p.t)}">${esc(p.t)}</div></div></td>
       <td class="r num">${p.n}</td><td class="r num">${eur(p.rev)}</td></tr>`).join("") || emptyRow(3, "Aucune vente sur la période");
 
   // Tracking steps
@@ -3232,7 +3253,7 @@ function renderAccount() {
     const mm = (l.price_eur_cents - l.cost_eur_cents) / 100;
     const t = l.title || l.product_title || l.listing_id;
     return `<tr>
-      <td><div class="prod"><div class="prod-thumb">${initials(t)}</div><div style="min-width:0"><div class="prod-name" title="${esc(t)}">${esc(t)}</div><div class="prod-meta mono">${esc(l.listing_id.slice(0, 14))}</div></div></div></td>
+      <td><div class="prod">${thumb({ listing: l.listing_id, item: l.temu_item_id }, t)}<div style="min-width:0"><div class="prod-name" title="${esc(t)}">${esc(t)}</div><div class="prod-meta mono">${esc(l.listing_id.slice(0, 14))}</div></div></div></td>
       <td>${l.sale_id ? badge(LIST_STATUS, "sold") : badge(LIST_STATUS, l.status)}</td>
       <td class="r num">${eur(l.price_eur_cents / 100)}</td>
       <td class="r num ${mm >= 0 ? "pos" : "neg"}">${eur(mm)}</td>
@@ -3613,6 +3634,29 @@ $("#sheet").onclick = (e) => { if (e.target.id === "sheet") $("#sheet").classLis
 // Historique complet des ventes (compta, factures, déclaration) ; repli sur les ventes actives
 const allSales = () => state.history ?? state.dash?.activeSales ?? [];
 
+function saleTitle(x) {
+  const l = (state.listings ?? []).find((y) => y.listing_id === x.listingId);
+  return l?.title || l?.product_title || x.productTitle || itemTitles()[x.temuItemId] || "Produit";
+}
+
+// ═══ Photos produits ═══════════════════════════════════════════════════════
+let IMG = { byListing: {}, byItem: {} };
+function buildImages() {
+  const parse = (x) => { try { const v = typeof x === "string" ? JSON.parse(x) : x; return Array.isArray(v) ? v : []; } catch { return []; } };
+  const ok = (u) => typeof u === "string" && (/^https:\/\//.test(u) || u.startsWith("/media/") || u.startsWith("data:image/"));
+  IMG = { byListing: {}, byItem: {} };
+  (state.listings ?? []).forEach((l) => {
+    const u = [...parse(l.media_urls), ...parse(l.variant_images)].find(ok);
+    if (!u) return;
+    IMG.byListing[l.listing_id] = u;
+    if (l.temu_item_id && !IMG.byItem[l.temu_item_id]) IMG.byItem[l.temu_item_id] = u;
+  });
+}
+function thumb({ listing, item } = {}, title = "") {
+  const u = (listing && IMG.byListing[listing]) || (item && IMG.byItem[item]);
+  return `<div class="prod-thumb ${u ? "has-img" : ""}">${u ? `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('has-img');this.remove()">` : ""}<span>${initials(title)}</span></div>`;
+}
+
 // ═══ Commandes Temu ════════════════════════════════════════════════════════
 let temuFilter = "todo";
 const safeUrl = (u) => (u && /^https:\/\//i.test(u) ? u : null);
@@ -3650,7 +3694,7 @@ function renderTemu() {
     const infoArg = JSON.stringify(info).replace(/"/g, "&quot;");
     const pct = s.salePriceEur ? Math.round((m / s.salePriceEur) * 100) : 0;
     return `<div class="card ord ${isLate ? "late" : ""}">
-      <div class="hd"><div class="prod-thumb">${initials(t)}</div>
+      <div class="hd">${thumb({ listing: s.listingId, item: s.temuItemId }, t).replace('class="prod-thumb', 'class="prod-thumb lg')}
         <div style="flex:1;min-width:0"><div class="t">${esc(t)}</div>
           <div class="v">${esc(s.variantId ?? "")}${s.variantId ? " · " : ""}${esc(accLabel[s.accountId] ?? s.accountId ?? "")}</div></div>
         <span class="badge ${isLate ? "b-red" : "b-grey"}" style="flex-shrink:0">${age === 0 ? "aujourd'hui" : `il y a ${age} j`}</span></div>
@@ -3918,7 +3962,7 @@ function renderProducts() {
 
   const top = all.filter((g) => g.sold).sort((a, b) => b.margin - a.margin).slice(0, 6);
   $("#prod-top").innerHTML = top.map((g, i) => `<div class="pr-item">
-      <span class="rank" style="background:var(--green-soft);color:var(--green)">${i + 1}</span>
+      <span class="rank" style="background:var(--green-soft);color:var(--green)">${i + 1}</span>${thumb({ item: g.key }, g.title)}
       <div class="main"><div class="t" title="${esc(g.title)}">${esc(g.title)}</div>
         <div class="s">${g.sold} vendu${g.sold > 1 ? "s" : ""} · ${Math.round(g.rate * 100)} % de taux de vente · ${eur(g.unit)} / vente</div></div>
       <div class="v num pos">${eur(g.margin)}<div class="muted">${eur(g.rev)} CA</div></div></div>`).join("")
@@ -3926,7 +3970,7 @@ function renderProducts() {
 
   const flop = stuck.sort((a, b) => b.age - a.age).slice(0, 6);
   $("#prod-flop").innerHTML = flop.map((g) => `<div class="pr-item">
-      <span class="rank" style="background:var(--red-soft);color:var(--red)">!</span>
+      <span class="rank" style="background:var(--red-soft);color:var(--red)">!</span>${thumb({ item: g.key }, g.title)}
       <div class="main"><div class="t" title="${esc(g.title)}">${esc(g.title)}</div>
         <div class="s">${g.online} annonce${g.online > 1 ? "s" : ""} en ligne · ${g.reprice} reprix · ${eur(g.prices[0] ?? 0)}</div>
         <div class="tip-txt">→ ${flopAdvice(g)}</div></div>
@@ -3946,7 +3990,7 @@ function renderProducts() {
     .sort((a, b) => (prodSort === "title" ? a.title.localeCompare(b.title) * -prodDir : (a[prodSort] - b[prodSort]) * prodDir));
   const rc = (r) => (r >= 0.4 ? "var(--green)" : r > 0 ? "var(--amber)" : "var(--red)");
   $("#prod-table").innerHTML = rows.map((g) => `<tr>
-      <td><div class="prod"><div class="prod-thumb">${initials(g.title)}</div><div style="min-width:0"><div class="prod-name" title="${esc(g.title)}">${esc(g.title)}</div>
+      <td><div class="prod">${thumb({ item: g.key }, g.title)}<div style="min-width:0"><div class="prod-name" title="${esc(g.title)}">${esc(g.title)}</div>
         <div class="prod-meta">${g.total} annonce${g.total > 1 ? "s" : ""}</div></div></div></td>
       <td>${badge(VERDICT, g.verdict)}</td>
       <td class="r num">${g.online}</td>
@@ -4496,12 +4540,15 @@ function renderYearChart() {
   months.forEach((m, i) => { g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${m.d.toLocaleDateString("fr-FR", { month: "short" })}</text>`; });
   let bars = "";
   months.forEach((m, i) => {
-    bars += `<rect x="${x(i) - bw - 1}" y="${y(m.rev)}" width="${bw}" height="${Math.max(0, y(0) - y(m.rev))}" rx="3" fill="var(--accent)"/>`;
-    bars += `<rect x="${x(i) + 1}" y="${y(m.exp)}" width="${bw}" height="${Math.max(0, y(0) - y(m.exp))}" rx="3" fill="var(--amber)" opacity=".75"/>`;
+    bars += `<rect class="bar-anim" style="animation-delay:${i * 0.03}s" x="${x(i) - bw - 1}" y="${y(m.rev)}" width="${bw}" height="${Math.max(0, y(0) - y(m.rev))}" rx="4" fill="url(#yg-rev)"/>`;
+    bars += `<rect class="bar-anim" style="animation-delay:${i * 0.03 + 0.05}s" x="${x(i) + 1}" y="${y(m.exp)}" width="${bw}" height="${Math.max(0, y(0) - y(m.exp))}" rx="4" fill="url(#yg-exp)"/>`;
   });
   const line = smooth(months.map((m, i) => [x(i), y(m.rev - m.exp)]));
-  box.insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${W} ${H}"><g class="axis">${g}</g>${bars}
-    <path d="${line}" fill="none" stroke="var(--green)" stroke-width="2.4"/>${months.map((m, i) => `<circle cx="${x(i)}" cy="${y(m.rev - m.exp)}" r="3.5" fill="var(--green)" stroke="var(--surface)" stroke-width="1.5"/>`).join("")}
+  box.insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${W} ${H}"><defs>
+    <linearGradient id="yg-rev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f08a3e"/><stop offset="1" stop-color="#e8702a" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="yg-exp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6b04a"/><stop offset="1" stop-color="#e6b04a" stop-opacity=".4"/></linearGradient></defs>
+    <g class="axis">${g}</g>${bars}
+    <path class="glow-line line-anim" pathLength="1" d="${line}" fill="none" stroke="var(--green)" stroke-width="2.4"/>${months.map((m, i) => `<circle cx="${x(i)}" cy="${y(m.rev - m.exp)}" r="3.5" fill="var(--green)" stroke="var(--surface)" stroke-width="1.5"/>`).join("")}
     ${months.map((m, i) => `<rect x="${x(i) - iw / 24}" y="${pad.t}" width="${iw / 12}" height="${ih}" fill="transparent" data-i="${i}" class="ym"/>`).join("")}</svg>`);
   const tip = $("#y-tip");
   box.querySelectorAll(".ym").forEach((r) => {
@@ -4591,6 +4638,9 @@ function chart(daily, boxSel = "#chart", tipSel = "#tip") {
   const box = $(boxSel);
   const tip = $(tipSel);
   const gid = boxSel.slice(1);
+  const animKey = `${daily.length}:${daily[0]?.day}:${daily.at(-1)?.revenueEur}`;
+  const anim = box.dataset.anim !== animKey.split(":").slice(0, 2).join(":");
+  box.dataset.anim = animKey.split(":").slice(0, 2).join(":");
   box.querySelector("svg")?.remove();
   const W = box.clientWidth || 600, H = box.clientHeight || 260;
   const pad = { l: 48, r: 8, t: 10, b: 26 };
@@ -4618,7 +4668,7 @@ function chart(daily, boxSel = "#chart", tipSel = "#tip") {
   let bars = "";
   daily.forEach((d, i) => {
     const h = ih - (y(d.revenueEur) - pad.t);
-    if (d.revenueEur > 0) bars += `<rect x="${x(i) - bw / 2}" y="${y(d.revenueEur)}" width="${bw}" height="${Math.max(2, h)}" rx="${Math.min(4, bw / 3)}" fill="url(#${gid}-barG)"/>`;
+    if (d.revenueEur > 0) bars += `<rect class="${anim ? "bar-anim" : ""}" style="animation-delay:${anim ? Math.min(0.5, i * 0.012) : 0}s" x="${x(i) - bw / 2}" y="${y(d.revenueEur)}" width="${bw}" height="${Math.max(2, h)}" rx="${Math.min(4, bw / 3)}" fill="url(#${gid}-barG)"/>`;
   });
   const line = smooth(daily.map((d, i) => [x(i), y(d.marginEur)]));
 
@@ -4629,8 +4679,8 @@ function chart(daily, boxSel = "#chart", tipSel = "#tip") {
     </defs>
     <g class="axis">${g}</g>
     ${bars}
-    <path d="${line} L${x(n - 1)},${pad.t + ih} L${x(0)},${pad.t + ih} Z" fill="url(#${gid}-mG)"/>
-    <path d="${line}" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round"/>
+    <path class="${anim ? "area-anim" : ""}" d="${line} L${x(n - 1)},${pad.t + ih} L${x(0)},${pad.t + ih} Z" fill="url(#${gid}-mG)"/>
+    <path class="glow-line ${anim ? "line-anim" : ""}" pathLength="1" d="${line}" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linecap="round"/>
     <line id="hover-line" x1="0" x2="0" y1="${pad.t}" y2="${pad.t + ih}" stroke="var(--border-strong)" stroke-width="1" opacity="0"/>
     <circle id="hover-dot" r="4.5" fill="var(--green)" stroke="var(--surface)" stroke-width="2" opacity="0"/>
     <rect x="${pad.l}" y="${pad.t}" width="${iw}" height="${ih}" fill="transparent" id="hover-zone"/>
@@ -4798,6 +4848,9 @@ function demoData(p) {
   const n = p === "7d" ? 7 : p === "90d" ? 90 : 30;
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const EMO = ["🪛", "💡", "🧹", "🧰", "⌚", "📽️", "🗂️", "🌀"];
+  const BG = [["#ffe3cc", "#f7a96b"], ["#fff6c9", "#f5c84b"], ["#dff0ff", "#7fb5ea"], ["#e7e1ff", "#9b8cf0"], ["#d9f5e6", "#5cc49a"], ["#ffe0e8", "#ef8aa5"], ["#f3eadb", "#c9a874"], ["#dcf4f6", "#5fc3cc"]];
+  const demoImg = (i) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${BG[i][0]}"/><stop offset="1" stop-color="${BG[i][1]}"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/><ellipse cx="48" cy="80" rx="26" ry="5" fill="#000" opacity=".12"/><text x="48" y="62" font-size="46" text-anchor="middle">${EMO[i]}</text></svg>`);
   const products = ["Perceuse visseuse sans fil 21V", "Lampe LED solaire jardin x4", "Aspirateur à main sans fil", "Coffret 46 douilles chrome", "Montre connectée sport", "Mini projecteur portable 4K", "Organisateur tiroir bambou", "Ventilateur colonne silencieux"];
   const accounts = [{ accountId: "lbc_main", label: "Boutique Principale", niche: "Bricolage" }, { accountId: "lbc_brico", label: "Brico Discount", niche: "Bricolage" }, { accountId: "lbc_maison", label: "Maison & Déco", niche: "Maison & Déco" }];
   const statuses = ["confirmed", "order_placed", "tracking_added", "delivered", "delivered", "delivered", "cancelled"];
@@ -4842,6 +4895,7 @@ function demoData(p) {
       published_at: st === "published" || st === "archived" ? new Date(Date.now() - (i % 8 >= 6 ? 8 + rnd() * 20 : rnd() * 7) * 86400000).toISOString() : null,
       sale_id: i % 8 === 7 || i % 8 === 6 ? null : st !== "draft" && rnd() > (i % 8 < 2 ? 0.25 : 0.65) ? "sale_x" + i : null,
       sale_price_eur_cents: price, sold_at: new Date(Date.now() - rnd() * 2e9).toISOString(), temu_item_id: "tm" + (i % products.length),
+      media_urls: JSON.stringify([demoImg(i % products.length)]),
     };
   });
   return {

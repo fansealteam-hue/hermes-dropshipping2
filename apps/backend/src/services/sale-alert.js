@@ -128,7 +128,9 @@ async function sendPhotoAny(chat_id, src, extra) {
     return tgUpload(chat_id, blob, "photo.jpg", extra);
   }
   const mediaDir = process.env.MEDIA_DIR ?? path.join(__dirname, "../../../data/media");
-  const file = path.isAbsolute(src) ? src : path.join(mediaDir, src);
+  // "/media/xxx.jpg" = URL publique servie par le backend → fichier dans MEDIA_DIR
+  const file = src.startsWith("/media/") ? path.join(mediaDir, path.basename(src))
+    : path.isAbsolute(src) ? src : path.join(mediaDir, src);
   if (!fs.existsSync(file)) throw new Error("fichier photo introuvable");
   return tgUpload(chat_id, new Blob([fs.readFileSync(file)]), path.basename(file), extra);
 }
