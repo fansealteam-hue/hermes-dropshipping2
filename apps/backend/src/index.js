@@ -21,11 +21,23 @@ app.use("/media", require("express").static(MEDIA_DIR));
 // Health check (no auth)
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-// Start job queue ticker
+// Start job queue ticker (legacy queue)
 const queue = require("./jobs/queue");
 require("./jobs/handlers"); // register handlers
 
 setInterval(() => queue.tick(), parseInt(process.env.JOB_INTERVAL_MS ?? "5000")).unref();
+
+// New worker-based job runner (phases E/F/G)
+if (process.env.NODE_ENV !== "test") {
+  const { startJobRunner } = require("./workers/job-runner");
+  startJobRunner();
+}
+
+// Nocturnal scheduler (phase J)
+if (process.env.NODE_ENV !== "test") {
+  const { startScheduler } = require("./scheduler");
+  startScheduler();
+}
 
 // On startup, re-queue unsent alerts (survive restart)
 const db = require("./db/db");
