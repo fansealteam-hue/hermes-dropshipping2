@@ -64,7 +64,28 @@ function startScheduler() {
     console.log("[scheduler] morning_report enfilé");
   }, { timezone: "Europe/Paris" });
 
-  console.log("[scheduler] démarré — publication 08h-18h | recherche 18h-08h | bump 22h-08h | rapport 08h05");
+  // ── check_stock 09h (tous les jours) ─────────────────────────────────────
+  cron.schedule("0 9 * * *", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    enqueueJob("check_stock", {}, { idempotencyKey: `check_stock:${today}` });
+    console.log("[scheduler] check_stock enfilé");
+  }, { timezone: "Europe/Paris" });
+
+  // ── auto_reprice 10h (tous les jours) ────────────────────────────────────
+  cron.schedule("0 10 * * *", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    enqueueJob("auto_reprice", {}, { idempotencyKey: `auto_reprice:${today}` });
+    console.log("[scheduler] auto_reprice enfilé");
+  }, { timezone: "Europe/Paris" });
+
+  // ── rapport hebdomadaire dimanche 20h ─────────────────────────────────────
+  cron.schedule("0 20 * * 0", () => {
+    const week = new Date().toISOString().slice(0, 10);
+    enqueueJob("weekly_report", {}, { idempotencyKey: `weekly_report:${week}` });
+    console.log("[scheduler] weekly_report enfilé");
+  }, { timezone: "Europe/Paris" });
+
+  console.log("[scheduler] démarré — publication 08h-18h | recherche 18h-08h | bump 22h-08h | rapport 08h05 | stock 09h | reprice 10h | hebdo dim.20h");
 }
 
 module.exports = { startScheduler };

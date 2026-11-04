@@ -39,6 +39,12 @@ async function _dispatch(job) {
       return _researchCompetitorPrices();
     case "research_republish_candidates":
       return _researchRepublishCandidates();
+    case "auto_reprice":
+      return _autoReprice();
+    case "check_stock":
+      return _checkStock(payload);
+    case "weekly_report":
+      return _runWeeklyReport();
     case "morning_report":
       return _runMorningReport();
     default:
@@ -106,6 +112,122 @@ async function _researchRepublishCandidates() {
   return { ok: true, enqueued };
 }
 
+// ─── Repricing automatique ───────────────────────────────────────────────────
+
+async function _autoReprice() {
+  const listings = db.prepare(`
+    SELECT listing_id, price_eur_cents, cost_eur_cents, repricing_count
+    FROM listings
+    WHERE status = 'active'
+      AND repricing_count < 5
+      AND (last_repriced_at IS NULL OR last_repriced_at < datetime('now', '-3 days'))
+  `).all();
+
+  let repriced = 0;
+  for (const l of listings) {
+    const currentEur  = l.price_eur_cents / 100;
+    const floorEur    = Math.ceil((l.cost_eur_cents / 100) * 4.5 * 20) / 20;
+    const candidateEur = Math.ceil(currentEur * 0.95 * 20) / 20;
+    const newEur      = Math.max(candidateEur, floorEur);
+
+    if (newEur >= currentEur) continue; // déjà au plancher
+
+    db.prepare(`
+      UPDATE listings
+      SET price_eur_cents = ?, repricing_count = repricing_count + 1,
+          last_repriced_at = datetime('now'), updated_at = datetime('now')
+      WHERE listing_id = ?
+    `).run(Math.round(newEur * 100), l.listing_id);
+
+    enqueueJob("publish_listing", { listingId: l.listing_id });
+    console.log(`[repricer] ${l.listing_id}: ${currentEur.toFixed(2)}€ → ${newEur.toFixed(2)}€`);
+    repriced++;
+  }
+  return { ok: true, repriced };
+}
+
+// ─── Alerte stock Temu ───────────────────────────────────────────────────────
+
+async function _checkStock({ temuItemId }) {
+  if (!temuItemId) return { ok: false, error: "temuItemId manquant" };
+
+  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(temuItemId);
+  if (!product) return { ok: false, error: "Produit introuvable" };
+
+  // Stub : en prod, appeler l'API Temu pour vérifier le stock réel
+  const status = product.warehouse_status ?? "unknown";
+
+  if (status === "china") {
+    // Alerte : entrepôt Chine → pause automatique des annonces actives
+    const actives = db.prepare(
+      "SELECT listing_id FROM listings WHERE temu_item_id = ? AND status = 'active'"
+    ).all(temuItemId);
+
+    for (const l of actives) {
+      enqueueJob("pause_listing", { listingId: l.listing_id },
+        { idempotencyKey: `pause:${l.listing_id}:china` });
+    }
+    console.warn(`[check_stock] ⚠️ ${temuItemId} en entrepôt Chine — ${actives.length} annonce(s) en pause`);
+
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      try {
+        const { sendNotification } = require("../../telegram/src/bot");
+        await sendNotification(
+          `⚠️ *Alerte stock* — produit \`${temuItemId}\`\nEntrepôt Chine détecté — ${actives.length} annonce(s) mise(s) en pause automatiquement\\.`
+        );
+      } catch (_) {}
+    }
+  }
+
+  return { ok: true, status };
+}
+
+// ─── Rapport hebdomadaire ─────────────────────────────────────────────────────
+
+async function _runWeeklyReport() {
+  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+    return { ok: false, error: "TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID non configurés" };
+  }
+
+  try {
+    const salesRow = db.prepare(`
+      SELECT COUNT(*) AS n,
+             SUM(sale_price_eur_cents) AS totalSale,
+             SUM(COALESCE(actual_cost_eur_cents, cost_eur_cents)) AS totalCost
+      FROM sales
+      WHERE date(confirmed_at) >= date('now', '-7 days')
+    `).get();
+
+    const newListings = db.prepare(`
+      SELECT COUNT(*) AS n FROM listings WHERE date(created_at) >= date('now', '-7 days')
+    `).get().n;
+
+    const repriced = db.prepare(`
+      SELECT COUNT(*) AS n FROM listings WHERE date(last_repriced_at) >= date('now', '-7 days')
+    `).get().n;
+
+    const totalSaleEur  = (salesRow.totalSale  ?? 0) / 100;
+    const totalCostEur  = (salesRow.totalCost  ?? 0) / 100;
+    const margeEur      = totalSaleEur - totalCostEur;
+
+    const text = [
+      "📊 *Rapport hebdomadaire Tyno*",
+      "",
+      `🛒 Ventes cette semaine : *${salesRow.n}*`,
+      `💰 CA total : *${totalSaleEur.toFixed(2)} €*`,
+      `📈 Marge estimée : *${margeEur.toFixed(2)} €*`,
+      `📋 Nouvelles annonces : *${newListings}*`,
+      repriced > 0 ? `🔽 Annonces repricées : *${repriced}*` : "✅ Aucun repricing cette semaine",
+    ].join("\n");
+
+    const { sendNotification } = require("../../telegram/src/bot");
+    await sendNotification(text);
+    return { ok: true, sales: salesRow.n, margeEur };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ─── Rapport matinal ─────────────────────────────────────────────────────────
 
 async function _runMorningReport() {
@@ -164,7 +286,8 @@ async function _tick() {
         WHERE job_id = ? AND status = 'pending'
       `).run(job.job_id);
 
-      if (acquired.changes === 0) continue; // déjà pris par un autre tick
+      if (acquired.changes === 0) continue;
+      if (job.paused_global) continue; // pause globale — skip
 
       let result;
       try {

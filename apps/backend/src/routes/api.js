@@ -650,4 +650,118 @@ router.get("/messages/unread", (req, res) => {
   res.json({ ok: true, data: rows });
 });
 
+// ─── Export CSV comptable ─────────────────────────────────────────────────────
+// GET /api/export/sales?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Télécharge un CSV des ventes pour la comptabilité (pas de données PII)
+
+router.get("/export/sales", (req, res) => {
+  const { from, to } = req.query;
+  const dateFrom = from ?? new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const dateTo   = to   ?? new Date().toISOString().slice(0, 10);
+
+  const rows = db.prepare(`
+    SELECT
+      s.sale_id,
+      s.confirmed_at,
+      s.order_placed_at,
+      l.title,
+      s.channel,
+      s.sale_price_eur_cents,
+      s.cost_eur_cents,
+      s.actual_cost_eur_cents,
+      s.order_ref,
+      s.tracking_number,
+      s.tracking_carrier,
+      s.status,
+      s.delivery_city
+    FROM sales s
+    JOIN listings l ON l.listing_id = s.listing_id
+    WHERE date(s.confirmed_at) BETWEEN ? AND ?
+    ORDER BY s.confirmed_at ASC
+  `).all(dateFrom, dateTo);
+
+  const SHIPPING = Math.round(parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99") * 100);
+
+  const header = [
+    "Date vente", "Date commande", "Produit", "Canal",
+    "Prix vendu (€)", "Coût estimé (€)", "Coût réel (€)",
+    "Marge brute (€)", "Réf commande", "Tracking", "Transporteur",
+    "Statut", "Ville livraison"
+  ].join(";");
+
+  const lines = rows.map(r => {
+    const prixVendu   = (r.sale_price_eur_cents / 100).toFixed(2);
+    const coutEstime  = (r.cost_eur_cents / 100).toFixed(2);
+    const coutReel    = r.actual_cost_eur_cents != null ? (r.actual_cost_eur_cents / 100).toFixed(2) : "";
+    const coutPourMarge = r.actual_cost_eur_cents ?? (r.cost_eur_cents + SHIPPING);
+    const fraisVente  = Math.round(r.sale_price_eur_cents * 0.08);
+    const marge = ((r.sale_price_eur_cents - coutPourMarge - fraisVente) / 100).toFixed(2);
+
+    return [
+      r.confirmed_at?.slice(0, 10) ?? "",
+      r.order_placed_at?.slice(0, 10) ?? "",
+      `"${(r.title ?? "").replace(/"/g, "'")}"`,
+      r.channel ?? "",
+      prixVendu,
+      coutEstime,
+      coutReel,
+      marge,
+      r.order_ref ?? "",
+      r.tracking_number ?? "",
+      r.tracking_carrier ?? "",
+      r.status ?? "",
+      r.delivery_city ?? "",
+    ].join(";");
+  });
+
+  const csv = [header, ...lines].join("\n");
+  const filename = `ventes_${dateFrom}_${dateTo}.csv`;
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send("﻿" + csv); // BOM UTF-8 pour Excel
+});
+
+// ─── Système : statut & pause globale ────────────────────────────────────────
+
+router.get("/system/status", (req, res) => {
+  try {
+    const paused = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE paused_global = 1 AND status = 'pending'"
+    ).get().n > 0;
+
+    const activeSales = db.prepare(
+      "SELECT COUNT(*) AS n FROM sales WHERE status NOT IN ('closed','cancelled')"
+    ).get().n;
+
+    const pendingJobs = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'"
+    ).get().n;
+
+    const failedJobs = db.prepare(
+      "SELECT COUNT(*) AS n FROM jobs WHERE status = 'failed'"
+    ).get().n;
+
+    res.json({ ok: true, paused, activeSales, pendingJobs, failedJobs });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post("/system/pause", (req, res) => {
+  const { pause } = req.body ?? {};
+  if (typeof pause !== "boolean") {
+    return res.status(400).json({ ok: false, error: "pause (boolean) requis" });
+  }
+  try {
+    db.prepare(
+      "UPDATE jobs SET paused_global = ? WHERE status = 'pending'"
+    ).run(pause ? 1 : 0);
+    console.log(`[api] mode pause ${pause ? "activé" : "désactivé"}`);
+    res.json({ ok: true, paused: pause });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 module.exports = router;
