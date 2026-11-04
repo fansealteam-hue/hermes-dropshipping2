@@ -6,6 +6,7 @@ const app = express();
 const PORT = process.env.WEB_PORT ?? 3000;
 const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3001";
 const SECRET_TOKEN = process.env.WEB_SECRET_TOKEN ?? "";
+const BACKEND_TOKEN = process.env.API_SECRET_TOKEN ?? "";
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
@@ -25,6 +26,7 @@ async function proxyApi(req, res, backendPath, method = "GET", body = null) {
       method,
       headers: { "Content-Type": "application/json" },
     };
+    if (BACKEND_TOKEN) opts.headers.Authorization = `Bearer ${BACKEND_TOKEN}`;
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(`${API_BASE}${backendPath}`, opts);
     const data = await r.json();
@@ -42,6 +44,14 @@ app.get("/api/dashboard", requireAuth, (req, res) =>
 
 app.post("/api/products/fetch", requireAuth, (req, res) =>
   proxyApi(req, res, "/api/products/fetch", "POST", req.body)
+);
+
+app.get("/api/listings", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/listings?${new URLSearchParams(req.query).toString()}`)
+);
+
+app.get("/api/accounts/stats", requireAuth, (req, res) =>
+  proxyApi(req, res, "/api/accounts/stats")
 );
 
 app.post("/api/listings", requireAuth, (req, res) =>
