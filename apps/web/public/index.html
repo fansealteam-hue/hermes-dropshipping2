@@ -148,7 +148,8 @@ h1 { font-family: var(--serif); font-weight: 600; font-size: 36px; letter-spacin
   padding: 20px; box-shadow: var(--shadow); min-width: 0;
 }
 .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.card-title { font-size: 13px; font-weight: 600; letter-spacing: 0.1px; }
+.card-title { font-size: 14px; font-weight: 600; letter-spacing: 0.1px; display: flex; align-items: center; gap: 8px; }
+.card-head > div:first-child > .card-title::before, .card-head > .card-title::before { content: ""; width: 3px; height: 14px; border-radius: 2px; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); flex-shrink: 0; }
 .card-sub { font-size: 12px; color: var(--text-3); }
 .card-head .right { margin-left: auto; display: flex; gap: 14px; align-items: center; }
 .legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-2); }
@@ -379,7 +380,7 @@ tbody tr:hover { background: var(--surface-2); }
 .group-title i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .group-title span { font-size: 12.5px; font-weight: 400; color: var(--text-3); }
 /* Facturation */
-.fact-grid { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.fact-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
 .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .field .hint { font-size: 11.5px; color: var(--text-3); }
 .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
@@ -479,9 +480,9 @@ tbody tr:hover { background: var(--surface-2); }
 .chal.done .ic { background: var(--green-soft); }
 .streak { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 20px; font-size: 12.5px; font-weight: 700; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 .sticky-head th { position: sticky; top: 0; z-index: 1; }
-.fact-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.fact-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .fk { padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
-.fk .l { font-size: 11.5px; color: var(--text-3); }
+.fk .l { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fk .v { font-size: 20px; font-weight: 700; margin-top: 4px; letter-spacing: -0.4px; }
 @media (max-width: 640px) { .fact-kpis { grid-template-columns: 1fr 1fr; } }
 .composer { border-top: 1px solid var(--border); background: var(--surface-2); padding: 12px 16px; }
@@ -553,6 +554,8 @@ tbody tr:hover { background: var(--surface-2); }
 .ord .hd { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
 .ord .hd .t { font-weight: 600; font-size: 14px; line-height: 1.3; }
 .ord .hd .v { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.wait-trk { margin-top: 10px; font-size: 12px; color: var(--amber); padding: 7px 10px; border-radius: 9px; background: var(--amber-soft); }
+.wait-trk.late { color: var(--red); background: var(--red-soft); }
 .money2 { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
 .money2 > div { padding: 9px 11px; display: flex; flex-direction: column; gap: 2px; }
 .money2 > div + div { border-left: 1px solid var(--border); }
@@ -744,6 +747,43 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
 .chip.on { background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff; border-color: #e2651f; box-shadow: 0 6px 16px -10px #e8702a; }
 .seg button.on { background: var(--accent-soft); color: #ffb27a; }
 
+/* Arbre niche → comptes */
+.nt { padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--nc) 7%, var(--surface-2)), var(--surface-2) 60%); }
+.nt + .nt { margin-top: 4px; }
+.nt-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nt-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--nc); box-shadow: 0 0 0 4px color-mix(in srgb, var(--nc) 20%, transparent), 0 0 12px var(--nc); flex-shrink: 0; }
+.nt-title b { display: block; font-size: 15.5px; font-weight: 650; }
+.nt-title span { font-size: 12px; color: var(--text-3); }
+.nt-pct { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 8px; color: var(--nc); background: color-mix(in srgb, var(--nc) 16%, transparent); }
+.nt-sum { margin-left: auto; display: flex; gap: 22px; }
+.nt-sum span, .nt-acc .kv { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.nt-sum small, .nt-acc .kv small { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .6px; }
+.nt-sum b { font-size: 15px; font-weight: 700; }
+.amb { color: var(--amber); }
+.nt-bar { height: 5px; border-radius: 4px; background: var(--surface-3); margin: 12px 0 6px; overflow: hidden; }
+.nt-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 45%, transparent), var(--nc)); }
+.nt-accs { position: relative; margin-left: 5px; padding-left: 22px; }
+.nt-accs::before { content: ""; position: absolute; left: 0; top: 0; bottom: 26px; width: 2px; background: color-mix(in srgb, var(--nc) 45%, var(--border)); border-radius: 2px; }
+.nt-acc { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); gap: 12px; align-items: center; padding: 10px 10px; margin-top: 6px;
+  border-radius: 11px; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--border); transition: border-color .15s, transform .15s; }
+.nt-acc::before { content: ""; position: absolute; left: -22px; top: 50%; width: 20px; height: 2px; background: color-mix(in srgb, var(--nc) 45%, var(--border)); }
+.nt-acc:hover { border-color: color-mix(in srgb, var(--nc) 50%, var(--border)); transform: translateX(2px); }
+.nt-acc .av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-family: var(--serif); font-weight: 600; color: #fff; }
+.nt-acc .nm { min-width: 0; }
+.nt-acc .nm b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-acc .nm small { font-size: 11.5px; color: var(--text-3); }
+.nt-acc .kv b { font-size: 13.5px; font-weight: 650; }
+@media (max-width: 820px) {
+  .nt-sum { margin-left: 0; width: 100%; justify-content: space-between; gap: 8px; }
+  .nt-sum span { align-items: flex-start; }
+  .nt-accs { padding-left: 14px; }
+  .nt-acc::before { left: -14px; width: 12px; }
+  .nt-acc { grid-template-columns: 30px repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+  .nt-acc .av { width: 30px; height: 30px; grid-row: 1 / span 2; align-self: start; }
+  .nt-acc .nm { grid-column: 2 / -1; }
+  .nt-acc .kv { grid-row: 2; align-items: flex-start; }
+  .nt-acc .kv:nth-of-type(3), .nt-acc .kv:nth-of-type(6) { display: none; }
+}
 /* Comptes sous leur niche */
 .per-acc { gap: 22px; }
 .na-list { margin: 10px 0 0 18px; border-left: 2px solid var(--border); padding-left: 12px; }
@@ -786,6 +826,35 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
   .ma-row { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
   .ma-row > :nth-child(4), .ma-row > :nth-child(5) { display: none; }
 }
+
+/* Ventes : entreprise → niches */
+.sales-tree { margin-bottom: 16px; }
+.st-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.st-top .logo { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(140deg, #f08a3e, #b8450f); flex-shrink: 0; }
+.st-top .logo svg { width: 26px; height: 26px; }
+.st-top .nm { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+.st-top .tots { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.st-top .tots span { font-size: 12px; padding: 5px 10px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+.st-top .tots b { color: var(--text); }
+.st-niches { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding-left: 18px; border-left: 2px solid var(--border); margin-left: 19px; }
+.st-n { display: flex; flex-direction: column; justify-content: flex-start; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; color: inherit; transition: border-color .15s, transform .15s; position: relative; }
+.st-n:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+.st-n.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.st-n .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
+.st-n .h i { width: 9px; height: 9px; border-radius: 50%; }
+.st-n .v { font-size: 18px; font-weight: 700; margin: 6px 0 2px; }
+.st-n .d { font-size: 11.5px; color: var(--text-3); }
+.st-n .accs { font-size: 11.5px; color: var(--text-2); margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.st-n .accs span { display: flex; justify-content: space-between; gap: 8px; }
+@media (max-width: 820px) { .st-niches { margin-left: 4px; padding-left: 10px; } }
+
+/* Automatisations */
+.auto-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border); }
+.auto-row:first-child { border-top: none; padding-top: 0; }
+.auto-row .ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); flex-shrink: 0; }
+.auto-row .t { font-size: 13px; font-weight: 600; }
+.auto-row .d { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.auto-row .switch { margin-left: auto; }
 
 /* Photos produits */
 .prod-thumb { position: relative; overflow: hidden; }
@@ -1063,13 +1132,13 @@ th.sort.on { color: var(--accent); }
 
       <div class="grid goal-row">
         <div class="card goal-card">
-          <div class="card-head"><div><div class="card-title">🎯 Objectif du mois</div><div class="card-sub" id="goal-sub"></div></div>
+          <div class="card-head"><div><div class="card-title">Objectif du mois</div><div class="card-sub" id="goal-sub"></div></div>
             <div class="right"><button class="btn" id="goal-edit">Modifier</button></div></div>
           <div class="goal-body"><svg class="ring" id="goal-ring" viewBox="0 0 140 140"></svg><div class="goal-stats" id="goal-stats"></div></div>
           <button class="btn" id="report-btn" style="margin-top:14px;width:100%;justify-content:center"><svg width="13" height="13"><use href="#i-file"/></svg>Bilan de la semaine (PDF)</button>
         </div>
         <div class="card">
-          <div class="card-head"><div><div class="card-title">🕐 Quand tes acheteurs achètent</div><div class="card-sub" id="heat-sub"></div></div></div>
+          <div class="card-head"><div><div class="card-title">Quand tes acheteurs achètent</div><div class="card-sub" id="heat-sub"></div></div></div>
           <div class="heat" id="heat"></div>
           <div class="heat-legend"><span>moins</span><i style="opacity:.15"></i><i style="opacity:.35"></i><i style="opacity:.6"></i><i style="opacity:.85"></i><i></i><span>plus</span></div>
         </div>
@@ -1138,11 +1207,11 @@ th.sort.on { color: var(--accent); }
     <section class="view" id="v-warehouse">
       <div class="card game-bar" id="game-bar"></div>
       <div class="grid row-2b" style="margin-bottom:16px">
-        <div class="card"><div class="card-head"><div><div class="card-title">⚡ Défis du jour</div><div class="card-sub" id="day-sub"></div></div><div class="right" id="streak"></div></div><div class="challenges" id="day-ch"></div></div>
-        <div class="card"><div class="card-head"><div><div class="card-title">🏆 Défis de la semaine</div><div class="card-sub" id="week-sub"></div></div></div><div class="challenges" id="week-ch"></div></div>
+        <div class="card"><div class="card-head"><div><div class="card-title">Défis du jour</div><div class="card-sub" id="day-sub"></div></div><div class="right" id="streak"></div></div><div class="challenges" id="day-ch"></div></div>
+        <div class="card"><div class="card-head"><div><div class="card-title">Défis de la semaine</div><div class="card-sub" id="week-sub"></div></div></div><div class="challenges" id="week-ch"></div></div>
       </div>
       <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><div><div class="card-title">🎯 Tableau des objectifs</div>
+        <div class="card-head"><div><div class="card-title">Tableau des objectifs</div>
           <div class="card-sub">Chaque palier de bénéfice net atteint = un nouvel employé dans ton entrepôt</div></div>
           <div class="right" id="goal-next"></div></div>
         <div class="goals" id="goals"></div>
@@ -1169,7 +1238,7 @@ th.sort.on { color: var(--accent); }
     <section class="view" id="v-products">
       <div class="grid kpis" id="prod-kpis"></div>
       <div class="card calc" style="margin-bottom:16px">
-        <div class="card-head"><div><div class="card-title">🧮 Calculateur de prix</div><div class="card-sub">Même règle que l'auto-publication : multiplicateur selon le coût, port Temu inclus, marge minimale garantie</div></div></div>
+        <div class="card-head"><div><div class="card-title">Calculateur de prix</div><div class="card-sub">Même règle que l'auto-publication : multiplicateur selon le coût, port Temu inclus, marge minimale garantie</div></div></div>
         <div class="calc-grid">
           <div class="calc-in">
             <div class="field"><label>Prix Temu de l'article</label><input id="calc-cost" type="number" min="0" step="0.01" value="12.50" /></div>
@@ -1211,6 +1280,7 @@ th.sort.on { color: var(--accent); }
 
     <!-- ── Ventes ─────────────────────────────────────── -->
     <section class="view" id="v-sales">
+      <div class="card sales-tree" id="sales-tree"></div>
       <div class="toolbar">
         <div class="search"><svg><use href="#i-search"/></svg><input id="sales-q" placeholder="Rechercher une vente, un acheteur, un suivi…" /></div>
         <div class="chips" id="sales-chips"></div>
@@ -1287,7 +1357,7 @@ th.sort.on { color: var(--accent); }
       </div>
 
       <div class="card" style="margin-top:16px">
-        <div class="card-head"><div><div class="card-title">📒 Journal (grand livre)</div><div class="card-sub" id="ledger-sub">toutes les recettes et dépenses de la période, avec le solde</div></div>
+        <div class="card-head"><div><div class="card-title">Journal (grand livre)</div><div class="card-sub" id="ledger-sub">toutes les recettes et dépenses de la période, avec le solde</div></div>
           <div class="right"><div class="chips" id="ledger-chips"></div></div></div>
         <div class="tbl-wrap" style="max-height:520px;overflow-y:auto">
           <table class="sticky-head"><thead><tr><th>Date</th><th>Type</th><th>Libellé</th><th>Catégorie</th><th class="r">Recette</th><th class="r">Dépense</th><th class="r">Solde</th></tr></thead><tbody id="ledger"></tbody></table>
@@ -1302,7 +1372,7 @@ th.sort.on { color: var(--accent); }
         <div class="chips" id="temu-chips"></div>
       </div>
       <div class="to-order" id="temu-list"></div>
-      <div class="note">1. « Commander sur Temu » · 2. paie avec l'adresse de l'acheteur (complète dans la conversation Leboncoin) · 3. colle la référence → « Commandé ». Ensuite, ajoute le n° de suivi dans l'onglet « Commandées, sans suivi ».</div>
+      <div class="note">1. « Commander sur Temu » · 2. paie avec l'adresse de l'acheteur (complète dans la conversation Leboncoin) · 3. colle la référence → « Commandé ». La vente passe en « Payée · attente du suivi » ; dès que Temu donne le n° de suivi, ajoute-le (Tyno te le rappelle sur Telegram).</div>
     </section>
 
     <!-- ── Messages ───────────────────────────────────── -->
@@ -1344,7 +1414,7 @@ th.sort.on { color: var(--accent); }
     <section class="view" id="v-listings">
       <div class="grid kpis" id="listing-kpis"></div>
       <div class="grid row-2b" style="margin-bottom:16px;align-items:start">
-        <div class="card"><div class="card-head"><div><div class="card-title">📢 Annonces postées</div><div class="card-sub" id="posted-sub">7 derniers jours</div></div></div>
+        <div class="card"><div class="card-head"><div><div class="card-title">Annonces postées</div><div class="card-sub" id="posted-sub">7 derniers jours</div></div></div>
           <div class="posted-day" id="posted-chart"></div></div>
         <div class="card"><div class="card-head"><div><div class="card-title">Dernières publications</div><div class="card-sub">en direct de l'auto-publication</div></div></div>
           <div class="feed" id="posted-feed"></div></div>
@@ -1456,7 +1526,13 @@ th.sort.on { color: var(--accent); }
               <a class="track-link" href="#fact-list" style="margin-left:auto;font-size:13px" onclick="event.preventDefault();$('#fact-list-card').scrollIntoView({behavior:'smooth'})">Voir mes factures →</a>
             </div>
           </form>
-          <div class="card">
+          <div class="card" id="auto-card">
+            <div class="card-head"><div><div class="card-title">Automatisations</div><div class="card-sub">Ce que Tyno fait tout seul, toutes les heures</div></div>
+              <div class="right"><button class="btn" id="auto-run">Lancer maintenant</button></div></div>
+            <div id="auto-list"></div>
+            <div class="note" style="margin-top:10px">Reste à faire par toi (pas d'accès possible sans tes identifiants) : payer la commande sur Temu, copier le numéro de suivi depuis Temu, envoyer la déclaration sur urssaf.fr — Tyno te le rappelle sur Telegram.</div>
+          </div>
+          <div class="card" style="display:none">
             <div style="display:flex;align-items:center;gap:14px">
               <div><div class="card-title">Génération automatique des factures</div>
                 <div class="card-sub" style="margin-top:4px">Une facture est numérotée à chaque vente encaissée, sans rien cliquer. Sinon, tu gardes le bouton « Facture » sur chaque vente.</div></div>
@@ -1586,7 +1662,7 @@ const initials = (t) => esc((t || "?").replace(/[^\p{L}\p{N} ]/gu, "").split(/\s
 
 const SALE_STATUS = {
   confirmed: ["Confirmée", "b-blue"],
-  order_placed: ["Commandée", "b-amber"],
+  order_placed: ["Payée · attente du suivi", "b-amber"],
   tracking_added: ["Expédiée", "b-accent"],
   delivered: ["Livrée", "b-green"],
   cancelled: ["Annulée", "b-red"],
@@ -1625,7 +1701,7 @@ async function load() {
     if (DEMO) {
       state = demoData(period);
     } else {
-      const [fin, dash, listings, accounts, wdRes, convRes, histRes] = await Promise.all([
+      const [fin, dash, listings, accounts, wdRes, convRes, histRes, autoRes, invRes, declRes] = await Promise.all([
         api(`/api/finance?period=${period}`),
         api("/api/dashboard"),
         api("/api/listings?limit=500").catch(() => ({ data: [] })),
@@ -1633,8 +1709,13 @@ async function load() {
         api("/api/withdrawals").catch(() => ({ data: null })),
         api("/api/conversations").catch(() => ({ data: null })),
         api("/api/sales?all=1").catch(() => ({ data: null })),
+        api("/api/automation/settings").catch(() => ({ data: null })),
+        api("/api/invoices").catch(() => ({ data: null })),
+        api("/api/declarations").catch(() => ({ data: null })),
       ]);
-      state = { fin: fin.data, dash: dash.data, listings: listings.data ?? [], accounts: accounts.data ?? [], wd: wdRes.data, convs: convRes.data, history: histRes.data };
+      state = { fin: fin.data, dash: dash.data, listings: listings.data ?? [], accounts: accounts.data ?? [], wd: wdRes.data, convs: convRes.data, history: histRes.data,
+        autoSettings: autoRes.data, invoices: invRes.data, decls: declRes.data };
+      migrateLocalInvoicing();
       Object.keys(convCache).forEach((k) => delete convCache[k]);
     }
     setConn(DEMO ? "demo" : "ok");
@@ -1788,8 +1869,29 @@ function renderOverview() {
   }).join("") || `<div class="empty">Rien pour l'instant</div>`;
 }
 
+let salesNiche = "all";
+function renderSalesTree(all) {
+  const brand = store.get("hermes_brand", "Tyno Entreprise");
+  const ok = all.filter((v) => v.status !== "cancelled");
+  const g = {};
+  ok.forEach((v) => { const k = nicheOf(v.accountId); const o = (g[k] ??= { k, n: 0, rev: 0, accs: {} }); o.n++; o.rev += v.salePriceEur; o.accs[v.accountId] = (o.accs[v.accountId] ?? 0) + 1; });
+  (state.accounts ?? []).forEach((a) => { const k = a.niche || NO_NICHE; g[k] ??= { k, n: 0, rev: 0, accs: {} }; });
+  const tot = ok.reduce((a, v) => a + v.salePriceEur, 0);
+  const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
+  const logo = document.querySelector("#brand-mark")?.innerHTML ?? "";
+  $("#sales-tree").innerHTML = `<div class="st-top"><span class="logo">${logo}</span><div><div class="nm">${esc(brand)}</div><div class="prod-meta">toutes les ventes en cours</div></div>
+      <div class="tots"><span><b class="num">${ok.length}</b> ventes</span><span>CA <b class="num">${eur(tot)}</b></span>
+      ${salesNiche !== "all" ? `<span style="cursor:pointer;color:var(--accent)" onclick="salesNiche='all';renderSales()">✕ toutes les niches</span>` : ""}</div></div>
+    <div class="st-niches">${Object.values(g).sort((a, b) => b.rev - a.rev).map((x) => `<button class="st-n ${salesNiche === x.k ? "on" : ""}" onclick="salesNiche = salesNiche === ${JSON.stringify(x.k).replace(/"/g, "&quot;")} ? 'all' : ${JSON.stringify(x.k).replace(/"/g, "&quot;")}; renderSales()">
+      <div class="h"><i style="background:${nicheColor(x.k)};box-shadow:0 0 8px ${nicheColor(x.k)}"></i>${esc(x.k)}</div>
+      <div class="v num">${eur(x.rev)}</div><div class="d">${x.n} vente${x.n > 1 ? "s" : ""} · ${tot ? Math.round((x.rev / tot) * 100) : 0} %</div>
+      <div class="accs">${Object.entries(x.accs).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, n]) => `<span><span>${esc(accLabel[id] ?? id)}</span><b class="num">${n}</b></span>`).join("")}</div>
+    </button>`).join("")}</div>`;
+}
 function renderSales() {
-  const all = state.dash?.activeSales ?? [];
+  const all0 = state.dash?.activeSales ?? [];
+  renderSalesTree(all0);
+  const all = salesNiche === "all" ? all0 : all0.filter((v) => nicheOf(v.accountId) === salesNiche);
   const counts = all.reduce((a, v) => ((a[v.status] = (a[v.status] || 0) + 1), a), {});
   const chips = [["all", "Toutes", all.length], ["action", "À traiter", all.filter((v) => v.manualActionRequired).length],
     ...Object.keys(SALE_STATUS).filter((k) => counts[k]).map((k) => [k, SALE_STATUS[k][0], counts[k]])];
@@ -3271,7 +3373,10 @@ function itemTitles() {
 
 // ═══ Factures ══════════════════════════════════════════════════════════════
 const INV_DEFAULT = { first: "", last: "", company: "", name: "", address: "", siret: "", vatNumber: "", email: "", vat: "TVA non applicable, art. 293 B du CGI", prefix: "FA", next: 1, auto: false };
+// Facturation côté serveur (automatique, sauvegardée) dès que le backend la fournit
+const SERVER = () => !DEMO && !!state.autoSettings && !!state.invoices;
 const invSettings = () => {
+  if (SERVER()) { const sl = { ...INV_DEFAULT, ...state.autoSettings.seller, auto: state.autoSettings.auto.invoices }; sl.name = sl.company || [sl.first, sl.last].filter(Boolean).join(" "); return sl; }
   let st;
   try { st = { ...INV_DEFAULT, ...JSON.parse(store.get("hermes_inv", "{}")) }; } catch { st = { ...INV_DEFAULT }; }
   st.name = st.company || [st.first, st.last].filter(Boolean).join(" ") || st.name;
@@ -3289,8 +3394,31 @@ const invNumbers = () => {
     }
     return demoInv;
   }
+  if (SERVER()) return Object.fromEntries(state.invoices.filter((i) => i.kind === "invoice").map((i) => [i.saleId, i.invoiceNo]));
   try { return JSON.parse(store.get("hermes_inv_numbers", "{}")) || {}; } catch { return {}; }
 };
+// Reprise unique des factures / infos créées dans le navigateur avant la facturation serveur
+async function migrateLocalInvoicing() {
+  if (DEMO || !state.autoSettings || !state.invoices || store.get("hermes_inv_migrated", "") === "1") return;
+  try {
+    const local = (() => { try { return JSON.parse(store.get("hermes_inv", "{}")) || {}; } catch { return {}; } })();
+    const sv = state.autoSettings.seller;
+    if (!sv.first && !sv.last && !sv.company && (local.first || local.last || local.company)) {
+      const seller = Object.fromEntries(FACT_FIELDS.map((k) => [k, local[k] ?? ""]));
+      state.autoSettings = (await api("/api/automation/settings", { method: "PUT", body: JSON.stringify({ seller, auto: { invoices: local.auto !== false } }) })).data;
+    }
+    const nums = (() => { try { return JSON.parse(store.get("hermes_inv_numbers", "{}")) || {}; } catch { return {}; } })();
+    if (Object.keys(nums).length) await api("/api/invoices/import", { method: "POST", body: JSON.stringify({ numbers: nums }) });
+    store.set("hermes_inv_migrated", "1");
+    state.invoices = (await api("/api/invoices")).data;
+    renderFacturation();
+  } catch {}
+}
+async function refreshInvoicing() {
+  const [a, i, d] = await Promise.all([api("/api/automation/settings"), api("/api/invoices"), api("/api/declarations")]);
+  state.autoSettings = a.data; state.invoices = i.data; state.decls = d.data;
+  renderFacturation(); renderTasks();
+}
 
 function openInvSettings() {
   location.hash = "facturation";
@@ -3302,11 +3430,27 @@ $("#inv-batch-btn").onclick = () => {
   invoice(d.sales.slice().sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt)).map((s) => s.saleId));
 };
 
-function invoice(ids) {
+function invoice(ids, preWin) {
   const st = invSettings();
+  const stGlobal = st;
   if (!st.name) return openInvSettings();
-  const win = window.open("", "_blank");
+  const win = preWin ?? window.open("", "_blank");
   if (!win) return toast("Autorise les fenêtres pop-up pour générer les factures");
+  if (SERVER() && !preWin) {
+    const have = invNumbers();
+    const missing = ids.filter((id) => !have[id] && allSales().find((x) => x.saleId === id && x.status !== "cancelled"));
+    if (missing.length) {
+      win.document.write(`<p style="font:15px Inter,sans-serif;padding:30px">Création de ${missing.length} facture${missing.length > 1 ? "s" : ""}…</p>`);
+      (async () => {
+        for (const id of missing) { try { await api(`/api/sales/${encodeURIComponent(id)}/invoice`, { method: "POST" }); } catch (e) { toast("Erreur : " + e.message); } }
+        state.invoices = (await api("/api/invoices")).data;
+        win.document.open();
+        invoice(ids, win);
+        renderFacturation();
+      })();
+      return;
+    }
+  }
   const salesById = Object.fromEntries(allSales().map((s) => [s.saleId, s]));
   const titleOf = Object.fromEntries((state.listings ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
   const byItem = itemTitles();
@@ -3316,14 +3460,17 @@ function invoice(ids) {
   let next = st.next;
   const year = new Date().getFullYear();
   const list = ids.map((id) => salesById[id]).filter(Boolean);
-  if (!DEMO) {
+  if (!DEMO && !SERVER()) {
     list.forEach((s) => { if (!nums[s.saleId]) nums[s.saleId] = `${st.prefix || "FA"}-${year}-${String(next++).padStart(4, "0")}`; });
     store.set("hermes_inv_numbers", JSON.stringify(nums));
     saveInv({ ...JSON.parse(store.get("hermes_inv", "{}") || "{}"), next });
   }
   const fmt = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-  const pages = list.map((s, i) => {
+  const snap = SERVER() ? Object.fromEntries(state.invoices.filter((x) => x.kind === "invoice").map((x) => [x.saleId, x])) : {};
+  const pages = list.filter((s) => DEMO || nums[s.saleId]).map((s, i) => {
     const num = DEMO ? `DEMO-${year}-${String(i + 1).padStart(4, "0")}` : nums[s.saleId];
+    // infos vendeur figées au moment de l'émission (facturation serveur)
+    const st = snap[s.saleId]?.seller?.name ? { ...INV_DEFAULT, ...snap[s.saleId].seller } : stGlobal;
     const item = titleOf[s.listingId] || s.productTitle || byItem[s.temuItemId] || "Article";
     return `<section class="page">
       <header>
@@ -3531,7 +3678,11 @@ function computeTasks() {
   const now = new Date(), ps = new Date(now.getFullYear(), now.getMonth() - 1, 1), pe = new Date(now.getFullYear(), now.getMonth(), 1);
   const key = `month:${ps.getFullYear()}-${String(ps.getMonth() + 1).padStart(2, "0")}`;
   const ca = sales.filter((x) => x.status !== "cancelled" && new Date(x.confirmedAt) >= ps && new Date(x.confirmedAt) < pe).reduce((a, x) => a + x.salePriceEur, 0);
-  if (store.get("hermes_decl_mode", "month") === "month" && ca > 0 && !declDone()[key]) {
+  const srvDecl = SERVER() && state.decls ? state.decls.find((d) => !d.current && !d.declaredAt && d.caEur > 0) : null;
+  if (srvDecl) {
+    const due = new Date(srvDecl.dueAt);
+    T.push([srvDecl.late || due - now < 7 * 86400000 ? "urgent" : "info", "🧾", `Déclarer ${eur(srvDecl.caEur)} à l'URSSAF`, `${srvDecl.label} · avant le ${due.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`, "#facturation"]);
+  } else if (!SERVER() && store.get("hermes_decl_mode", "month") === "month" && ca > 0 && !declDone()[key]) {
     const due = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     T.push([due - now < 7 * 86400000 ? "urgent" : "info", "🧾", `Déclarer ${eur(ca)} à l'URSSAF`, `CA de ${ps.toLocaleDateString("fr-FR", { month: "long" })} · avant le ${due.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`, "#facturation"]);
   }
@@ -3659,6 +3810,7 @@ function thumb({ listing, item } = {}, title = "") {
 
 // ═══ Commandes Temu ════════════════════════════════════════════════════════
 let temuFilter = "todo";
+const trackDays = () => state.autoSettings?.trackingReminderDays ?? 3;
 const safeUrl = (u) => (u && /^https:\/\//i.test(u) ? u : null);
 function copyTxt(v) { try { navigator.clipboard.writeText(String(v)); toast("Copié ✓"); } catch { toast("Copie impossible"); } }
 function renderTemu() {
@@ -3673,10 +3825,10 @@ function renderTemu() {
     ["À commander", todo.length, late ? `<span class="pill down">${late} en retard (+48 h)</span>` : "aucun retard 👌", "var(--blue)", "var(--blue-soft)", "i-cart"],
     ["À payer sur Temu", eurBig(budget + todo.length * shipFee()), `${eur(budget)} produits + ${eur(todo.length * shipFee())} de port`, "var(--amber)", "var(--amber-soft)", "i-euro"],
     ["Bénéfice en jeu", eurBig(marge), "une fois tout commandé", "var(--green)", "var(--green-soft)", "i-trend"],
-    ["Commandées sans suivi", ordered.length, "ajoute le n° de suivi Temu", "var(--accent)", "var(--accent-soft)", "i-truck"],
+    ["Payées · attente du suivi", ordered.length, ordered.some((x) => daysSince(x.orderPlacedAt ?? x.confirmedAt) >= trackDays()) ? `<span class="pill down">${ordered.filter((x) => daysSince(x.orderPlacedAt ?? x.confirmedAt) >= trackDays()).length} depuis +${trackDays()} j</span>` : "en attente du n° de suivi Temu", "var(--accent)", "var(--accent-soft)", "i-truck"],
   ].map(([l, v, f, c, bg, ic]) => `<div class="card kpi"><div class="kpi-label"><span class="kpi-ico" style="background:${bg};color:${c}"><svg><use href="#${ic}"/></svg></span>${l}</div>
     <div class="kpi-value num">${v}</div><div class="kpi-foot">${f}</div></div>`).join("");
-  $("#temu-chips").innerHTML = [["todo", "À commander", todo.length], ["ordered", "Commandées, sans suivi", ordered.length]]
+  $("#temu-chips").innerHTML = [["todo", "À commander", todo.length], ["ordered", "Payées · attente du suivi", ordered.length]]
     .map(([k, l, n]) => `<button class="chip ${temuFilter === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
   $$("#temu-chips .chip").forEach((c) => (c.onclick = () => { temuFilter = c.dataset.k; renderTemu(); }));
   const list = temuFilter === "todo" ? todo : ordered;
@@ -3686,7 +3838,7 @@ function renderTemu() {
   $("#temu-list").innerHTML = list.map((s) => {
     const t = titleOf[s.listingId] || s.productTitle || byItem[s.temuItemId] || "Produit";
     const age = daysSince(s.confirmedAt);
-    const isLate = temuFilter === "todo" ? age >= 2 : age >= 10;
+    const isLate = temuFilter === "todo" ? age >= 2 : daysSince(s.orderPlacedAt ?? s.confirmedAt) >= trackDays();
     const url = safeUrl(s.supplierUrl);
     const id = esc(s.saleId);
     const m = s.salePriceEur - s.costEur - shipFee();
@@ -3718,7 +3870,7 @@ function renderTemu() {
       : `<div class="act">
           <input id="trk-${id}" placeholder="N° de suivi" onkeydown="if(event.key==='Enter')temuTrack('${id}')" />
           <button class="btn primary" onclick="temuTrack('${id}')"><svg width="12" height="12"><use href="#i-truck"/></svg>Ajouter le suivi</button></div>
-        <div class="prod-meta" style="margin-top:8px">Réf. Temu : <span class="mono">${esc(s.orderRef ?? "—")}</span> · commandé ${ago(s.updatedAt ?? s.confirmedAt)}</div>`}
+        <div class="wait-trk ${daysSince(s.orderPlacedAt ?? s.confirmedAt) >= trackDays() ? "late" : ""}">⏳ Payée ${ago(s.orderPlacedAt ?? s.updatedAt ?? s.confirmedAt)} · en attente du n° de suivi${s.orderRef ? ` · réf. <span class="mono">${esc(s.orderRef)}</span>` : ""}</div>`}
     </div>`;
   }).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>${temuFilter === "todo" ? "Rien à commander, tout est à jour 🎉" : "Aucune commande en attente de suivi"}</div></div></div>`;
 }
@@ -4010,12 +4162,20 @@ const FACT_FIELDS = ["first", "last", "company", "address", "email", "siret", "v
 function fillFactForm() {
   const st = invSettings(), f = $("#fact-form");
   FACT_FIELDS.forEach((k) => { if (document.activeElement !== f[k]) f[k].value = st[k] ?? ""; });
-  $("#prefix-hint").textContent = `Donne des numéros du type ${st.prefix || "FA"}-${new Date().getFullYear()}-${String(st.next).padStart(4, "0")}.`;
+  const nextNo = SERVER() ? state.invoices.filter((i) => i.kind === "invoice" && i.invoiceNo.startsWith(`${st.prefix || "FA"}-${new Date().getFullYear()}-`)).length + 1 : st.next;
+  $("#prefix-hint").textContent = `Donne des numéros du type ${st.prefix || "FA"}-${new Date().getFullYear()}-${String(nextNo).padStart(4, "0")}.`;
   $("#auto-inv").checked = !!st.auto;
 }
-$("#fact-form").onsubmit = (e) => {
+$("#fact-form").onsubmit = async (e) => {
   e.preventDefault();
   const f = e.target;
+  if (SERVER()) {
+    const seller = Object.fromEntries(FACT_FIELDS.map((k) => [k, f[k].value.trim()]));
+    if (!seller.first && !seller.last && !seller.company) return toast("Indique au moins ton nom ou ta raison sociale");
+    try { await api("/api/automation/settings", { method: "PUT", body: JSON.stringify({ seller }) }); toast("Infos enregistrées ✓ — les factures se créent automatiquement"); setTimeout(refreshInvoicing, 800); }
+    catch (err) { toast("Erreur : " + err.message); }
+    return;
+  }
   const raw = (() => { try { return JSON.parse(store.get("hermes_inv", "{}")) || {}; } catch { return {}; } })();
   FACT_FIELDS.forEach((k) => (raw[k] = f[k].value.trim()));
   if (!raw.first && !raw.last && !raw.company) return toast("Indique au moins ton nom ou ta raison sociale");
@@ -4026,7 +4186,8 @@ $("#fact-form").onsubmit = (e) => {
   autoInvoices();
   renderFacturation();
 };
-$("#auto-inv").onchange = (e) => {
+$("#auto-inv").onchange = async (e) => {
+  if (SERVER()) { await saveAuto({ auto: { invoices: e.target.checked } }); return; }
   const raw = (() => { try { return JSON.parse(store.get("hermes_inv", "{}")) || {}; } catch { return {}; } })();
   raw.auto = e.target.checked;
   saveInv(raw);
@@ -4036,6 +4197,7 @@ $("#auto-inv").onchange = (e) => {
 };
 // Numérote automatiquement chaque vente encaissée (hors annulations), dans l'ordre chronologique
 function autoInvoices() {
+  if (SERVER()) return; // le serveur facture tout seul
   const st = invSettings();
   if (DEMO || !st.auto || !st.name) return;
   const nums = invNumbers();
@@ -4049,8 +4211,31 @@ function autoInvoices() {
   saveInv({ ...raw, next });
 }
 let factFilter = "all";
-const creditNumbers = () => { try { return JSON.parse(store.get("hermes_credit_numbers", "{}")) || {}; } catch { return {}; } };
+const creditNumbers = () => {
+  if (SERVER()) return Object.fromEntries(state.invoices.filter((i) => i.kind === "credit").map((i) => [i.saleId, i.invoiceNo]));
+  try { return JSON.parse(store.get("hermes_credit_numbers", "{}")) || {}; } catch { return {}; }
+};
+function renderAutoCard() {
+  const a = SERVER() ? state.autoSettings : null;
+  const on = (k) => (a ? a.auto[k] : DEMO);
+  const days = a?.trackingReminderDays ?? 3;
+  const rows = [
+    ["🧾", "Factures automatiques", "une facture numérotée à chaque vente, sans rien cliquer", "invoices"],
+    ["↩️", "Avoirs automatiques", "quand une vente facturée est annulée", "creditNotes"],
+    ["⏳", "Rappel « numéro de suivi »", `sur Telegram si une commande payée n'a pas de suivi après <input class="inline-input num" style="width:48px;height:24px" type="number" min="1" max="30" value="${days}" onchange="saveAuto({ trackingReminderDays: this.value })" onclick="event.stopPropagation()"> j`, "trackingReminders"],
+    ["📅", "Rappel déclaration URSSAF", "sur Telegram le 1er, le 15 et les 3 derniers jours avant l'échéance", "declarationReminders"],
+  ];
+  $("#auto-list").innerHTML = (a || DEMO) ? rows.map(([ic, t, d, k]) => `<div class="auto-row"><span class="ic">${ic}</span><div style="min-width:0"><div class="t">${t}</div><div class="d">${d}</div></div>
+    <label class="switch"><input type="checkbox" ${on(k) ? "checked" : ""} onchange="saveAuto({ auto: { ${k}: this.checked } })" /><span></span></label></div>`).join("")
+    : `<div class="muted" style="font-size:12.5px">Automatisations indisponibles : mets à jour le backend.</div>`;
+  $("#auto-run").onclick = async () => {
+    if (DEMO) return toast("Mode démo : rien n'a été lancé");
+    try { const r = (await api("/api/automation/run", { method: "POST" })).data; toast(`${r.invoices} facture(s), ${r.credits} avoir(s), ${r.reminders} rappel(s) ✓`); refreshInvoicing(); }
+    catch (e) { toast("Erreur : " + e.message); }
+  };
+}
 function renderFacturation() {
+  renderAutoCard();
   renderFactExtras();
   fillFactForm();
   renderDeclaration();
@@ -4068,17 +4253,17 @@ function renderFacturation() {
   const fr = factRange();
   const shown = rows.filter((r) => !r.s || inRange(r.s.confirmedAt, fr));
   $("#fact-table").innerHTML = shown.slice(0, 300).map(({ id, n, s }) => {
-    const st = !s ? ["Archivée", "b-grey"] : s.status === "cancelled" ? (cn[id] ? ["Annulée · avoir " + cn[id], "b-grey"] : ["Annulée · avoir à faire", "b-red"]) : ["Payée", "b-green"];
+    const st = !s ? ["Archivée", "b-grey"] : s.status === "cancelled" ? (cn[id] ? ["Annulée", "b-grey"] : ["Avoir à faire", "b-red"]) : ["Payée", "b-green"];
     return `<tr>
       <td class="mono" style="color:var(--text);font-weight:600">${esc(n)}</td>
       <td class="muted">${s ? fmtDate(s.confirmedAt) : "—"}</td>
       <td>${esc(s?.buyerName ?? "—")}<div class="prod-meta">${esc(accLabel[s?.accountId] ?? s?.accountId ?? "")}</div></td>
-      <td><span class="badge ${st[1]}">${esc(st[0])}</span></td>
+      <td><span class="badge ${st[1]}">${esc(st[0])}</span>${s?.status === "cancelled" && cn[id] ? `<div class="prod-meta mono">${esc(cn[id])}</div>` : ""}</td>
       <td class="r num">${s ? eur(s.salePriceEur) : "—"}</td>
       <td class="r" style="white-space:nowrap">${s ? `<button class="btn" onclick="invoice(['${esc(id)}'])"><svg width="12" height="12"><use href="#i-file"/></svg>Ouvrir</button>` : ""}
         ${s && s.status === "cancelled" ? `<button class="btn ${cn[id] ? "" : "primary"}" onclick="creditNote('${esc(id)}')">${cn[id] ? "Voir l'avoir" : "Faire l'avoir"}</button>` : ""}</td></tr>`;
   }).join("")
-    || emptyRow(6, DEMO ? "Mode démo : aucune facture enregistrée" : "Aucune facture pour l'instant. Clique « Facture » sur une vente ou active la génération automatique.");
+    || emptyRow(6, DEMO ? "Mode démo : aucune facture enregistrée" : invSettings().name ? "Aucune facture pour l'instant : elles se créent automatiquement à chaque vente." : "Renseigne ton nom ci-contre : les factures se créeront ensuite automatiquement.");
 }
 $("#fact-q").oninput = renderFacturation;
 function factRange() {
@@ -4123,8 +4308,18 @@ function creditNote(saleId) {
   const invNo = invNumbers()[saleId];
   if (!s || !invNo) return toast("Cette vente n'a pas de facture");
   const cn = creditNumbers();
+  if (SERVER() && !cn[saleId]) {
+    const w = window.open("", "_blank");
+    if (!w) return toast("Autorise les fenêtres pop-up");
+    (async () => {
+      try { await api(`/api/sales/${encodeURIComponent(saleId)}/credit-note`, { method: "POST" }); state.invoices = (await api("/api/invoices")).data; }
+      catch (e) { w.close(); return toast("Erreur : " + e.message); }
+      w.close(); creditNote(saleId);
+    })();
+    return;
+  }
   if (DEMO && !cn[saleId]) cn[saleId] = "AV-DEMO-0001"; // aperçu, rien n'est enregistré
-  else if (!cn[saleId]) {
+  else if (!cn[saleId] && !SERVER()) {
     const next = parseInt(store.get("hermes_credit_next", "1")) || 1;
     cn[saleId] = `AV-${new Date().getFullYear()}-${String(next).padStart(4, "0")}`;
     store.set("hermes_credit_numbers", JSON.stringify(cn));
@@ -4159,6 +4354,7 @@ function creditNote(saleId) {
 let declMode = store.get("hermes_decl_mode", "month");
 const declDone = () => { try { return JSON.parse(store.get("hermes_decl_done", "{}")) || {}; } catch { return {}; } };
 function renderDeclaration() {
+  if (SERVER() && state.decls) return renderDeclarationServer();
   $$("#decl-seg button").forEach((b) => {
     b.classList.toggle("on", b.dataset.k === declMode);
     b.onclick = () => { declMode = b.dataset.k; store.set("hermes_decl_mode", declMode); renderDeclaration(); };
@@ -4198,10 +4394,39 @@ function renderDeclaration() {
       <td>${p.current ? "" : `<label class="switch"><input type="checkbox" ${done[p.key] ? "checked" : ""} onchange="declToggle('${p.key}', this.checked)" /><span></span></label>`}</td></tr>`;
   }).join("");
 }
+function renderDeclarationServer() {
+  const u = state.autoSettings.urssaf;
+  $$("#decl-seg button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.k === u.mode);
+    b.onclick = () => saveAuto({ urssaf: { mode: b.dataset.k } });
+  });
+  if (document.activeElement !== $("#decl-rate")) $("#decl-rate").value = u.rate;
+  $("#decl-vl").checked = !!u.vl;
+  $("#decl-table").innerHTML = state.decls.map((p) => {
+    const due = new Date(p.dueAt);
+    return `<tr>
+      <td style="text-transform:capitalize;font-weight:500">${esc(p.label)}${p.current ? ' <span class="badge b-blue" style="text-transform:none">en cours</span>' : ""}</td>
+      <td class="r num" style="font-weight:600">${eur(p.caEur)} <button class="icon-btn" style="width:26px;height:26px;display:inline-grid;vertical-align:middle;margin-left:4px" title="Copier le montant" onclick="declCopy(${Math.round(p.caEur)})"><svg style="width:12px;height:12px"><use href="#i-copy"/></svg></button></td>
+      <td class="r num muted">${eur(p.contributionsEur)}</td>
+      <td class="${p.late ? "age-warn" : "muted"}">${p.current ? "fin de période" : due.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}${p.late ? " · en retard" : ""}</td>
+      <td>${p.current ? "" : `<label class="switch"><input type="checkbox" ${p.declaredAt ? "checked" : ""} onchange="declToggle('${p.key}', this.checked)" /><span></span></label>`}</td></tr>`;
+  }).join("");
+}
+async function saveAuto(patch) {
+  if (DEMO) return toast("Mode démo : réglage non enregistré");
+  try { state.autoSettings = (await api("/api/automation/settings", { method: "PUT", body: JSON.stringify(patch) })).data; toast("Réglage enregistré ✓"); setTimeout(refreshInvoicing, 600); }
+  catch (e) { toast("Erreur : " + e.message); }
+}
 function declCopy(v) { try { navigator.clipboard.writeText(String(v)); } catch {} toast(`Montant copié : ${v} €`); }
-function declToggle(k, v) { const d = declDone(); if (v) d[k] = new Date().toISOString(); else delete d[k]; store.set("hermes_decl_done", JSON.stringify(d)); renderDeclaration(); }
-$("#decl-rate").onchange = (e) => { store.set("hermes_decl_rate", String(Math.max(0, parseFloat(e.target.value) || 0))); renderDeclaration(); };
-$("#decl-vl").onchange = (e) => { store.set("hermes_decl_vl", e.target.checked ? "1" : "0"); renderDeclaration(); };
+async function declToggle(k, v) {
+  if (SERVER()) {
+    try { await api(`/api/declarations/${encodeURIComponent(k)}`, { method: "POST", body: JSON.stringify({ declared: v }) }); state.decls = (await api("/api/declarations")).data; renderDeclaration(); renderTasks(); toast(v ? "Marqué comme déclaré ✓" : "Déclaration décochée"); }
+    catch (e) { toast("Erreur : " + e.message); }
+    return;
+  }
+  const d = declDone(); if (v) d[k] = new Date().toISOString(); else delete d[k]; store.set("hermes_decl_done", JSON.stringify(d)); renderDeclaration(); }
+$("#decl-rate").onchange = (e) => { if (SERVER()) return saveAuto({ urssaf: { rate: parseFloat(e.target.value) || 0 } }); store.set("hermes_decl_rate", String(Math.max(0, parseFloat(e.target.value) || 0))); renderDeclaration(); };
+$("#decl-vl").onchange = (e) => { if (SERVER()) return saveAuto({ urssaf: { vl: e.target.checked } }); store.set("hermes_decl_vl", e.target.checked ? "1" : "0"); renderDeclaration(); };
 
 // ═══ Retraits ══════════════════════════════════════════════════════════════
 const WD_STATUS = { pending: ["En cours", "b-blue"], verify: ["À faire sur Leboncoin", "b-amber"], done: ["Viré", "b-green"], failed: ["Échec", "b-red"], cancelled: ["Annulé", "b-grey"] };
@@ -4279,7 +4504,7 @@ function renderPending() {
   const totM = rows.reduce((a, r) => a + r.margin, 0);
   const in7 = rows.filter((r) => r.release - Date.now() <= 7 * 86400000).reduce((a, r) => a + r.s.salePriceEur, 0);
   $("#pend-sub").innerHTML = `<b class="num" style="color:var(--text)">${eur(tot)}</b> en attente sur ${rows.length} vente${rows.length > 1 ? "s" : ""} · dont <b class="num pos">${eur(totM)}</b> de marge · environ <b class="num" style="color:var(--text)">${eur(in7)}</b> dispo sous 7 jours`;
-  const steps = [["confirmed", "À commander chez Temu", "var(--blue)"], ["order_placed", "Commandées, sans suivi", "var(--amber)"], ["tracking_added", "En transit vers l'acheteur", "var(--accent)"]];
+  const steps = [["confirmed", "À commander chez Temu", "var(--blue)"], ["order_placed", "Payées · attente du suivi", "var(--amber)"], ["tracking_added", "En transit vers l'acheteur", "var(--accent)"]];
   $("#pend-steps").innerHTML = steps.map(([k, l, c]) => {
     const rr = rows.filter((r) => r.s.status === k);
     return `<div class="track-step"><div class="n num">${eur(rr.reduce((a, r) => a + r.s.salePriceEur, 0))}</div>
@@ -4346,27 +4571,32 @@ function renderPerAccount() {
     const pct = total ? Math.round((rev / total) * 100) : 0;
     const c = nicheColor(niche);
     const nw = accs.reduce((t, { a }) => { const w = walletFor(a.accountId); return { ok: t.ok + w.ok, wait: t.wait + w.wait }; }, { ok: 0, wait: 0 });
-    return `<div class="pa-row">
-      <div class="top"><i style="background:${c};box-shadow:0 0 8px ${c}"></i><b>${esc(niche)}</b>
-        <span class="pct" style="background:color-mix(in srgb, ${c} 18%, transparent);color:${c}">${pct} %</span>
-        <span class="meta">${n} vente${n > 1 ? "s" : ""} · ${accs.length} compte${accs.length > 1 ? "s" : ""}</span><span class="amt num">${eur(rev)}</span></div>
-      <div class="pa-track"><div class="pa-fill ${pct ? "" : "zero"}" style="width:${pct}%;background:linear-gradient(90deg, color-mix(in srgb, ${c} 50%, transparent), ${c});color:${c}"></div></div>
-      <div class="na-list">
-        <div class="na-row head"><span>Compte</span><span>CA</span><span>Disponible</span><span>En attente</span><span>Aujourd'hui</span></div>
-        ${accs.map(({ a, i, rev: r, n: k }) => {
+    return `<div class="nt" style="--nc:${c}">
+      <div class="nt-head">
+        <span class="nt-dot"></span>
+        <div class="nt-title"><b>${esc(niche)}</b><span>${n} vente${n > 1 ? "s" : ""} · ${accs.length} compte${accs.length > 1 ? "s" : ""}</span></div>
+        <span class="nt-pct">${pct} %</span>
+        <div class="nt-sum"><span><small>CA</small><b class="num">${eur(rev)}</b></span><span><small>Disponible</small><b class="num pos">${eur(nw.ok)}</b></span><span><small>En attente</small><b class="num amb">${eur(nw.wait)}</b></span></div>
+      </div>
+      <div class="nt-bar"><i style="width:${Math.max(pct ? 2 : 0, pct)}%"></i></div>
+      <div class="nt-accs">
+        ${accs.map(({ a, i, rev: r, n: k }, j) => {
           const w = walletFor(a.accountId);
           const td = all.filter((x) => x.accountId === a.accountId && x.status !== "cancelled" && new Date(x.confirmedAt) >= day0);
           const tdRev = td.reduce((s2, x) => s2 + x.salePriceEur, 0);
-          const ac = HUES[i % HUES.length];
+          const ac = HUES[Math.max(0, i) % HUES.length];
           const key = a.accountId, sum = w.ok + w.wait;
           const changed = moneyPrev[key] != null && moneyPrev[key] !== sum;
           moneyPrev[key] = sum;
-          return `<a class="na-row ${changed ? "flash" : ""}" href="#compte/${encodeURIComponent(a.accountId)}">
-            <span class="na-acc"><span class="av" style="background:linear-gradient(140deg, ${ac}, color-mix(in srgb, ${ac} 60%, #000))">${initials(a.label)}</span><span style="min-width:0"><b>${esc(a.label)}</b><small>${k} vente${k > 1 ? "s" : ""}</small></span></span>
-            <span class="num">${eur(r)}</span><span class="num pos">${eur(w.ok)}</span><span class="num" style="color:var(--amber)">${eur(w.wait)}</span>
-            <span class="num">${td.length ? `+${eur(tdRev)}` : `<span class="muted">—</span>`}</span></a>`;
+          return `<a class="nt-acc ${changed ? "flash" : ""}" href="#compte/${encodeURIComponent(a.accountId)}">
+            <span class="av" style="background:linear-gradient(140deg, ${ac}, color-mix(in srgb, ${ac} 60%, #000))">${initials(a.label)}</span>
+            <span class="nm"><b>${esc(a.label)}</b><small>${k} vente${k > 1 ? "s" : ""} · ${rev ? Math.round((r / rev) * 100) : 0} % de la niche</small></span>
+            <span class="kv"><small>CA</small><b class="num">${eur(r)}</b></span>
+            <span class="kv"><small>Disponible</small><b class="num pos">${eur(w.ok)}</b></span>
+            <span class="kv"><small>En attente</small><b class="num amb">${eur(w.wait)}</b></span>
+            <span class="kv"><small>Aujourd'hui</small><b class="num">${td.length ? `+${eur(tdRev)}` : `<span class="muted">—</span>`}</b></span>
+          </a>`;
         }).join("")}
-        ${accs.length > 1 ? `<div class="na-row tot"><span>Total ${esc(niche)}</span><span class="num">${eur(rev)}</span><span class="num pos">${eur(nw.ok)}</span><span class="num" style="color:var(--amber)">${eur(nw.wait)}</span><span></span></div>` : ""}
       </div>
     </div>`;
   }).join("") || `<div class="empty">Aucun compte</div>`;

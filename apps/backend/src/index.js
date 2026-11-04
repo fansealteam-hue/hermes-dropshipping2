@@ -71,6 +71,16 @@ function scheduleRepriceCheck() {
 
 if (process.env.NODE_ENV !== "test") scheduleRepriceCheck();
 
+// Automatisations : factures, avoirs, rappels Telegram (suivi, URSSAF)
+if (process.env.NODE_ENV !== "test") {
+  const { runAutomation } = require("./services/automation");
+  const tickAuto = () => runAutomation()
+    .then((r) => { if (r.invoices || r.credits || r.reminders) console.log(`[auto] ${r.invoices} facture(s), ${r.credits} avoir(s), ${r.reminders} rappel(s)`); })
+    .catch((e) => console.error("[auto] erreur:", e.message));
+  setTimeout(tickAuto, 30_000).unref();
+  setInterval(tickAuto, parseInt(process.env.AUTOMATION_TICK_MIN ?? "60") * 60_000).unref();
+}
+
 // Retraits automatiques des porte-monnaie (seuil + fréquence par compte)
 if (process.env.NODE_ENV !== "test") {
   const { runAutoWithdrawals } = require("./services/withdrawals");

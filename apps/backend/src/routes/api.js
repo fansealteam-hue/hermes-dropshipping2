@@ -428,6 +428,7 @@ router.post("/sales/:id/cancel", (req, res) => {
   const { randomUUID } = require("crypto");
   // Marquer annulée en DB
   db.prepare("UPDATE sales SET status = 'cancelled', updated_at = datetime('now') WHERE sale_id = ?").run(sale.saleId);
+  try { require("../services/automation").ensureCreditNote(sale.saleId); } catch (e) { console.warn("[auto] avoir:", e.message); }
 
   // Job pour envoyer message LBC à l'acheteur + annuler sur LBC
   const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -564,6 +565,41 @@ router.post("/sales/:id/resend-alert", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
   }
+});
+
+// ─── Automatisations : facturation, avoirs, déclaration, rappels ─────────────
+
+const auto = require("../services/automation");
+const autoErr = (res, e) => res.status(e.code === "BAD_REQUEST" ? 400 : e.code === "NOT_FOUND" ? 404 : 500).json({ ok: false, error: e.message ?? String(e) });
+
+router.get("/automation/settings", (req, res) => res.json({ ok: true, data: auto.getSettings() }));
+router.put("/automation/settings", (req, res) => {
+  try {
+    const data = auto.saveSettings(req.body ?? {});
+    auto.runAutomation().catch(() => {}); // facture tout de suite ce qui peut l'être
+    res.json({ ok: true, data });
+  } catch (e) { autoErr(res, e); }
+});
+router.post("/automation/run", async (req, res) => {
+  try { res.json({ ok: true, data: await auto.runAutomation() }); } catch (e) { autoErr(res, e); }
+});
+router.get("/invoices", (req, res) => res.json({ ok: true, data: auto.listInvoices() }));
+router.post("/invoices/import", (req, res) => {
+  try { res.json({ ok: true, data: { imported: auto.importInvoices(req.body?.numbers ?? {}) } }); } catch (e) { autoErr(res, e); }
+});
+router.post("/sales/:id/invoice", (req, res) => {
+  const inv = auto.ensureInvoice(req.params.id, { force: true });
+  if (!inv) return res.status(422).json({ ok: false, error: "Facture impossible : renseigne ton nom dans Facturation, ou vente annulée" });
+  res.json({ ok: true, data: inv });
+});
+router.post("/sales/:id/credit-note", (req, res) => {
+  const cn = auto.ensureCreditNote(req.params.id, { force: true });
+  if (!cn) return res.status(422).json({ ok: false, error: "Pas de facture pour cette vente" });
+  res.json({ ok: true, data: cn });
+});
+router.get("/declarations", (req, res) => res.json({ ok: true, data: auto.declarations() }));
+router.post("/declarations/:key", (req, res) => {
+  try { res.json({ ok: true, data: auto.setDeclared(req.params.key, req.body?.declared !== false) }); } catch (e) { autoErr(res, e); }
 });
 
 module.exports = router;

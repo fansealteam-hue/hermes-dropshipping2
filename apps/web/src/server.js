@@ -151,6 +151,17 @@ app.patch("/api/accounts/:id/niche", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/accounts/${encodeURIComponent(req.params.id)}/niche`, "PATCH", req.body)
 );
 
+// Automatisations (facturation, déclaration, rappels)
+app.get("/api/automation/settings", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/settings"));
+app.put("/api/automation/settings", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/settings", "PUT", req.body));
+app.post("/api/automation/run", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/run", "POST"));
+app.get("/api/invoices", requireAuth, (req, res) => proxyApi(req, res, "/api/invoices"));
+app.post("/api/invoices/import", requireAuth, (req, res) => proxyApi(req, res, "/api/invoices/import", "POST", req.body));
+app.post("/api/sales/:id/invoice", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/invoice`, "POST"));
+app.post("/api/sales/:id/credit-note", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/credit-note`, "POST"));
+app.get("/api/declarations", requireAuth, (req, res) => proxyApi(req, res, "/api/declarations"));
+app.post("/api/declarations/:key", requireAuth, (req, res) => proxyApi(req, res, `/api/declarations/${encodeURIComponent(req.params.key)}`, "POST", req.body));
+
 // ─── SPA fallback ────────────────────────────────────────────────────────────
 app.get("*", (req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))

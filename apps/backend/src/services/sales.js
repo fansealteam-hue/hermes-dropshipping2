@@ -63,6 +63,8 @@ function confirmSale({
     VALUES (?, 'mark_listing_sold', ?, 'pending', ?, datetime('now'), datetime('now'))
   `).run(soldJobId, JSON.stringify({ listingId, saleId }), `sold:${listingId}`);
 
+  try { require("./automation").ensureInvoice(saleId); } catch (e) { console.warn("[auto] facture:", e.message); }
+
   return { sale: getSale(saleId), duplicate: false };
 }
 
@@ -173,6 +175,8 @@ function rowToSale(row) {
     leboncoinDeliveryConfirmed: !!row.leboncoin_delivery_confirmed,
     manualActionRequired: !!row.manual_action_required,
     manualActionNote: row.manual_action_note ?? undefined,
+    orderPlacedAt: row.order_placed_at ?? undefined,
+    trackingAddedAt: row.tracking_added_at ?? undefined,
     confirmedAt: row.confirmed_at,
     updatedAt: row.updated_at,
   };
