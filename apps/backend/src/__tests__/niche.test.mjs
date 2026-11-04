@@ -42,3 +42,15 @@ test("renommer un compte (nom vide refusé)", async () => {
   assert.equal((await req("PATCH", "/api/accounts/lbc_compte_b/label", { label: " " })).ok, false);
   assert.equal((await req("PATCH", "/api/accounts/nope/label", { label: "X" })).ok, false);
 });
+
+test("niche d'un produit : enregistrée et renvoyée avec les annonces", async () => {
+  const db = require("../db/db");
+  db.pragma("foreign_keys = OFF");
+  db.prepare("INSERT OR IGNORE INTO products (temu_item_id, temu_url, title, warehouse_status, raw_json, fetched_at) VALUES ('tmN', 'https://x', 'Lampe', 'local', '{}', datetime('now'))").run();
+  db.prepare("INSERT OR IGNORE INTO listings (listing_id, channel, account_id, temu_item_id, variant_id, title, price_eur_cents, cost_eur_cents, status, created_at, updated_at) VALUES ('lN', 'leboncoin', 'lbc_compte_a', 'tmN', 'v', 'Lampe', 2000, 500, 'published', datetime('now'), datetime('now'))").run();
+  const r = await req("PATCH", "/api/products/tmN/niche", { niche: "Jardin" });
+  assert.equal(r.data.niche, "Jardin");
+  const l = await req("GET", "/api/listings");
+  assert.equal(l.data.find((x) => x.listing_id === "lN").product_niche, "Jardin");
+  assert.equal((await req("PATCH", "/api/products/inconnu/niche", { niche: "X" })).ok, false);
+});

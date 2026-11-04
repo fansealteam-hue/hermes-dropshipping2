@@ -147,6 +147,10 @@ app.patch("/api/accounts/:id/label", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/accounts/${encodeURIComponent(req.params.id)}/label`, "PATCH", req.body)
 );
 
+app.patch("/api/products/:id/niche", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/products/${encodeURIComponent(req.params.id)}/niche`, "PATCH", req.body)
+);
+
 app.patch("/api/accounts/:id/niche", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/accounts/${encodeURIComponent(req.params.id)}/niche`, "PATCH", req.body)
 );

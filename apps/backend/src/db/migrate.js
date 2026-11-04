@@ -22,6 +22,7 @@ function runMigrations(db) {
   addColumn("ALTER TABLE listings ADD COLUMN repricing_count INTEGER NOT NULL DEFAULT 0");
   addColumn("ALTER TABLE listings ADD COLUMN last_repriced_at TEXT");
   addColumn("ALTER TABLE seller_accounts ADD COLUMN niche TEXT");
+  addColumn("ALTER TABLE products ADD COLUMN niche TEXT");
 }
 
 if (require.main === module) {

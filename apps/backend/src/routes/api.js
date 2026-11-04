@@ -105,6 +105,14 @@ router.patch("/accounts/:id/label", (req, res) => {
   res.json({ ok: true, data: { accountId: req.params.id, label } });
 });
 
+// Niche d'un produit (prioritaire sur la niche du compte) — vide = niche du compte
+router.patch("/products/:id/niche", (req, res) => {
+  const niche = String(req.body?.niche ?? "").trim().slice(0, 40) || null;
+  const r = db.prepare("UPDATE products SET niche = ? WHERE temu_item_id = ?").run(niche, req.params.id);
+  if (!r.changes) return res.status(404).json({ ok: false, error: "Produit introuvable" });
+  res.json({ ok: true, data: { temuItemId: req.params.id, niche: niche ?? undefined } });
+});
+
 // Niche d'un compte (bricolage, maison, tech…) — vide = sans niche
 router.patch("/accounts/:id/niche", (req, res) => {
   const niche = String(req.body?.niche ?? "").trim().slice(0, 40) || null;
@@ -147,7 +155,7 @@ router.get("/listings", (req, res) => {
       l.delivery_fee_eur_cents, l.delivery_option,
       l.status, l.published_at, l.created_at,
       l.repricing_count, l.leboncoin_ad_id, l.media_urls,
-      p.title AS product_title, v.image_urls AS variant_images,
+      p.title AS product_title, p.niche AS product_niche, v.image_urls AS variant_images,
       s.sale_id, s.sale_price_eur_cents, s.confirmed_at AS sold_at,
       s.status AS sale_status
     FROM listings l
