@@ -744,6 +744,31 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
 .chip.on { background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff; border-color: #e2651f; box-shadow: 0 6px 16px -10px #e8702a; }
 .seg button.on { background: var(--accent-soft); color: #ffb27a; }
 
+/* Argent par compte */
+.live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--green); background: var(--green-soft); padding: 2px 8px; border-radius: 20px; }
+.live-pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.6s infinite; }
+.money-acc { display: flex; flex-direction: column; }
+.ma-row { display: grid; grid-template-columns: minmax(0, 1.6fr) 1fr 1fr 1.2fr 0.8fr; gap: 14px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; border-radius: 10px; transition: background .15s; }
+.ma-row:hover { background: var(--surface-2); }
+.ma-row.head { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .8px; padding-top: 0; }
+.ma-row.head:hover { background: none; }
+.ma-row.total { border-bottom: none; border-top: 1px solid var(--border-strong); margin-top: 4px; font-weight: 700; }
+.ma-acc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ma-acc .av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-family: var(--serif); font-weight: 600; color: #fff; flex-shrink: 0; }
+.ma-acc .nm { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-acc .ni { font-size: 11.5px; color: var(--text-3); }
+.ma-v { font-weight: 700; font-size: 14px; white-space: nowrap; }
+.ma-v small { display: block; font-size: 11px; font-weight: 500; color: var(--text-3); }
+.ma-bar { height: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden; display: flex; }
+.ma-bar i { height: 100%; }
+.ma-today { font-size: 12.5px; white-space: nowrap; }
+.flash { animation: flash 1.2s ease; }
+@keyframes flash { 0% { background: color-mix(in srgb, var(--green) 25%, transparent); } 100% { background: transparent; } }
+@media (max-width: 820px) {
+  .ma-row { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+  .ma-row > :nth-child(4), .ma-row > :nth-child(5) { display: none; }
+}
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -1036,6 +1061,13 @@ th.sort.on { color: var(--accent); }
         <div class="card-head"><div class="card-title" id="per-acc-title">Par compte</div>
           <a class="right track-link" href="#comptes" style="font-size:12.5px">Voir les comptes →</a></div>
         <div class="per-acc" id="per-acc"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><div><div class="card-title" style="display:flex;align-items:center;gap:8px">💰 Argent par compte <span class="live-pill"><i></i>en direct</span></div>
+          <div class="card-sub" id="money-sub"></div></div>
+          <a class="right track-link" href="#comptes" style="font-size:12.5px">Retraits →</a></div>
+        <div class="money-acc" id="money-acc"></div>
       </div>
 
       <div class="grid row-2b">
@@ -4123,7 +4155,38 @@ function walletHtml(w, sm = false) {
     <div class="wallet wait ${sm ? "sm" : ""}" style="cursor:pointer" title="Voir le détail" onclick="event.stopPropagation();${sm ? "" : ""}location.hash='comptes';setTimeout(()=>$('#pending-card').scrollIntoView({behavior:'smooth'}),60)"><div class="wl"><svg><use href="#i-clock"/></svg>${sm ? "En attente" : "Total en attente"}</div>
       <div class="wv num">${eur(w.wait)}</div><div class="wd">Ventes pas encore reçues par l'acheteur.</div></div>`;
 }
+let moneyPrev = {};
+function renderMoneyByAccount() {
+  const sales = state.dash?.activeSales ?? [];
+  const accs = state.accounts.length ? state.accounts : [...new Set(sales.map((x) => x.accountId))].map((id) => ({ accountId: id, label: id }));
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const rows = accs.map((a, i) => {
+    const w = walletFor(a.accountId);
+    const today = sales.filter((x) => x.accountId === a.accountId && x.status !== "cancelled" && new Date(x.confirmedAt) >= day0);
+    return { a, i, ok: w.ok, wait: w.wait, nToday: today.length, revToday: today.reduce((s2, x) => s2 + x.salePriceEur, 0) };
+  }).sort((x, y) => y.ok + y.wait - (x.ok + x.wait));
+  const tot = rows.reduce((t, r) => ({ ok: t.ok + r.ok, wait: t.wait + r.wait, n: t.n + r.nToday, rev: t.rev + r.revToday }), { ok: 0, wait: 0, n: 0, rev: 0 });
+  const max = Math.max(1, ...rows.map((r) => r.ok + r.wait));
+  $("#money-sub").innerHTML = `<b class="num" style="color:var(--text)">${eur(tot.ok + tot.wait)}</b> au total · ${eur(tot.ok)} disponible · ${eur(tot.wait)} en attente · mis à jour ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+  const head = `<div class="ma-row head"><span>Compte</span><span>Disponible</span><span>En attente</span><span>Répartition</span><span>Aujourd'hui</span></div>`;
+  const body = rows.map(({ a, i, ok, wait, nToday, revToday }) => {
+    const c = HUES[i % HUES.length];
+    const changed = moneyPrev[a.accountId] != null && moneyPrev[a.accountId] !== ok + wait;
+    return `<a class="ma-row ${changed ? "flash" : ""}" href="#compte/${encodeURIComponent(a.accountId)}">
+      <div class="ma-acc"><span class="av" style="background:linear-gradient(140deg, ${c}, color-mix(in srgb, ${c} 60%, #000))">${initials(a.label)}</span>
+        <div style="min-width:0"><div class="nm">${esc(a.label)}</div><div class="ni">${esc(nicheOf(a.accountId))}</div></div></div>
+      <div class="ma-v num pos">${eur(ok)}<small>prêt à virer</small></div>
+      <div class="ma-v num" style="color:var(--amber)">${eur(wait)}<small>colis en route</small></div>
+      <div><div class="ma-bar" style="width:${Math.max(6, ((ok + wait) / max) * 100)}%"><i style="width:${ok + wait ? (ok / (ok + wait)) * 100 : 0}%;background:var(--green)"></i><i style="flex:1;background:var(--amber)"></i></div></div>
+      <div class="ma-today">${nToday ? `<b class="num">+${eur(revToday)}</b><div class="muted" style="font-size:11px">${nToday} vente${nToday > 1 ? "s" : ""}</div>` : `<span class="muted">—</span>`}</div>
+    </a>`;
+  }).join("");
+  const total = rows.length > 1 ? `<div class="ma-row total"><span>Total</span><span class="num pos">${eur(tot.ok)}</span><span class="num" style="color:var(--amber)">${eur(tot.wait)}</span><span></span><span class="num">${tot.n ? "+" + eur(tot.rev) : "—"}</span></div>` : "";
+  $("#money-acc").innerHTML = rows.length ? head + body + total : `<div class="empty">Aucun compte</div>`;
+  moneyPrev = Object.fromEntries(rows.map((r) => [r.a.accountId, r.ok + r.wait]));
+}
 function renderPerAccount() {
+  renderMoneyByAccount();
   const days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
   const since = Date.now() - days * 86400000;
   const sales = (state.dash?.activeSales ?? []).filter((s) => s.status !== "cancelled" && new Date(s.confirmedAt) >= since);
