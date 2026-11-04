@@ -11,6 +11,13 @@ const BACKEND_TOKEN = process.env.API_SECRET_TOKEN ?? "";
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
+// three.js servi en local (vue 3D du dashboard), sinon la page bascule sur le CDN
+try {
+  app.use("/vendor/three", express.static(path.dirname(require.resolve("three/build/three.min.js"))));
+} catch {
+  console.warn("[web] three non installé — la vue 3D utilisera le CDN");
+}
+
 // ─── Simple token auth middleware ─────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!SECRET_TOKEN) return next(); // dev: no auth
@@ -80,6 +87,22 @@ app.get("/api/finance", requireAuth, (req, res) =>
 
 app.post("/api/sales/:id/sync-tracking", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/sales/${req.params.id}/sync-tracking`, "POST")
+);
+
+app.get("/api/withdrawals", requireAuth, (req, res) =>
+  proxyApi(req, res, "/api/withdrawals")
+);
+
+app.patch("/api/accounts/:id/withdraw-settings", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/accounts/${encodeURIComponent(req.params.id)}/withdraw-settings`, "PATCH", req.body)
+);
+
+app.post("/api/accounts/:id/withdraw", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/accounts/${encodeURIComponent(req.params.id)}/withdraw`, "POST")
+);
+
+app.post("/api/withdrawals/:id/status", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/withdrawals/${encodeURIComponent(req.params.id)}/status`, "POST", req.body)
 );
 
 // ─── SPA fallback ────────────────────────────────────────────────────────────

@@ -596,6 +596,31 @@ async function handleRepublishSold({ temuItemId, variantId, accountId, sourcePri
   }
 }
 
+// --- Retraits porte-monnaie Leboncoin ----------------------------------------
+
+/**
+ * Exécute une demande de retrait.
+ * Mock/test : marque le retrait comme effectué.
+ * Production : le virement Leboncoin n'est pas encore automatisé (sélecteurs du
+ * porte-monnaie non vérifiés) — on passe en `verify` pour action manuelle,
+ * plutôt que de cliquer à l'aveugle sur une opération financière.
+ */
+async function handleWithdrawFunds({ withdrawalId }) {
+  const withdrawals = require("../services/withdrawals");
+  const w = db.prepare("SELECT * FROM withdrawals WHERE withdrawal_id = ?").get(withdrawalId);
+  if (!w) throw Object.assign(new Error(`Retrait ${withdrawalId} introuvable`), { code: "NOT_FOUND" });
+  if (w.status !== "pending") return { withdrawalId, skipped: true };
+  const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(w.account_id);
+  const isMock = process.env.NODE_ENV === "test" || (account?.credentials_ref ?? "").startsWith("mock_");
+  if (isMock) {
+    withdrawals.setStatus(withdrawalId, "done", "Retrait simulé (compte mock)");
+    return { withdrawalId, done: true };
+  }
+  withdrawals.setStatus(withdrawalId, "verify", "À faire depuis Leboncoin (Porte-monnaie → Virer), puis confirmer sur le dashboard");
+  return { withdrawalId, manual: true };
+}
+
+queue.register("withdraw_funds", handleWithdrawFunds);
 queue.register("publish_listing", handlePublishListing);
 queue.register("send_alert", handleSendAlertWithValidation);
 queue.register("sync_tracking", handleSyncTracking);

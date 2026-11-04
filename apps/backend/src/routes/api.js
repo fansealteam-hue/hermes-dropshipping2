@@ -456,4 +456,30 @@ router.post("/hermes/event", (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Retraits porte-monnaie ──────────────────────────────────────────────────
+
+const withdrawals = require("../services/withdrawals");
+const wdStatus = (e) => ({ NOT_FOUND: 404, CONFLICT: 409, EMPTY: 422, BAD_REQUEST: 400 }[e.code] ?? 500);
+
+router.get("/withdrawals", (req, res) => {
+  res.json({ ok: true, data: withdrawals.overview() });
+});
+
+router.patch("/accounts/:id/withdraw-settings", (req, res) => {
+  try { res.json({ ok: true, data: withdrawals.updateSettings(req.params.id, req.body ?? {}) }); }
+  catch (e) { res.status(wdStatus(e)).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+router.post("/accounts/:id/withdraw", (req, res) => {
+  try { res.status(201).json({ ok: true, data: withdrawals.requestWithdrawal(req.params.id) }); }
+  catch (e) { res.status(wdStatus(e)).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+router.post("/withdrawals/:id/status", (req, res) => {
+  const { status, note } = req.body ?? {};
+  if (!["done", "failed", "cancelled"].includes(status)) return res.status(400).json({ ok: false, error: "status: done | failed | cancelled" });
+  try { res.json({ ok: true, data: withdrawals.setStatus(req.params.id, status, note) }); }
+  catch (e) { res.status(wdStatus(e)).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
 module.exports = router;

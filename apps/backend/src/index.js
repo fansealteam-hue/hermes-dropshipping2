@@ -71,6 +71,20 @@ function scheduleRepriceCheck() {
 
 if (process.env.NODE_ENV !== "test") scheduleRepriceCheck();
 
+// Retraits automatiques des porte-monnaie (seuil + fréquence par compte)
+if (process.env.NODE_ENV !== "test") {
+  const { runAutoWithdrawals } = require("./services/withdrawals");
+  const WD_TICK_MS = parseInt(process.env.WITHDRAW_TICK_MIN ?? "30") * 60_000;
+  const tickWd = () => {
+    try {
+      const created = runAutoWithdrawals();
+      if (created.length) console.log(`[withdraw] ${created.length} retrait(s) automatique(s) demandé(s)`);
+    } catch (e) { console.error("[withdraw] erreur:", e.message); }
+  };
+  setTimeout(tickWd, 60_000).unref();
+  setInterval(tickWd, WD_TICK_MS).unref();
+}
+
 /**
  * Auto-publisher : enqueue up to DAILY_LISTING_MAX draft listings per day,
  * spread evenly between PUBLISH_HOUR_START and PUBLISH_HOUR_END (local time).
