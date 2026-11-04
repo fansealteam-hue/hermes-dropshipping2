@@ -550,6 +550,24 @@ tbody tr:hover { background: var(--surface-2); }
 .ord .steps span.ok { background: var(--green-soft); color: var(--green); }
 @media (max-width: 480px) { .to-order { grid-template-columns: 1fr; } }
 
+/* Niches */
+.niche-group { margin-bottom: 26px; }
+.niche-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.niche-head .nm { display: flex; align-items: center; gap: 9px; font-size: 17px; font-weight: 650; }
+.niche-head .nm i { width: 10px; height: 10px; border-radius: 50%; }
+.niche-head .sub { font-size: 12.5px; color: var(--text-3); }
+.niche-head .tots { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.niche-head .tots span { font-size: 12px; padding: 5px 10px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+.niche-head .tots b { color: var(--text); }
+.niche-pick { display: flex; align-items: center; gap: 8px; margin: -6px 0 14px; font-size: 12px; color: var(--text-3); }
+.niche-pick input { flex: 1; min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; font-size: 12.5px; }
+.niche-pick input:focus { border-color: var(--accent); }
+.pa-sub { margin: 8px 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+.pa-sub a { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--text-2); text-decoration: none; }
+.pa-sub a:hover { color: var(--text); }
+.pa-sub .tr { grid-column: 1 / -1; height: 3px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.pa-sub .tr i { display: block; height: 100%; border-radius: 3px; }
+
 /* Produits */
 .prod-cols { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .pr-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -1110,8 +1128,8 @@ th.sort.on { color: var(--accent); }
         </div>
         <div class="note" style="padding-top:14px">Leboncoin libère l'argent quand l'acheteur confirme la réception. La date « dispo estimée » est une estimation à partir de l'étape du colis.</div>
       </div>
-      <div class="group-title"><i></i>Leboncoin <span id="acc-count"></span></div>
-      <div class="grid accounts" id="accounts"></div>
+      <div id="niche-groups"></div>
+      <datalist id="niche-list"></datalist>
       <div class="card" style="margin-top:16px">
         <div class="card-head"><div><div class="card-title" style="display:flex;gap:8px;align-items:center"><svg width="15" height="15" style="color:var(--green)"><use href="#i-wallet"/></svg>Historique des retraits</div>
           <div class="card-sub" id="wd-sub">tous comptes</div></div>
@@ -1548,20 +1566,47 @@ function renderListings() {
   }).join("") || emptyRow(9, q || listFilter !== "all" ? "Aucune annonce ne correspond" : "Aucune annonce");
 }
 
+// ─── Niches ────────────────────────────────────────────────────────────────
+const NO_NICHE = "Sans niche";
+const NICHE_PRESETS = ["Bricolage", "Maison & Déco", "Tech & Gadgets", "Jardin", "Beauté", "Sport", "Auto & Moto", "Enfants & Jouets", "Animaux", "Cuisine"];
+const nicheOf = (accountId) => state.accounts.find((a) => a.accountId === accountId)?.niche || NO_NICHE;
+const NICHE_COLORS = ["#e8702a", "#4fbf8a", "#6aa5e8", "#b979e0", "#c9a45c", "#e5675f", "#3fc1c9", "#f2c230"];
+const nicheColor = (n) => {
+  if (n === NO_NICHE) return "#7d746c";
+  const all = [...new Set(state.accounts.map((a) => a.niche).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+  return NICHE_COLORS[Math.max(0, all.indexOf(n)) % NICHE_COLORS.length];
+};
+async function setNiche(accountId, value) {
+  const niche = value.trim();
+  const a = state.accounts.find((x) => x.accountId === accountId);
+  if (!a || (a.niche ?? "") === niche) return;
+  if (DEMO) { a.niche = niche || undefined; renderAll(); return toast("Mode démo : niche non enregistrée"); }
+  try { await api(`/api/accounts/${encodeURIComponent(accountId)}/niche`, { method: "PATCH", body: JSON.stringify({ niche }) }); a.niche = niche || undefined; renderAll(); toast(niche ? `Classé dans « ${niche} » ✓` : "Niche retirée"); }
+  catch (e) { toast("Erreur : " + e.message); }
+}
+function nicheGroups() {
+  const g = {};
+  (state.accounts ?? []).forEach((a, i) => { (g[a.niche || NO_NICHE] ??= []).push({ a, i }); });
+  return Object.entries(g).sort(([x], [y]) => (x === NO_NICHE) - (y === NO_NICHE) || x.localeCompare(y));
+}
+
 function renderAccounts() {
   const hues = ["#e8702a", "#4fbf8a", "#6aa5e8", "#c9a45c", "#b979e0", "#e5675f"];
   const allS = state.dash?.activeSales ?? [];
   $("#wallet-tot").innerHTML = walletHtml(walletTotal());
   renderWithdrawals();
   renderPending();
-  $("#acc-count").textContent = `${state.accounts.length} compte${state.accounts.length > 1 ? "s" : ""}`;
-  $("#accounts").innerHTML = (state.accounts ?? []).map((a, i) => `
+  const used = [...new Set(state.accounts.map((a) => a.niche).filter(Boolean))];
+  $("#niche-list").innerHTML = [...new Set([...used, ...NICHE_PRESETS])].map((n) => `<option value="${esc(n)}">`).join("");
+  const card = ({ a, i }) => `
     <div class="card acc-card" onclick="location.hash='compte/${encodeURIComponent(a.accountId)}'">
       <div class="acc-head">
         <div class="acc-avatar" style="background:linear-gradient(140deg, ${hues[i % hues.length]}, color-mix(in srgb, ${hues[i % hues.length]} 60%, #000))">${initials(a.label)}</div>
         <div><div class="acc-name">${esc(a.label)}</div><div class="prod-meta mono">${esc(a.accountId)}</div></div>
         <span class="badge ${a.active ? "b-green" : "b-grey"}" style="margin-left:auto">${a.active ? "Actif" : "En pause"}</span>
       </div>
+      <label class="niche-pick" onclick="event.stopPropagation()">Niche
+        <input list="niche-list" value="${esc(a.niche ?? "")}" placeholder="ex. Bricolage" onchange="setNiche('${esc(a.accountId)}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" /></label>
       <div class="acc-stats">
         <div class="acc-stat"><div class="l">Chiffre d'affaires</div><div class="v num">${eur(a.revenueEur)}</div></div>
         <div class="acc-stat"><div class="l">Marge nette</div><div class="v num ${a.netMarginEur >= 0 ? "pos" : "neg"}">${eur(a.netMarginEur)}</div></div>
@@ -1572,7 +1617,22 @@ function renderAccounts() {
       <div class="acc-wallets">${walletHtml(walletFor(a.accountId), true)}</div>
       ${wdSettingsHtml(a.accountId)}
       <a class="acc-link" href="#compte/${encodeURIComponent(a.accountId)}" onclick="event.stopPropagation()">Voir le détail du compte<svg><use href="#i-arrow"/></svg></a>
-    </div>`).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>Aucun compte Leboncoin configuré</div></div></div>`;
+    </div>`;
+  const groups = nicheGroups();
+  $("#niche-groups").innerHTML = groups.map(([niche, list]) => {
+    const rev = list.reduce((x, { a }) => x + (a.revenueEur || 0), 0);
+    const net = list.reduce((x, { a }) => x + (a.netMarginEur || 0), 0);
+    const sales = list.reduce((x, { a }) => x + (a.totalSales || 0), 0);
+    const ads = list.reduce((x, { a }) => x + (a.activeListings || 0), 0);
+    const c = nicheColor(niche);
+    return `<div class="niche-group">
+      <div class="niche-head">
+        <div class="nm"><i style="background:${c};box-shadow:0 0 10px ${c}"></i>${esc(niche)}</div>
+        <span class="sub">${list.length} compte${list.length > 1 ? "s" : ""}${niche === NO_NICHE ? " · choisis une niche sur chaque compte" : ""}</span>
+        <div class="tots"><span>CA <b class="num">${eur(rev)}</b></span><span>Bénéfice <b class="num ${net >= 0 ? "pos" : "neg"}">${eur(net)}</b></span><span><b class="num">${sales}</b> ventes</span><span><b class="num">${ads}</b> annonces en ligne</span></div>
+      </div>
+      <div class="grid accounts">${list.map(card).join("")}</div></div>`;
+  }).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>Aucun compte Leboncoin configuré</div></div></div>`;
 }
 
 // ═══ Nom du projet ═════════════════════════════════════════════════════════
@@ -3153,16 +3213,21 @@ function renderPerAccount() {
     const ss = sales.filter((s) => s.accountId === a.accountId);
     return { a, i, n: ss.length, rev: ss.reduce((x, s) => x + s.salePriceEur, 0) };
   }).sort((x, y) => y.rev - x.rev);
-  $("#per-acc-title").textContent = `Par compte · ${days} derniers jours`;
-  $("#per-acc").innerHTML = rows.map(({ a, i, n, rev }) => {
+  $("#per-acc-title").textContent = `Par niche · ${days} derniers jours`;
+  const byNiche = {};
+  rows.forEach((r) => { const k = r.a.niche || NO_NICHE; (byNiche[k] ??= { niche: k, rev: 0, n: 0, accs: [] }); byNiche[k].rev += r.rev; byNiche[k].n += r.n; byNiche[k].accs.push(r); });
+  $("#per-acc").innerHTML = Object.values(byNiche).sort((x, y) => y.rev - x.rev).map(({ niche, rev, n, accs }) => {
     const pct = total ? Math.round((rev / total) * 100) : 0;
-    const c = HUES[i % HUES.length];
-    return `<a class="pa-row" href="#compte/${encodeURIComponent(a.accountId)}" style="text-decoration:none;color:inherit">
-      <div class="top"><i style="background:${c};box-shadow:0 0 8px ${c}"></i><b>${esc(a.label)}</b>
+    const c = nicheColor(niche);
+    return `<div class="pa-row">
+      <div class="top"><i style="background:${c};box-shadow:0 0 8px ${c}"></i><b>${esc(niche)}</b>
         <span class="pct" style="background:color-mix(in srgb, ${c} 18%, transparent);color:${c}">${pct} %</span>
-        <span class="meta">${n} vente${n > 1 ? "s" : ""}</span><span class="amt num">${eur(rev)}</span></div>
+        <span class="meta">${n} vente${n > 1 ? "s" : ""} · ${accs.length} compte${accs.length > 1 ? "s" : ""}</span><span class="amt num">${eur(rev)}</span></div>
       <div class="pa-track"><div class="pa-fill ${pct ? "" : "zero"}" style="width:${pct}%;background:linear-gradient(90deg, color-mix(in srgb, ${c} 50%, transparent), ${c});color:${c}"></div></div>
-    </a>`;
+      <div class="pa-sub">${accs.map(({ a, rev: r, n: k }) => `<a href="#compte/${encodeURIComponent(a.accountId)}">
+        <span>${esc(a.label)} <span class="muted">· ${k} vente${k > 1 ? "s" : ""}</span></span><span class="num" style="font-weight:600">${eur(r)}</span>
+        <span class="tr"><i style="width:${rev ? (r / rev) * 100 : 0}%;background:${c}"></i></span></a>`).join("")}</div>
+    </div>`;
   }).join("") || `<div class="empty">Aucun compte</div>`;
 }
 
@@ -3554,7 +3619,7 @@ function demoData(p) {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const products = ["Perceuse visseuse sans fil 21V", "Lampe LED solaire jardin x4", "Aspirateur à main sans fil", "Coffret 46 douilles chrome", "Montre connectée sport", "Mini projecteur portable 4K", "Organisateur tiroir bambou", "Ventilateur colonne silencieux"];
-  const accounts = [{ accountId: "lbc_main", label: "Boutique Principale" }, { accountId: "lbc_brico", label: "Brico Discount" }, { accountId: "lbc_maison", label: "Maison & Déco" }];
+  const accounts = [{ accountId: "lbc_main", label: "Boutique Principale", niche: "Bricolage" }, { accountId: "lbc_brico", label: "Brico Discount", niche: "Bricolage" }, { accountId: "lbc_maison", label: "Maison & Déco", niche: "Maison & Déco" }];
   const statuses = ["confirmed", "order_placed", "tracking_added", "delivered", "delivered", "delivered", "cancelled"];
   const daily = [], sales = [], topMap = {};
   for (let i = n - 1; i >= 0; i--) {

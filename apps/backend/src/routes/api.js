@@ -49,7 +49,7 @@ router.get("/accounts/leboncoin", (req, res) => {
 router.get("/accounts/stats", (req, res) => {
   const TEMU_SHIPPING_FEE_CENTS = Math.round(parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99") * 100);
 
-  const accounts = db.prepare("SELECT account_id, label, active FROM seller_accounts WHERE channel = 'leboncoin'").all();
+  const accounts = db.prepare("SELECT account_id, label, active, niche FROM seller_accounts WHERE channel = 'leboncoin'").all();
 
   const salesByAccount = db.prepare(`
     SELECT
@@ -82,6 +82,7 @@ router.get("/accounts/stats", (req, res) => {
     return {
       accountId: a.account_id,
       label: a.label,
+      niche: a.niche ?? undefined,
       active: a.active === 1,
       totalSales,
       revenueEur: revCents / 100,
@@ -93,6 +94,14 @@ router.get("/accounts/stats", (req, res) => {
   });
 
   res.json({ ok: true, data });
+});
+
+// Niche d'un compte (bricolage, maison, tech…) — vide = sans niche
+router.patch("/accounts/:id/niche", (req, res) => {
+  const niche = String(req.body?.niche ?? "").trim().slice(0, 40) || null;
+  const r = db.prepare("UPDATE seller_accounts SET niche = ? WHERE account_id = ?").run(niche, req.params.id);
+  if (!r.changes) return res.status(404).json({ ok: false, error: "Compte introuvable" });
+  res.json({ ok: true, data: { accountId: req.params.id, niche: niche ?? undefined } });
 });
 
 // ─── Listings ────────────────────────────────────────────────────────────────
