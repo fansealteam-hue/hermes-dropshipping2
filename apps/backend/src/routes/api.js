@@ -497,6 +497,78 @@ router.post("/hermes/event", (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Confirmer commande fournisseur (Bug 1) ───────────────────────────────────
+
+router.post("/sales/:id/confirm-order", (req, res) => {
+  const { id } = req.params;
+  const sale = db.prepare("SELECT * FROM sales WHERE sale_id = ?").get(id);
+  if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
+
+  const { orderRef, pricePaid } = req.body ?? {};
+  if (!orderRef) return res.status(400).json({ ok: false, error: "orderRef requis" });
+
+  // Sanitize : ne jamais stocker de données personnelles acheteur ici
+  const priceCents = pricePaid != null ? Math.round(parseFloat(pricePaid) * 100) : null;
+
+  db.prepare(`
+    UPDATE sales
+    SET status = 'order_placed',
+        order_ref = ?,
+        order_placed_at = datetime('now'),
+        actual_cost_eur_cents = COALESCE(?, actual_cost_eur_cents),
+        updated_at = datetime('now')
+    WHERE sale_id = ?
+  `).run(orderRef, priceCents, id);
+
+  res.json({ ok: true, data: { saleId: id, status: "order_placed", orderRef } });
+});
+
+// ─── Idempotence callbacks (Bug 8) ────────────────────────────────────────────
+
+// Table créée automatiquement
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS callback_log (
+    callback_id TEXT PRIMARY KEY,
+    processed_at TEXT NOT NULL
+  )
+`).run();
+
+router.post("/callbacks/mark-done", (req, res) => {
+  const { callbackId } = req.body ?? {};
+  if (!callbackId) return res.status(400).json({ ok: false, error: "callbackId requis" });
+
+  const existing = db.prepare("SELECT 1 FROM callback_log WHERE callback_id = ?").get(callbackId);
+  if (existing) return res.json({ ok: true, alreadyDone: true });
+
+  db.prepare("INSERT OR IGNORE INTO callback_log (callback_id, processed_at) VALUES (?, datetime('now'))").run(callbackId);
+  res.json({ ok: true, alreadyDone: false });
+});
+
+// ─── Import produit depuis extension Chrome ────────────────────────────────────
+
+router.post("/products/import-from-extension", (req, res) => {
+  const { title, url, price, images, variants, source, extensionToken } = req.body ?? {};
+  if (!url || !title) return res.status(400).json({ ok: false, error: "title et url requis" });
+
+  // Vérification token extension (simple)
+  const validToken = process.env.EXTENSION_API_TOKEN;
+  if (validToken && extensionToken !== validToken) {
+    return res.status(403).json({ ok: false, error: "Token extension invalide" });
+  }
+
+  const { randomUUID } = require("crypto");
+  const temuItemId = `ext_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+
+  // Enqueue job pour traitement par le worker
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(`
+    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+    VALUES (?, 'process_extension_import', ?, 'pending', ?, datetime('now'), datetime('now'))
+  `).run(jobId, JSON.stringify({ title, url, price, images, variants, source, temuItemId }), `ext_import:${url}`);
+
+  res.json({ ok: true, data: { jobId, temuItemId, message: "Import en file d'attente" } });
+});
+
 // ─── Bump all listings ────────────────────────────────────────────────────────
 
 router.post("/listings/bump-all", (req, res) => {
