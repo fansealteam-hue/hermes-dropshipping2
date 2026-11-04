@@ -1,49 +1,101 @@
-#!/usr/bin/env node
-require("dotenv").config();
-const fs = require("fs");
+/**
+ * Migrations incrémentales pour la base SQLite existante.
+ * Idempotentes — peuvent être relancées sans risque.
+ *
+ * Usage: node src/db/migrate.js [--db <path>]
+ */
+"use strict";
 const path = require("path");
+const Database = require("better-sqlite3");
 
-const DB_PATH = process.env.DB_PATH ?? path.join(__dirname, "../../../data/hermes.db");
+const DB_PATH = (() => {
+  const idx = process.argv.indexOf("--db");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return path.join(__dirname, "../../../../data/hermes.db");
+})();
 
-// When called as a module, use the shared db connection to support :memory: in tests
-function runMigrations(db) {
-  const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
-  schema.split(";").map(s => s.trim()).filter(Boolean).forEach(stmt => {
-    try { db.exec(stmt + ";"); } catch (e) { if (!e.message.includes("already exists")) throw e; }
-  });
-  const ins = db.prepare("INSERT OR IGNORE INTO seller_accounts (account_id, channel, label, active, created_at) VALUES (?, 'leboncoin', ?, 1, datetime('now'))");
-  ins.run("lbc_compte_a", "Compte LBC Alpha");
-  ins.run("lbc_compte_b", "Compte LBC Beta");
+const db = new Database(DB_PATH);
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
 
-  // Incremental column additions (idempotent — ignore "duplicate column" errors)
-  const addColumn = (sql) => { try { db.exec(sql); } catch (e) { if (!e.message.includes("duplicate column")) throw e; } };
-  addColumn("ALTER TABLE listings ADD COLUMN delivery_option TEXT");
-  addColumn("ALTER TABLE listings ADD COLUMN delivery_fee_eur_cents INTEGER NOT NULL DEFAULT 0");
-  addColumn("ALTER TABLE listings ADD COLUMN repricing_count INTEGER NOT NULL DEFAULT 0");
-  addColumn("ALTER TABLE listings ADD COLUMN last_repriced_at TEXT");
+const migrations = [
+  {
+    id: "001_callback_log",
+    up: `CREATE TABLE IF NOT EXISTS callback_log (
+      callback_id   TEXT PRIMARY KEY,
+      processed_at  TEXT NOT NULL
+    )`,
+  },
+  {
+    id: "002_lbc_messages",
+    up: `
+      CREATE TABLE IF NOT EXISTS lbc_messages (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        listing_id  TEXT NOT NULL,
+        buyer_name  TEXT,
+        message     TEXT NOT NULL,
+        received_at TEXT NOT NULL,
+        replied     INTEGER NOT NULL DEFAULT 0,
+        replied_at  TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_lbc_messages_listing ON lbc_messages(listing_id);
+      CREATE INDEX IF NOT EXISTS idx_lbc_messages_replied ON lbc_messages(replied);
+    `,
+  },
+  {
+    id: "003_sales_order_columns",
+    up: `
+      ALTER TABLE sales ADD COLUMN order_ref TEXT;
+      ALTER TABLE sales ADD COLUMN order_placed_at TEXT;
+      ALTER TABLE sales ADD COLUMN actual_cost_eur_cents INTEGER;
+    `,
+    skipIfColumnExists: { table: "sales", column: "order_ref" },
+  },
+  {
+    id: "004_jobs_idempotency_key",
+    up: `ALTER TABLE jobs ADD COLUMN idempotency_key TEXT UNIQUE`,
+    skipIfColumnExists: { table: "jobs", column: "idempotency_key" },
+  },
+];
 
-  // Performance indexes (idempotent — CREATE INDEX IF NOT EXISTS)
-  db.exec("CREATE INDEX IF NOT EXISTS idx_listings_status     ON listings(status)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_listings_account_id ON listings(account_id)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sales_listing_id    ON sales(listing_id)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_jobs_status_run_at  ON jobs(status, run_at)");
+// ─── migration tracker ────────────────────────────────────────────────────────
+
+db.exec(`CREATE TABLE IF NOT EXISTS _migrations (
+  id         TEXT PRIMARY KEY,
+  applied_at TEXT NOT NULL
+)`);
+
+function hasColumn(table, column) {
+  const info = db.pragma(`table_info(${table})`);
+  return info.some((r) => r.name === column);
 }
 
-if (require.main === module) {
-  // Standalone script: create own DB connection
-  const Database = require("better-sqlite3");
-  if (DB_PATH !== ":memory:") fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  runMigrations(db);
-  console.log("[migrate] Database ready at", DB_PATH);
-  db.close();
-} else {
-  // Loaded as module: migrate the shared db singleton
-  const db = require("./db");
-  runMigrations(db);
-  console.log("[migrate] Migrations applied");
+function alreadyApplied(id) {
+  return !!db.prepare("SELECT 1 FROM _migrations WHERE id = ?").get(id);
 }
 
-module.exports = { runMigrations };
+for (const m of migrations) {
+  if (alreadyApplied(m.id)) {
+    console.log(`  skip  ${m.id}`);
+    continue;
+  }
+  if (m.skipIfColumnExists) {
+    const { table, column } = m.skipIfColumnExists;
+    if (hasColumn(table, column)) {
+      db.prepare("INSERT INTO _migrations (id, applied_at) VALUES (?, datetime('now'))").run(m.id);
+      console.log(`  skip  ${m.id} (column already exists)`);
+      continue;
+    }
+  }
+  try {
+    db.exec(m.up);
+    db.prepare("INSERT INTO _migrations (id, applied_at) VALUES (?, datetime('now'))").run(m.id);
+    console.log(`  apply ${m.id} ✓`);
+  } catch (e) {
+    console.error(`  FAIL  ${m.id}: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+console.log("Migrations terminées.");
+db.close();

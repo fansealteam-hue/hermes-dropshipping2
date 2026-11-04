@@ -165,6 +165,28 @@ CREATE TABLE IF NOT EXISTS bot_sessions (
   updated_at  TEXT NOT NULL
 );
 
+-- ─── Callback deduplication ──────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS callback_log (
+  callback_id   TEXT PRIMARY KEY,     -- Telegram callback_query.id (unique per query)
+  processed_at  TEXT NOT NULL
+);
+
+-- ─── LBC messages (inbound buyer messages) ───────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS lbc_messages (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id    TEXT NOT NULL,
+  buyer_name    TEXT,
+  message       TEXT NOT NULL,
+  received_at   TEXT NOT NULL,
+  replied       INTEGER NOT NULL DEFAULT 0,
+  replied_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_lbc_messages_listing ON lbc_messages(listing_id);
+CREATE INDEX IF NOT EXISTS idx_lbc_messages_replied ON lbc_messages(replied);
+
 -- ─── Vinted archive (preserved, not active) ──────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS vinted_listings_archive (
