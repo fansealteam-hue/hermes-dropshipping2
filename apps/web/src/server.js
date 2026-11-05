@@ -288,6 +288,11 @@ app.post("/api/invoices/import", requireAuth, (req, res) => proxyApi(req, res, "
 app.post("/api/sales/:id/invoice", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/invoice`, "POST"));
 app.post("/api/sales/:id/credit-note", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/credit-note`, "POST"));
 app.get("/api/declarations", requireAuth, (req, res) => proxyApi(req, res, "/api/declarations"));
+app.get("/api/reports/monthly", requireAuth, (req, res) => {
+  const m = /^(?:(?:month|quarter):)?\d{4}-\d{2}$/.test(String(req.query.month ?? "")) ? `?month=${encodeURIComponent(req.query.month)}` : "";
+  return proxyApi(req, res, `/api/reports/monthly${m}`);
+});
+app.post("/api/reports/monthly/send", requireAuth, (req, res) => proxyApi(req, res, "/api/reports/monthly/send", "POST", req.body));
 app.post("/api/declarations/:key", requireAuth, (req, res) => proxyApi(req, res, `/api/declarations/${encodeURIComponent(req.params.key)}`, "POST", req.body));
 
 // ─── SPA fallback ────────────────────────────────────────────────────────────

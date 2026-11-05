@@ -609,7 +609,29 @@ router.post("/sales/:id/credit-note", (req, res) => {
 });
 router.get("/declarations", (req, res) => res.json({ ok: true, data: auto.declarations() }));
 router.post("/declarations/:key", (req, res) => {
-  try { res.json({ ok: true, data: auto.setDeclared(req.params.key, req.body?.declared !== false) }); } catch (e) { autoErr(res, e); }
+  try {
+    const declared = req.body?.declared !== false;
+    const data = auto.setDeclared(req.params.key, declared);
+    // Déclaré → fichier compta de la période envoyé sur Telegram (en arrière-plan)
+    if (declared) report.declaredRecap(req.params.key).catch((e) => console.warn("[recap]", e.message));
+    res.json({ ok: true, data });
+  } catch (e) { autoErr(res, e); }
+});
+
+// ─── Récap compta mensuel + fichier compta ───────────────────────────────────
+const report = require("../services/monthly-report");
+router.get("/reports/monthly", (req, res) => {
+  try {
+    const rep = report.buildReport(req.query.month || report.prevMonth());
+    res.json({ ok: true, data: { ...rep, csv: report.toCsv(rep), fileName: `tyno-compta-${rep.period.slug}.csv` } });
+  } catch (e) { autoErr(res, e); }
+});
+router.post("/reports/monthly/send", async (req, res) => {
+  try {
+    const month = req.body?.month || report.prevMonth();
+    report.periodOf(month);
+    res.json({ ok: true, data: { sent: await report.sendReport(month) } });
+  } catch (e) { autoErr(res, e); }
 });
 
 module.exports = router;

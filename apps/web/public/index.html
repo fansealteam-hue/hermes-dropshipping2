@@ -253,6 +253,12 @@ tbody tr:hover { background: var(--surface-2); }
   transition: all .15s;
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
+.compta-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) {
+  .compta-actions { margin-left: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .compta-actions > * { justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .compta-actions > #recap-btn { grid-column: 1 / -1; }
+}
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { filter: brightness(1.08); color: #fff; }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -1418,9 +1424,11 @@ th.sort.on { color: var(--accent); }
     <section class="view" id="v-compta">
       <div class="toolbar">
         <div class="chips" id="compta-range"></div>
-        <div style="margin-left:auto;display:flex;gap:8px">
+        <div class="compta-actions">
           <a class="btn" href="#facturation" style="text-decoration:none"><svg width="13" height="13"><use href="#i-gear"/></svg>Infos facture</a>
           <button class="btn" id="inv-batch-btn"><svg width="13" height="13"><use href="#i-file"/></svg>Factures de la période</button>
+          <button class="btn primary" id="recap-btn" title="Récap du mois + fichier compta pour ta déclaration"><svg width="13" height="13"><use href="#i-file"/></svg>Fichier compta du mois</button>
+          <button class="btn" id="recap-tg-btn" title="Envoie le récap et le fichier sur Telegram">📲 Récap sur Telegram</button>
           <button class="btn" id="export-btn"><svg width="13" height="13"><use href="#i-down"/></svg>Exporter CSV</button>
         </div>
       </div>
@@ -4526,6 +4534,7 @@ function renderAutoCard() {
     ["⏳", "Rappel « numéro de suivi »", `sur Telegram si une commande payée n'a pas de suivi après <input class="inline-input num" style="width:48px;height:24px" type="number" min="1" max="30" value="${days}" onchange="saveAuto({ trackingReminderDays: this.value })" onclick="event.stopPropagation()"> j`, "trackingReminders"],
     ["📅", "Rappel déclaration URSSAF", "sur Telegram le 1er, le 15 et les 3 derniers jours avant l'échéance", "declarationReminders"],
     ["⚡", "Disponibilité validée toute seule", `si Temu a du stock, que la vente est rentable et que le prix n'a pas pris plus de <input class="inline-input num" style="width:48px;height:24px" type="number" min="0" max="100" value="${a?.maxCostIncreasePct ?? 15}" onchange="saveAuto({ maxCostIncreasePct: this.value })" onclick="event.stopPropagation()"> % : l'alerte Telegram passe directement à « Commander sur Temu »`, "autoAvailability"],
+    ["📑", "Récap compta chaque mois", "le 1er du mois : récap (CA, achats, URSSAF, bénéfice net, par compte) + fichier compta sur Telegram ; et le fichier de la période dès que tu coches « Déclaré »", "monthlyRecap"],
     ["🚫", "Annulation auto si rupture", "la vente est annulée et l'acheteur reçoit ton message d'annulation — à activer seulement si tu es sûr", "autoCancelOutOfStock"],
   ];
   $("#auto-list").innerHTML = (a || DEMO) ? rows.map(([ic, t, d, k]) => `<div class="auto-row"><span class="ic">${ic}</span><div style="min-width:0"><div class="t">${t}</div><div class="d">${d}</div></div>
@@ -5055,6 +5064,33 @@ $("#export-btn").onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
   toast("Export CSV téléchargé ✓");
+};
+
+// ═══ Récap mensuel : fichier compta prêt pour la déclaration ════════════════
+// « Ce mois » → mois en cours ; sinon → mois dernier (celui qu'on déclare).
+function recapMonth() {
+  const n = new Date();
+  const d = comptaRange === "month" ? n : new Date(n.getFullYear(), n.getMonth() - 1, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+$("#recap-btn").onclick = async () => {
+  if (!SERVER()) { $("#export-btn").click(); return; }
+  try {
+    const { data } = await api(`/api/reports/monthly?month=${recapMonth()}`);
+    const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: data.fileName });
+    a.click();
+    URL.revokeObjectURL(a.href);
+    const t = data.totals;
+    toast(`📑 ${data.period.label} : ${eur(t.caEur)} de CA · ${eur(t.netProfitEur)} net — fichier téléchargé ✓`);
+  } catch (e) { toast("Récap impossible : " + e.message); }
+};
+$("#recap-tg-btn").onclick = async () => {
+  if (!SERVER()) { toast("📲 En mode démo : le récap part sur Telegram le 1er de chaque mois"); return; }
+  try {
+    const { data } = await api("/api/reports/monthly/send", { method: "POST", body: JSON.stringify({ month: recapMonth() }) });
+    toast(data.sent ? "📲 Récap + fichier envoyés sur Telegram ✓" : "Telegram n'est pas configuré (token / chat autorisé)");
+  } catch (e) { toast("Envoi impossible : " + e.message); }
 };
 
 // ═══ Compta : évolution 12 mois + journal ══════════════════════════════════

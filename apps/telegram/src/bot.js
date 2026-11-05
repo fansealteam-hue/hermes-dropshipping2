@@ -302,8 +302,8 @@ async function showDashboard(ctx) {
   const kb = new InlineKeyboard();
   if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
   if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
-  kb.row().text("🛍️ Voir les ventes", "nav:sales");
-  if (appUrl()) kb.webApp("📱 Tyno", appUrl());
+  kb.row().text("🛍️ Voir les ventes", "nav:sales").text("📑 Récap compta", "recap:menu");
+  if (appUrl()) kb.row().webApp("📱 Tyno", appUrl());
   return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
 }
 bot.command("dashboard", showDashboard);
@@ -410,6 +410,25 @@ async function showTrackingList(ctx) {
 }
 
 // Navigation par boutons (sous les messages)
+// Récap compta : mois en cours ou mois dernier → message + fichier compta (CSV)
+const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+bot.callbackQuery("recap:menu", async (ctx) => {
+  const n = new Date();
+  const label = (d) => d.toLocaleDateString("fr-FR", { month: "long" });
+  const prev = new Date(n.getFullYear(), n.getMonth() - 1, 1);
+  const kb = new InlineKeyboard()
+    .text(`📅 ${label(prev)} (à déclarer)`, `recap:${ym(prev)}`).row()
+    .text(`📈 ${label(n)} (en cours)`, `recap:${ym(n)}`);
+  await ctx.answerCallbackQuery();
+  await ctx.reply("📑 <b>Récap compta</b> : quel mois ?\n<i>Tu reçois le récap + le fichier compta à ouvrir dans Excel.</i>", { parse_mode: "HTML", reply_markup: kb });
+});
+bot.callbackQuery(/^recap:(\d{4}-\d{2})$/, async (ctx) => {
+  await ctx.answerCallbackQuery("Préparation du récap…");
+  const res = await api.sendMonthlyRecap(ctx.match[1]);
+  if (!res.ok) return ctx.reply(`⚠️ Récap impossible : ${res.error ?? "erreur"}`);
+  await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } }).catch(() => {});
+});
+
 bot.callbackQuery(/^nav:(\w+)$/, async ctx => {
   await ctx.answerCallbackQuery();
   const k = ctx.callbackQuery.data.slice(4);

@@ -12,7 +12,7 @@ const db = require("../db/db");
 
 const DEFAULT_SETTINGS = {
   seller: { first: "", last: "", company: "", address: "", email: "", siret: "", vatNumber: "", vat: "TVA non applicable, art. 293 B du CGI", prefix: "FA" },
-  auto: { invoices: true, creditNotes: true, trackingReminders: true, declarationReminders: true, autoAvailability: true, autoCancelOutOfStock: false },
+  auto: { invoices: true, creditNotes: true, trackingReminders: true, declarationReminders: true, autoAvailability: true, autoCancelOutOfStock: false, monthlyRecap: true },
   maxCostIncreasePct: 15,
   trackingReminderDays: 3,
   urssaf: { mode: "month", rate: 12.3, vl: false },
@@ -332,7 +332,9 @@ async function runAutomation(now = new Date()) {
   }
   let reminders = 0;
   try { reminders += await trackingReminders(now); reminders += await declarationReminders(now); } catch (e) { console.warn("[auto] rappels:", e.message); }
-  return { invoices, credits, reminders };
+  let recaps = 0;
+  try { recaps = await require("./monthly-report").monthlyRecap(now); } catch (e) { console.warn("[auto] récap mensuel:", e.message); }
+  return { invoices, credits, reminders, recaps };
 }
 
 // ─── Messages automatiques (modèles) ─────────────────────────────────────────
