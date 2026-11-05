@@ -178,3 +178,14 @@ test("Telegram injoignable : erreur (la file réessaie), la vente n'est pas perd
   globalThis.fetch = async () => { throw new Error("réseau coupé"); };
   try { await assert.rejects(alert.sendSaleAlert("s_ok"), /Alerte non envoyée/); } finally { globalThis.fetch = orig; }
 });
+
+test("notification de vente : bouton « Voir la vente sur le site » si SITE_URL est réglé", () => {
+  const old = process.env.SITE_URL;
+  try {
+    delete process.env.SITE_URL;
+    assert.ok(!JSON.stringify(alert.alertKeyboard("sX")).includes("Voir la vente"));
+    process.env.SITE_URL = "https://tyno.exemple.fr";
+    const kb = alert.orderKeyboard("sX", "https://www.temu.com/p.html").inline_keyboard.flat();
+    assert.equal(kb.find((b) => b.url?.includes("tyno"))?.url, "https://tyno.exemple.fr/#ventes");
+  } finally { if (old === undefined) delete process.env.SITE_URL; else process.env.SITE_URL = old; }
+});

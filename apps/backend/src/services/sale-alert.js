@@ -87,6 +87,14 @@ function buildAlertText(sale, a, accountLabel) {
   ].filter((l) => l !== "").join("\n").replace("\n💰", "\n\n💰");
 }
 
+/** Lien vers le site Tyno (SITE_URL, sinon MINI_APP_URL) ; null si absent ou local. */
+function siteLink(hash = "ventes") {
+  const u = String(process.env.SITE_URL || process.env.MINI_APP_URL || "").trim().replace(/\/$/, "");
+  if (!/^https?:\/\/[^/]+/i.test(u) || /^https?:\/\/(localhost|127\.|0\.0\.0\.0)/i.test(u)) return null;
+  return `${u}/#${hash}`;
+}
+const siteRow = () => (siteLink() ? [[{ text: "🌐 Voir la vente sur le site", url: siteLink() }]] : []);
+
 function alertKeyboard(saleId, supplierUrl) {
   const rows = [
     [{ text: "✅ Disponible", callback_data: `avail_yes:${saleId}` }, { text: "❌ Pas disponible", callback_data: `cancel_ask:${saleId}` }],
@@ -94,6 +102,7 @@ function alertKeyboard(saleId, supplierUrl) {
   const second = [{ text: "🔄 Revérifier", callback_data: `check_stock:${saleId}` }];
   if (/^https:\/\//.test(supplierUrl ?? "")) second.unshift({ text: "👀 Voir sur Temu", url: supplierUrl });
   rows.push(second);
+  rows.push(...siteRow());
   return { inline_keyboard: rows };
 }
 
@@ -102,6 +111,7 @@ function orderKeyboard(saleId, supplierUrl) {
   const rows = [];
   if (/^https:\/\//.test(supplierUrl ?? "")) rows.push([{ text: "🛒 Commander sur Temu", url: supplierUrl }]);
   rows.push([{ text: "✅ J'ai commandé", callback_data: `confirm_payment:${saleId}` }, { text: "❌ Annuler", callback_data: `cancel_ask:${saleId}` }]);
+  rows.push(...siteRow());
   return { inline_keyboard: rows };
 }
 
@@ -236,4 +246,4 @@ async function sendSaleAlert(saleId) {
   return sent;
 }
 
-module.exports = { SEP, checkAvailability, buildAlertText, alertKeyboard, orderKeyboard, decide, sendSaleAlert, availabilityLine, photoCandidates };
+module.exports = { siteLink, SEP, checkAvailability, buildAlertText, alertKeyboard, orderKeyboard, decide, sendSaleAlert, availabilityLine, photoCandidates };

@@ -41,6 +41,12 @@ const eur0 = (n) => `${Math.round(Math.abs(n))} €`;
 const SHIP = parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99");
 const LINE = "━━━━━━━━━━━━━━";
 const appUrl = () => (/^https:\/\//.test(config.miniAppUrl ?? "") ? `${config.miniAppUrl.replace(/\/$/, "")}/tg` : null);
+/** Adresse du site (http ou https, pas localhost : Telegram refuse ces liens). */
+function siteUrl(hash = "") {
+  const u = String(config.siteUrl ?? "").trim().replace(/\/$/, "");
+  if (!/^https?:\/\/[^/]+/i.test(u) || /^https?:\/\/(localhost|127\.|0\.0\.0\.0)/i.test(u)) return null;
+  return hash ? `${u}/#${hash}` : `${u}/`;
+}
 const appButton = (label = "📱 Ouvrir Tyno") => (appUrl() ? new InlineKeyboard().webApp(label, appUrl()) : undefined);
 function relDay(iso) {
   const d0 = new Date(); d0.setHours(0, 0, 0, 0);
@@ -58,12 +64,33 @@ function stepsLine(s) {
 // Boutons permanents en bas de Telegram (aucune commande à taper)
 const BTN = {
   dash: "📊 Tableau de bord", sales: "🛍️ Ventes", order: "🛒 À commander",
-  track: "📬 Ajouter un suivi", product: "🔗 Nouveau produit", app: "📱 Ouvrir Tyno",
+  track: "📬 Ajouter un suivi", product: "🔗 Nouveau produit", app: "📱 Ouvrir Tyno", site: "🌐 Site Tyno",
 };
 function mainKeyboard() {
-  const kb = new Keyboard().text(BTN.dash).text(BTN.sales).row().text(BTN.order).text(BTN.track).row().text(BTN.product);
-  if (appUrl()) kb.webApp(BTN.app, appUrl());
+  const kb = new Keyboard().text(BTN.dash).text(BTN.sales).row().text(BTN.order).text(BTN.track).row().text(BTN.product).text(BTN.site);
+  if (appUrl()) kb.row().webApp(BTN.app, appUrl());
   return kb.resized().persistent();
+}
+/** Raccourcis vers les pages du site (s'ouvrent dans le navigateur, où tu es connecté). */
+function siteKeyboard() {
+  if (!siteUrl()) return undefined;
+  return new InlineKeyboard()
+    .url("🌐 Ouvrir le site Tyno", siteUrl()).row()
+    .url("🛍️ Ventes", siteUrl("ventes")).url("🛒 Achats Temu", siteUrl("temu")).row()
+    .url("📊 Rapports", siteUrl("rapports")).url("🧾 Facturation", siteUrl("facturation")).row()
+    .url("📒 Compta", siteUrl("compta")).url("👥 Comptes", siteUrl("comptes"));
+}
+async function openSite(ctx) {
+  const kb = siteKeyboard();
+  if (!kb) {
+    return ctx.reply("🌐 Pour avoir le bouton du site, ajoute l'adresse de ton site dans le fichier <b>.env</b> du serveur :\n<code>SITE_URL=https://ton-site.fr</code>\npuis redémarre (<code>docker compose up -d</code>).", { parse_mode: "HTML" });
+  }
+  return ctx.reply("🌐 <b>Site Tyno</b>\nChoisis la page à ouvrir 👇", { parse_mode: "HTML", reply_markup: kb });
+}
+/** Ajoute un bouton « Site » à un clavier existant (si l'adresse est réglée). */
+function withSite(kb, hash = "", label = "🌐 Voir sur le site") {
+  if (siteUrl(hash)) kb.row().url(label, siteUrl(hash));
+  return kb;
 }
 const navButtons = () => new InlineKeyboard().text("📊 Tableau", "nav:dash").text("🛍️ Ventes", "nav:sales").text("🛒 À commander", "nav:order");
 
@@ -84,6 +111,7 @@ async function openApp(ctx) {
     : ctx.reply("⚠️ L'application a besoin d'une adresse HTTPS : renseigne MINI_APP_URL (ex. https://tyno.mondomaine.fr) dans le fichier .env, puis redémarre le bot.");
 }
 bot.command("app", openApp);
+bot.command(["site", "web"], openSite);
 
 // ─── /lien ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +127,7 @@ bot.on("message:text", async ctx => {
   const text = ctx.message.text.trim();
   const BTN_ACTIONS = {
     [BTN.dash]: showDashboard, [BTN.sales]: showSales, [BTN.order]: showToOrder,
-    [BTN.track]: showTrackingList, [BTN.product]: askProduct, [BTN.app]: openApp,
+    [BTN.track]: showTrackingList, [BTN.product]: askProduct, [BTN.app]: openApp, [BTN.site]: openSite,
   };
   if (BTN_ACTIONS[text]) { ctx.session.state = "idle"; return BTN_ACTIONS[text](ctx); }
   const { state } = ctx.session;
@@ -304,6 +332,7 @@ async function showDashboard(ctx) {
   if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
   kb.row().text("🛍️ Voir les ventes", "nav:sales").text("📑 Rapport financier", "recap:menu");
   if (appUrl()) kb.row().webApp("📱 Tyno", appUrl());
+  withSite(kb, "", "🌐 Ouvrir le site Tyno");
   return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
 }
 bot.command("dashboard", showDashboard);
@@ -333,6 +362,7 @@ async function showSales(ctx) {
   if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
   if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
   if (appUrl()) kb.row().webApp("📱 Tout voir dans Tyno", appUrl());
+  withSite(kb, "ventes", "🌐 Toutes les ventes sur le site");
   return ctx.reply([`🛍️ <b>Ventes en attente · ${sales.length}</b>`, LINE, cards.join(`\n${LINE}\n`)].join("\n") + more, { parse_mode: "HTML", reply_markup: kb });
 }
 bot.command("ventes", showSales);
@@ -658,7 +688,7 @@ bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, BTN, cardRef, cardText, SEP };
+module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, siteUrl, siteKeyboard, BTN, cardRef, cardText, SEP };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

@@ -6,6 +6,8 @@ const config = {
     .split(",").filter(Boolean).map(Number),
   apiBaseUrl: process.env.API_BASE_URL ?? "http://localhost:3001",
   miniAppUrl: process.env.MINI_APP_URL ?? "http://localhost:3000",
+  // Adresse du site Tyno (ton VPS) pour les boutons « Site » ; à défaut, MINI_APP_URL
+  siteUrl: process.env.SITE_URL || process.env.MINI_APP_URL || "",
   nodeEnv: process.env.NODE_ENV ?? "development",
 };
 

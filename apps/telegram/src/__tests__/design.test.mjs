@@ -43,3 +43,20 @@ test("fiche de vente : le statut est remplacé, le gras au-dessus est gardé", (
   assert.ok(!text.includes("ancien statut"));
   assert.equal(entities.length, 1);
 });
+
+test("bouton « Site Tyno » : en bas de l'écran, liens vers les pages du site", () => {
+  const { mainKeyboard, siteKeyboard, siteUrl, BTN } = require("../bot.js");
+  const { config } = require("../config.js");
+  const labels = mainKeyboard().keyboard.flat().map((b) => (typeof b === "string" ? b : b.text));
+  assert.ok(labels.includes(BTN.site));
+  const old = config.siteUrl;
+  try {
+    config.siteUrl = "http://localhost:3000";
+    assert.equal(siteUrl(), null, "localhost refusé par Telegram");
+    assert.equal(siteKeyboard(), undefined);
+    config.siteUrl = "https://tyno.exemple.fr/";
+    assert.equal(siteUrl("rapports"), "https://tyno.exemple.fr/#rapports");
+    const urls = siteKeyboard().inline_keyboard.flat().map((b) => b.url);
+    assert.ok(urls.includes("https://tyno.exemple.fr/") && urls.includes("https://tyno.exemple.fr/#ventes"));
+  } finally { config.siteUrl = old; }
+});
