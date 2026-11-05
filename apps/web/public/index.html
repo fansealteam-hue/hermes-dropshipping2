@@ -425,6 +425,89 @@ tbody tr:hover { background: var(--surface-2); }
 
 /* Entrepôt 3D */
 .live-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); animation: pulse 1.6s infinite; }
+/* ═══ QG Tyno (vue de l'étage) ═══ */
+.hq { position: relative; height: clamp(560px, calc(100vh - 190px), 860px); margin-bottom: 16px; border-radius: 18px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 40%, #11131a, #050608); border: 1px solid #22252c; box-shadow: 0 30px 80px -40px #000; }
+.hq-scene { position: absolute; inset: 0; }
+.hq-scene canvas { display: block; width: 100% !important; height: 100% !important; cursor: grab; }
+.hq-scene canvas:active { cursor: grabbing; }
+.hq-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.hq-lab { position: absolute; left: 0; top: 0; pointer-events: auto; display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 6px; border-radius: 9px;
+  background: rgba(10, 11, 14, .86); border: 1px solid rgba(255,255,255,.09); color: #f3ede6; font: 600 10.5px/1.15 var(--sans); white-space: nowrap; cursor: pointer;
+  box-shadow: 0 6px 18px -8px #000; backdrop-filter: blur(6px); transition: border-color .15s, background .15s; }
+.hq-lab:hover { border-color: var(--c, #e8702a); background: rgba(18, 19, 24, .95); }
+.hq-lab .ic { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: rgba(255,255,255,.06); font-size: 11px; }
+.hq-lab b { display: block; letter-spacing: .04em; font-size: 10px; }
+.hq-lab .tx { max-width: 118px; overflow: hidden; }
+.hq-lab .tx > * { overflow: hidden; text-overflow: ellipsis; }
+.hq-lab .st { display: flex; align-items: center; gap: 4px; color: #a39a91; font-weight: 500; font-size: 9.5px; margin-top: 2px; }
+.hq-lab .st i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+.hq-lab.hot { border-color: color-mix(in srgb, var(--c) 55%, transparent); }
+.hq-lab.deco { opacity: .7; }
+.hq-lab.deco .st { display: none; }
+.hq-top { position: absolute; left: 16px; top: 14px; right: 230px; display: flex; pointer-events: none; }
+.hq-brand { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+.hq-brand .crown { color: #e8b06a; font-size: 20px; text-shadow: 0 0 12px rgba(232,176,106,.5); }
+.hq-brand b { font: 700 14px/1 var(--sans); letter-spacing: .08em; color: #f3ede6; }
+.hq-brand b em { font-style: normal; color: #e8702a; }
+.hq-brand small { display: block; margin-top: 3px; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: #8d857d; }
+.hq-badge { margin-left: 6px; padding: 3px 7px; border-radius: 6px; font: 700 9px/1 var(--sans); letter-spacing: .1em; color: #4fbf8a; border: 1px solid rgba(79,191,138,.4); background: rgba(79,191,138,.08); }
+.hq-stats { position: absolute; right: 14px; top: 14px; width: 196px; display: grid; gap: 8px; }
+.hq-stat { padding: 9px 11px; border-radius: 11px; background: rgba(10,11,14,.82); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px); }
+.hq-stat .l { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #8d857d; }
+.hq-stat .l i { width: 6px; height: 6px; border-radius: 50%; }
+.hq-stat .v { font: 700 19px/1.1 var(--sans); color: #f3ede6; margin: 4px 0 6px; }
+.hq-stat .v small { font-size: 11px; color: #8d857d; font-weight: 500; }
+.hq-stat .b { height: 3px; border-radius: 2px; background: rgba(255,255,255,.07); overflow: hidden; }
+.hq-stat .b i { display: block; height: 100%; border-radius: 2px; }
+.hq-journal { position: absolute; left: 14px; bottom: 14px; width: 300px; max-height: 190px; overflow: hidden; padding: 10px 12px; border-radius: 12px;
+  background: rgba(10,11,14,.84); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px); }
+.hq-journal .hd { display: flex; align-items: center; gap: 6px; font: 700 9.5px/1 var(--sans); letter-spacing: .12em; color: #4fbf8a; margin-bottom: 7px; }
+.hq-journal .hd i { width: 6px; height: 6px; border-radius: 50%; background: #4fbf8a; box-shadow: 0 0 8px #4fbf8a; animation: nsPulse 1.6s infinite; }
+.hq-ln { font-size: 10.5px; line-height: 1.45; color: #a39a91; padding: 2px 0; }
+.hq-ln .tm { color: #6f6861; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.hq-ln b { color: #f3ede6; font-weight: 600; letter-spacing: .03em; }
+.hq-cmd { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(560px, calc(100% - 660px)); min-width: 320px; display: flex; align-items: center; gap: 8px; padding: 6px;
+  border-radius: 999px; background: rgba(10,11,14,.9); border: 1px solid rgba(232,112,42,.35); box-shadow: 0 10px 30px -10px #000, 0 0 0 4px rgba(232,112,42,.06); backdrop-filter: blur(10px); }
+.hq-cmd .who { padding: 7px 11px; border-radius: 999px; background: rgba(232,112,42,.12); color: #f0a060; font: 700 10.5px/1 var(--sans); letter-spacing: .06em; white-space: nowrap; }
+.hq-cmd input { flex: 1; min-width: 0; background: none; border: 0; color: #f3ede6; font: 500 13px var(--sans); outline: none; }
+.hq-cmd input::placeholder { color: #6f6861; }
+.hq-go { border: 0; cursor: pointer; padding: 9px 15px; border-radius: 999px; font: 700 12px/1 var(--sans); color: #1a0e05; background: linear-gradient(180deg, #ffc56b, #f0a030); box-shadow: 0 6px 16px -6px #f0a030; }
+.hq-legend { position: absolute; right: 14px; bottom: 14px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; max-width: 300px; align-items: center;
+  padding: 8px 10px; border-radius: 11px; background: rgba(10,11,14,.82); border: 1px solid rgba(255,255,255,.08); font-size: 10px; color: #a39a91; }
+.hq-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.hq-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.hq-legend .z { gap: 4px; }
+.hq-legend .z button { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: #f3ede6; border-radius: 7px; padding: 4px 8px; cursor: pointer; font: 600 11px var(--sans); }
+.hq-panel { position: absolute; right: 224px; top: 14px; width: 270px; padding: 14px; border-radius: 14px; background: rgba(12,13,17,.95); border: 1px solid rgba(232,112,42,.35);
+  box-shadow: 0 20px 50px -20px #000; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: .2s; }
+.hq-panel.show { transform: none; opacity: 1; pointer-events: auto; }
+.hq-panel .x { position: absolute; right: 8px; top: 8px; border: 0; background: none; color: #8d857d; cursor: pointer; font-size: 14px; }
+.hq-panel .hd { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.hq-panel .hd .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(232,112,42,.12); font-size: 17px; }
+.hq-panel .hd b { font-size: 14px; letter-spacing: .04em; color: #f3ede6; }
+.hq-panel .st { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #a39a91; margin-top: 3px; }
+.hq-panel .st i { width: 7px; height: 7px; border-radius: 50%; }
+.hq-panel p { font-size: 12px; color: #a39a91; margin: 0 0 10px; line-height: 1.5; }
+.hq-panel .now { font-size: 13px; font-weight: 600; color: #f3ede6; padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,.04); margin-bottom: 10px; }
+.hq-panel .btn { width: 100%; justify-content: center; }
+@media (max-width: 1100px) { .hq-journal { display: none; } .hq-cmd { width: calc(100% - 260px); min-width: 0; left: 14px; transform: none; } }
+@media (max-width: 760px) {
+  .hq { height: 620px; }
+  .hq-top { right: 14px; }
+  .hq-stats { top: 52px; left: 14px; right: 14px; width: auto; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .hq-stat:nth-child(n+4) { display: none; }
+  .hq-stat { padding: 7px 8px; } .hq-stat .v { font-size: 15px; }
+  .hq-legend { left: 14px; right: 14px; bottom: 70px; max-width: none; justify-content: center; }
+  .hq-cmd { left: 10px; right: 10px; width: auto; bottom: 12px; }
+  .hq-cmd .who { display: none; }
+  .hq-panel { left: 14px; right: 14px; width: auto; top: 120px; }
+  .hq-lab { padding: 3px; border-radius: 8px; } .hq-lab .tx { display: none; } .hq-lab .ic { width: 22px; height: 22px; font-size: 12px; }
+  .hq-lab.hot::after { content: ""; position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+  .hq { height: min(720px, calc(100vh - 230px)); min-height: 520px; }
+  .hq-brand small { display: none; }
+  .hq-cmd { bottom: 10px; } .hq-legend { bottom: 64px; padding: 6px 8px; } .hq-legend > span:not(.z) { display: none; }
+}
 .wh-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
 .wh-card { padding: 0; overflow: hidden; position: relative; }
 .wh-scene { height: 620px; width: 100%; cursor: grab; touch-action: pan-y; position: relative;
@@ -1384,6 +1467,26 @@ th.sort.on { color: var(--accent); }
 
     <!-- ── Entrepôt 3D ─────────────────────────────────── -->
     <section class="view" id="v-warehouse">
+      <div class="hq" id="hq">
+        <div class="hq-scene" id="hq-scene"></div>
+        <div class="hq-labels" id="hq-labels"></div>
+        <div class="hq-top">
+          <div class="hq-brand"><span class="crown">♛</span><div><b>TYNO WAREHOUSE <em>HQ</em></b><small id="hq-sub">agents · 1 vision</small></div><span class="hq-badge" id="hq-badge">EN DIRECT</span></div>
+        </div>
+        <div class="hq-stats" id="hq-stats"></div>
+        <div class="hq-journal"><div class="hd"><i></i>JOURNAL DU QG</div><div id="hq-log"></div></div>
+        <form class="hq-cmd" id="hq-cmd" autocomplete="off">
+          <span class="who">👑 BOSS</span>
+          <input id="hq-in" placeholder="Écris au Boss… ex. « commandes », « suivis », « rapport »" />
+          <button type="button" class="hq-go" id="hq-mission">✦ Mission</button>
+        </form>
+        <div class="hq-legend">
+          <span><i style="background:#e8702a"></i>En mission</span><span><i style="background:#e6b04a"></i>À valider</span>
+          <span><i style="background:#4fbf8a"></i>Disponible</span><span><i style="background:#6aa5e8"></i>Libre</span>
+          <span class="z"><button type="button" onclick="hqZoom(1.12)">−</button><button type="button" onclick="hqZoom(0.88)">+</button><button type="button" onclick="hqRecenter()">⌖ Recentrer</button></span>
+        </div>
+        <div class="hq-panel" id="hq-panel"></div>
+      </div>
       <div class="card game-bar" id="game-bar"></div>
       <div class="grid row-2b" style="margin-bottom:16px">
         <div class="card"><div class="card-head"><div><div class="card-title">Défis du jour</div><div class="card-sub" id="day-sub"></div></div><div class="right" id="streak"></div></div><div class="challenges" id="day-ch"></div></div>
@@ -1395,7 +1498,7 @@ th.sort.on { color: var(--accent); }
           <div class="right" id="goal-next"></div></div>
         <div class="goals" id="goals"></div>
       </div>
-      <div class="wh-wrap">
+      <div class="wh-wrap" style="display:none">
         <div class="card wh-card">
           <div class="wh-hud">
             <span class="live"><i></i>EN DIRECT</span>
@@ -1957,6 +2060,7 @@ function hideBanner() { if (!DEMO) $("#banner").className = "banner"; }
 
 // ═══ Render ════════════════════════════════════════════════════════════════
 function renderAll() {
+  setTimeout(() => { try { if (window.hqUpdate) hqUpdate(); } catch (e) { console.warn(e); } }, 0);
   setTimeout(() => { try { nsRefresh(); nsCheck(); } catch (e) { console.warn(e); } }, 0);
   buildNiches();
   buildImages();
@@ -5653,7 +5757,7 @@ function go(v, fromHash = false) {
   $("#view-title").textContent = TITLES[v] ?? "";
   $("#view-sub").textContent = SUBS[v] ?? "";
   if (v === "account") renderAccount();
-  if (v === "warehouse") { initWarehouse(); renderWhFeed(); setTimeout(whSize, 30); }
+  if (v === "warehouse") { if (window.hqOpen) hqOpen(); renderWhFeed(); }
   if (v === "compta") setTimeout(renderYearChart, 30);
   if (v === "sales") renderSales();
   if (v === "reports") renderReports();
@@ -5809,5 +5913,6 @@ document.querySelectorAll(".kpi-value, .hero-val").forEach((el) => { if (el.text
 load();
 setInterval(() => { if (!document.hidden) load(); }, 30000);
 </script>
+<script src="/hq.js"></script>
 </body>
 </html>
