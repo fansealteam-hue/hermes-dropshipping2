@@ -190,7 +190,8 @@ async function sendSaleAlert(saleId) {
   const acc = db.prepare("SELECT label FROM seller_accounts WHERE account_id = ?").get(sale.accountId);
   let settings = null;
   try { settings = require("./automation").getSettings(); } catch { /* réglages par défaut */ }
-  const d = decide(sale, a, settings);
+  // Renvoi d'une alerte (nouvel essai) : on ne ré-annule pas une vente déjà annulée
+  const d = sale.status === "cancelled" ? { kind: "cancelled" } : decide(sale, a, settings);
   let text = buildAlertText(sale, a, acc?.label);
   let reply_markup;
   if (d.kind === "order") {
@@ -200,6 +201,9 @@ async function sendSaleAlert(saleId) {
     require("./sales").cancelSale(saleId);
     text += "\n✅ Payé ─ ❌ Annulée\n❌ <b>Annulée automatiquement</b> (rupture) · acheteur prévenu";
     reply_markup = undefined;
+  } else if (d.kind === "cancelled") {
+    text += "\n✅ Payé ─ ❌ Annulée\n❌ <b>Vente annulée</b>";
+    reply_markup = undefined;
   } else {
     text += `\n✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu\n👉 <b>À valider</b> : ${esc(d.reason)}`;
     reply_markup = alertKeyboard(saleId, sale.supplierUrl);
@@ -207,7 +211,9 @@ async function sendSaleAlert(saleId) {
   const photos = photoCandidates(sale);
   const fits = visibleLength(text) <= 1024; // limite Telegram d'une légende
   let sent = 0;
+  const errors = [];
   for (const chat_id of chatIds) {
+   try {
     let photoSent = false;
     for (const src of photos) {
       try {
@@ -223,7 +229,10 @@ async function sendSaleAlert(saleId) {
         parse_mode: "HTML", reply_markup, disable_web_page_preview: true });
     }
     sent++;
+   } catch (e) { errors.push(e.message ?? String(e)); }
   }
+  // Rien n'est parti (Telegram injoignable…) → erreur : la file réessaiera plus tard
+  if (!sent) throw new Error(`Alerte non envoyée : ${errors.join(" ; ")}`);
   return sent;
 }
 

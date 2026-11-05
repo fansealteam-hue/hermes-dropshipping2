@@ -324,6 +324,10 @@ async function handleSendAlertWithValidation({ saleId }, job) {
     db.prepare("UPDATE sales SET alert_sent = 1 WHERE sale_id = ?").run(saleId);
   } catch (e) {
     console.warn(`[jobs] sendAlert: ${e.message}`);
+    // Une vente ne doit jamais passer inaperçue : on réessaie (2, 4, 8 min…)
+    // et on ne la signale « à traiter à la main » qu'au dernier essai.
+    const last = !job || (job.attempts ?? 0) + 1 >= (job.max_attempts ?? 1);
+    if (!last) throw e;
     db.prepare("UPDATE sales SET alert_sent = 1, manual_action_required = 1, manual_action_note = ? WHERE sale_id = ?")
       .run(`Alerte Telegram non envoyée : ${e.message}`, saleId);
   }

@@ -170,3 +170,11 @@ test("annulation automatique en cas de rupture (si activée)", async () => {
   assert.equal(sent.reply_markup, undefined, "pas de boutons");
   require("../services/automation").saveSettings({ auto: { autoCancelOutOfStock: false } });
 });
+
+test("Telegram injoignable : erreur (la file réessaie), la vente n'est pas perdue", async () => {
+  process.env.TELEGRAM_BOT_TOKEN = "123:abc";
+  process.env.TELEGRAM_ALLOWED_CHAT_IDS = "111";
+  const orig = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("réseau coupé"); };
+  try { await assert.rejects(alert.sendSaleAlert("s_ok"), /Alerte non envoyée/); } finally { globalThis.fetch = orig; }
+});

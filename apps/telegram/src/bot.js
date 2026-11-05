@@ -21,7 +21,12 @@ bot.use(session({ initial }));
 
 bot.use(async (ctx, next) => {
   const chatId = ctx.chat?.id ?? 0;
-  if (!isAllowed(chatId)) { await ctx.reply("⛔ Accès non autorisé."); return; }
+  // Bot privé : on ignore en silence les inconnus (ne pas révéler que le bot existe)
+  if (!isAllowed(chatId)) {
+    console.warn(`[bot] message ignoré d'un chat non autorisé : ${chatId}`);
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery().catch(() => {});
+    return;
+  }
   ctx.session.updatedAt = new Date().toISOString();
   await next();
 });
@@ -553,17 +558,31 @@ bot.callbackQuery(/^avail_yes:(.+)$/, async ctx => {
 
 bot.callbackQuery(/^check_stock:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("check_stock:", "");
-  const res = await api.checkAvailability(saleId);
+  // Telegram n'attend la réponse que ~15 s et la lecture Temu peut durer jusqu'à 30 s :
+  // on attend au plus 12 s pour la petite fenêtre, sinon le résultat arrive en message.
+  const pending = api.checkAvailability(saleId);
+  const quick = await Promise.race([pending, new Promise((r) => setTimeout(() => r(null), 12_000))]);
+  if (!quick) {
+    await ctx.answerCallbackQuery("🔄 Temu est lent, le résultat arrive dans un instant…");
+    const late = await pending;
+    const t = late?.ok && late.data ? stockLines(late.data).join("\n") : `⚠️ Impossible de vérifier : ${late?.error ?? "erreur"}`;
+    await ctx.reply(t, { reply_to_message_id: ctx.callbackQuery.message?.message_id }).catch(() => ctx.reply(t));
+    return;
+  }
+  const res = quick;
   if (!res.ok || !res.data) { await ctx.answerCallbackQuery({ text: `⚠️ Impossible de vérifier : ${res.error ?? "erreur"}`, show_alert: true }); return; }
-  const a = res.data;
+  await ctx.answerCallbackQuery({ text: stockLines(res.data).join("\n").slice(0, 200), show_alert: true });
+});
+
+function stockLines(a) {
   const eur = (n) => (n == null ? "?" : `${n.toFixed(2).replace(".", ",")} €`);
   const lines = [
     a.available === null ? "❔ Stock inconnu" : a.available ? `🟢 Disponible — ${a.stock} en stock` : "🔴 Rupture de stock",
     a.costChanged ? `⚠️ Prix Temu : ${eur(a.costAtSaleEur)} → ${eur(a.currentCostEur)}` : `Prix Temu : ${eur(a.currentCostEur ?? a.costAtSaleEur)}`,
     a.error ? "(Temu illisible, dernières données connues)" : "Vérifié à l'instant",
   ];
-  await ctx.answerCallbackQuery({ text: lines.join("\n").slice(0, 200), show_alert: true });
-});
+  return lines;
+}
 
 // ─── NON → confirmation dans la même fiche ───────────────────────────────────
 
