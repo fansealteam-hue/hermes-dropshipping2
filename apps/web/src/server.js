@@ -188,6 +188,10 @@ app.get("/api/finance", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/finance?${new URLSearchParams(req.query).toString()}`)
 );
 
+app.post("/api/sales/:id/cancel", requireAuth, (req, res) =>
+  proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/cancel`, "POST")
+);
+
 app.post("/api/sales/:id/sync-tracking", requireAuth, (req, res) =>
   proxyApi(req, res, `/api/sales/${req.params.id}/sync-tracking`, "POST")
 );
