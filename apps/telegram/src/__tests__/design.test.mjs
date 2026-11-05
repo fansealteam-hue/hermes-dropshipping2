@@ -33,3 +33,13 @@ test("boutons en bas, pas de commandes", () => {
   for (const l of [BTN.dash, BTN.sales, BTN.order, BTN.track, BTN.product]) assert.ok(labels.includes(l));
   assert.ok(labels.every(l => !l.startsWith("/")));
 });
+
+test("fiche de vente : le statut est remplacé, le gras au-dessus est gardé", () => {
+  const { cardText, SEP } = require("../bot.js");
+  const body = `🔔 NOUVELLE VENTE\n${SEP}\n📦 Perceuse\n${SEP}\nancien statut`;
+  const card = { photo: true, body, entities: [{ type: "bold", offset: 3, length: 14 }, { type: "bold", offset: body.length - 6, length: 6 }] };
+  const { text, entities } = cardText(card, "✅ Commandé");
+  assert.ok(text.endsWith(`${SEP}\n✅ Commandé`));
+  assert.ok(!text.includes("ancien statut"));
+  assert.equal(entities.length, 1);
+});

@@ -52,41 +52,49 @@ const eur = (n) => (n == null ? "?" : `${n.toFixed(2).replace(".", ",")} €`);
 
 function availabilityLine(a) {
   if (a.available === null) return "❔ Stock Temu inconnu — vérifie avant de commander";
-  const wh = a.warehouse === "local" ? " · entrepôt Europe 🇪🇺" : a.warehouse === "china" ? " · expédié de Chine" : "";
+  const wh = a.warehouse === "local" ? " · 🇪🇺 Europe" : a.warehouse === "china" ? " · 🇨🇳 Chine" : "";
   const price = a.costChanged ? `\n⚠️ Prix Temu changé : ${eur(a.costAtSaleEur)} → <b>${eur(a.currentCostEur)}</b>` : "";
-  return (a.available ? `🟢 <b>Disponible</b> sur Temu (${a.stock} en stock${wh})` : "🔴 <b>Rupture de stock</b> sur Temu") + price;
+  return (a.available ? `🟢 <b>Disponible</b> · ${a.stock} en stock${wh}` : "🔴 <b>Rupture de stock</b> sur Temu") + price;
 }
 
-/** Texte HTML de l'alerte de vente. */
+const SEP = "━━━━━━━━━━━━━━";
+const cut = (t, n) => { const x = String(t ?? ""); return x.length > n ? `${x.slice(0, n - 1)}…` : x; };
+
+/**
+ * Texte HTML de l'alerte de vente : une fiche courte qui tient en légende de la
+ * photo (≤ 1024 caractères), pour avoir photo + infos + boutons en UN message.
+ * Tout ce qui suit le dernier séparateur est le « statut » que le bot remplace
+ * à chaque bouton (Disponible → Commandé → Expédié).
+ */
 function buildAlertText(sale, a, accountLabel) {
   const cost = (a.currentCostEur ?? sale.costEur) + TEMU_FEE();
   const net = sale.salePriceEur - cost;
+  const sign = net >= 0 ? "+" : "−";
   return [
-    "🔔 <b>NOUVELLE VENTE</b> · Tyno",
-    "━━━━━━━━━━━━━━",
-    "✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu",
-    "",
-    `🏪 Compte : <b>${esc(accountLabel ?? sale.accountId)}</b>`,
-    `📦 <b>${esc(a.productTitle)}</b>`,
-    a.variantLabel ? `Variante : ${esc(a.variantLabel)}` : "",
+    `🔔 <b>NOUVELLE VENTE</b> · ${sign}${eur(Math.abs(net))}`,
+    SEP,
+    `📦 <b>${esc(cut(a.productTitle, 90))}</b>`,
+    a.variantLabel ? `🎨 ${esc(cut(a.variantLabel, 60))}` : "",
+    `🏪 Compte : <b>${esc(cut(accountLabel ?? sale.accountId, 40))}</b>`,
     "",
     `💰 Vendu : <b>${eur(sale.salePriceEur)}</b>`,
-    `🛒 Coût d'achat Temu : <b>${eur(cost)}</b> (dont ${eur(TEMU_FEE())} de port)`,
+    `🛒 Achat Temu : <b>${eur(cost)}</b> <i>port inclus</i>`,
     `📈 Bénéfice : <b>${eur(net)}</b>${net < 0 ? " ⚠️ à perte" : ""}`,
-    "",
     availabilityLine(a),
-    "",
-    sale.buyerName ? `👤 Acheteur : ${esc(sale.buyerName)}` : "",
-    sale.deliveryAddress ? `📍 Ville : ${esc(sale.deliveryAddress)}` : "",
-    sale.supplierUrl ? `🔗 <a href="${esc(sale.supplierUrl)}">Ouvrir le produit sur Temu</a>` : "",
-  ].filter((l) => l !== "").join("\n").replace(/\n{3,}/g, "\n\n");
+    sale.buyerName || sale.deliveryAddress
+      ? `👤 ${esc(cut(sale.buyerName ?? "Acheteur", 40))}${sale.deliveryAddress ? ` · 📍 ${esc(cut(sale.deliveryAddress, 80))}` : ""}` : "",
+    SEP,
+  ].filter((l) => l !== "").join("\n").replace("\n💰", "\n\n💰");
 }
 
-function alertKeyboard(saleId) {
-  return { inline_keyboard: [
+function alertKeyboard(saleId, supplierUrl) {
+  const rows = [
     [{ text: "✅ Disponible", callback_data: `avail_yes:${saleId}` }, { text: "❌ Pas disponible", callback_data: `cancel_ask:${saleId}` }],
-    [{ text: "🔄 Revérifier le stock Temu", callback_data: `check_stock:${saleId}` }],
-  ] };
+  ];
+  const second = [{ text: "🔄 Revérifier", callback_data: `check_stock:${saleId}` }];
+  if (/^https:\/\//.test(supplierUrl ?? "")) second.unshift({ text: "👀 Voir sur Temu", url: supplierUrl });
+  rows.push(second);
+  return { inline_keyboard: rows };
 }
 
 /** Boutons quand la disponibilité est validée automatiquement : on passe directement à la commande. */
@@ -186,15 +194,15 @@ async function sendSaleAlert(saleId) {
   let text = buildAlertText(sale, a, acc?.label);
   let reply_markup;
   if (d.kind === "order") {
-    text += "\n\n🤖 <b>Disponibilité vérifiée automatiquement</b> — commande sur Temu puis appuie sur « J'ai commandé ».";
+    text += "\n✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu\n🤖 <b>Dispo vérifiée</b> → commande puis « J'ai commandé »";
     reply_markup = orderKeyboard(saleId, sale.supplierUrl);
   } else if (d.kind === "cancel") {
     require("./sales").cancelSale(saleId);
-    text += "\n\n❌ <b>Annulée automatiquement</b> (rupture de stock) : l'acheteur a reçu ton message d'annulation.";
+    text += "\n✅ Payé ─ ❌ Annulée\n❌ <b>Annulée automatiquement</b> (rupture) · acheteur prévenu";
     reply_markup = undefined;
   } else {
-    text += `\n\n👉 <b>À valider par toi</b> : ${esc(d.reason)}.`;
-    reply_markup = alertKeyboard(saleId);
+    text += `\n✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu\n👉 <b>À valider</b> : ${esc(d.reason)}`;
+    reply_markup = alertKeyboard(saleId, sale.supplierUrl);
   }
   const photos = photoCandidates(sale);
   const fits = visibleLength(text) <= 1024; // limite Telegram d'une légende
@@ -219,4 +227,4 @@ async function sendSaleAlert(saleId) {
   return sent;
 }
 
-module.exports = { checkAvailability, buildAlertText, alertKeyboard, orderKeyboard, decide, sendSaleAlert, availabilityLine, photoCandidates };
+module.exports = { SEP, checkAvailability, buildAlertText, alertKeyboard, orderKeyboard, decide, sendSaleAlert, availabilityLine, photoCandidates };

@@ -40,10 +40,19 @@ test("message : compte, article, coût d'achat, bénéfice, dispo ; texte échap
   const txt = alert.buildAlertText(getSale("s_ok"), a, "Compte LBC Alpha");
   assert.match(txt, /Compte LBC Alpha/);
   assert.match(txt, /Perceuse &lt;21V&gt;/);
-  assert.match(txt, /Coût d'achat Temu : <b>20,99 €/); // 18 € + 2,99 € de port
+  assert.match(txt, /Achat Temu : <b>20,99 €/); // 18 € + 2,99 € de port
   assert.match(txt, /Bénéfice : <b>24,01 €/);
   assert.match(txt, /Disponible/);
   assert.match(txt, /Prix Temu changé/);
+});
+
+test("fiche courte : même avec un titre très long, tout tient dans la légende de la photo", async () => {
+  const a = await alert.checkAvailability("s_ok");
+  const sale = { ...getSale("s_ok"), buyerName: "Jean ".repeat(40), deliveryAddress: "12 rue ".repeat(60) };
+  const txt = alert.buildAlertText(sale, { ...a, productTitle: "Perceuse ".repeat(80), variantLabel: "Bleu ".repeat(50) }, "Compte ".repeat(30));
+  const visible = (txt + "\n✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu\n👉 À valider : prix Temu +20 %").replace(/<[^>]+>/g, "").replace(/&(lt|gt|amp);/g, "x");
+  assert.ok(visible.length <= 1024, `légende trop longue : ${visible.length}`);
+  assert.ok(txt.trimEnd().endsWith(alert.SEP)); // le statut (mis à jour par le bot) vient après
 });
 
 test("boutons : Disponible / Pas disponible (avec confirmation) + revérifier", () => {

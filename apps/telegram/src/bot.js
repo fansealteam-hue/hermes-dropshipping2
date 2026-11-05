@@ -459,6 +459,12 @@ async function handleTracking(ctx, saleId, carrier, tracking) {
     ? "✅ Transmis automatiquement à l'acheteur Leboncoin\\."
     : "⚠️ Transmission automatique échouée — à envoyer manuellement sur Leboncoin\\.";
 
+  const card = ctx.session.trackingCard;
+  ctx.session.trackingCard = null;
+  if (card && String(ctx.session.pendingTrackingSaleId ?? saleId) === String(saleId)) {
+    const line = `📬 Expédié · ${carrier ? `${carrier} ` : ""}${tracking}\n${syncRes?.ok ? "✅ Suivi envoyé à l'acheteur sur Leboncoin" : "⚠️ Suivi à envoyer à la main sur Leboncoin"}`;
+    if (await updateCard(ctx, card, `${STEPS.shipped}\n${line}`)) return ctx.reply("✅ Suivi ajouté — la fiche de la vente est à jour ☝️", { reply_markup: mainKeyboard() });
+  }
   return ctx.reply(
     msg.fmtTrackingAdded(res.data) + "\n\n" + syncStatus,
     { parse_mode: "MarkdownV2" }
@@ -488,137 +494,132 @@ async function sendSaleAlert(chatId, { sale, productTitle, variantLabel, imageUr
   await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
 }
 
-// ─── OUI → infos acheteur + lien Temu + VALIDER ──────────────────────────────
+// ─── Fiche de vente : UN message (photo + infos + boutons) mis à jour en place ─
+const SEP = "━━━━━━━━━━━━━━";
+const STEPS = {
+  ordered: "✅ Payé ─ ✅ Commandé ─ 🟠 Expédié ─ ⚪ Reçu",
+  toOrder: "✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu",
+  shipped: "✅ Payé ─ ✅ Commandé ─ ✅ Expédié ─ 🟠 Reçu",
+  cancelled: "✅ Payé ─ ❌ Annulée",
+};
+/** Copie minimale d'un message (pour le retrouver plus tard, ex. après le suivi). */
+function cardRef(m) {
+  if (!m) return null;
+  const photo = Array.isArray(m.photo) && m.photo.length > 0;
+  return { chatId: m.chat.id, messageId: m.message_id, photo,
+    body: (photo ? m.caption : m.text) ?? "", entities: (photo ? m.caption_entities : m.entities) ?? [] };
+}
+/** Remplace le bloc statut (après le dernier séparateur) en gardant le gras/liens au-dessus. */
+function cardText(card, status) {
+  const i = card.body.lastIndexOf(SEP);
+  const head = i >= 0 ? card.body.slice(0, i + SEP.length) : `${card.body}\n${SEP}`;
+  const max = card.photo ? 1024 : 4096;
+  return { text: `${head}\n${status}`.slice(0, max), entities: card.entities.filter((e) => e.offset + e.length <= head.length) };
+}
+async function updateCard(ctx, card, status, kb) {
+  if (!card) return false;
+  const { text, entities } = cardText(card, status);
+  const reply_markup = kb ?? { inline_keyboard: [] };
+  try {
+    if (card.photo) await ctx.api.editMessageCaption(card.chatId, card.messageId, { caption: text, caption_entities: entities, reply_markup });
+    else await ctx.api.editMessageText(card.chatId, card.messageId, text, { entities, reply_markup, link_preview_options: { is_disabled: true } });
+    card.body = text; card.entities = entities;
+    return true;
+  } catch (e) {
+    return /not modified/i.test(e?.description ?? e?.message ?? "");
+  }
+}
+const orderKb = (saleId, url) => {
+  const kb = new InlineKeyboard();
+  if (/^https:\/\//.test(url ?? "")) kb.url("🛒 Commander sur Temu", url).row();
+  return kb.text("✅ J'ai commandé", `confirm_payment:${saleId}`).text("❌ Annuler", `cancel_ask:${saleId}`);
+};
+
+// ─── OUI disponible → la fiche passe en « à commander » ───────────────────────
 
 bot.callbackQuery(/^avail_yes:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("avail_yes:", "");
   const res = await api.getSale(saleId);
   if (!res.ok || !res.data) { await ctx.answerCallbackQuery("Vente introuvable"); return; }
-
   const sale = res.data;
-  const info = [
-    "✅ *Article disponible — infos acheteur*",
-    "",
-    sale.buyerName        ? `👤 Acheteur : ${msg.escMd(sale.buyerName)}` : "",
-    sale.deliveryAddress  ? `📍 Adresse : ${msg.escMd(sale.deliveryAddress)}` : "",
-    `💰 Prix payé : *${msg.escMd((sale.salePriceEur ?? 0).toFixed(2))} €*`,
-    sale.costEur != null  ? `Coût estimé : ${msg.escMd(sale.costEur.toFixed(2))} €` : "",
-    "",
-    "1️⃣ Commande sur Temu avec l'adresse de l'acheteur",
-    "2️⃣ Puis appuie sur *VALIDER*",
-  ].filter(Boolean).join("\n");
-
-  const kb = new InlineKeyboard();
-  if (/^https:\/\//.test(sale.supplierUrl ?? "")) kb.url("🛒 Commander sur Temu", sale.supplierUrl).row();
-  kb.text("✅ VALIDER — j'ai commandé", `confirm_payment:${saleId}`).row()
-    .text("❌ Finalement annuler", `cancel_ask:${saleId}`);
-
-  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
-  await ctx.reply(info, { parse_mode: "MarkdownV2", reply_markup: kb });
-  await ctx.answerCallbackQuery("Article disponible ✅");
+  const status = [STEPS.toOrder, "👍 Disponible → commande sur Temu avec ces infos :",
+    sale.buyerName ? `👤 ${sale.buyerName}` : "", sale.deliveryAddress ? `📍 ${sale.deliveryAddress}` : ""].filter(Boolean).join("\n");
+  const ok = await updateCard(ctx, cardRef(ctx.callbackQuery.message), status, orderKb(saleId, sale.supplierUrl));
+  if (!ok) await ctx.reply(status, { reply_markup: orderKb(saleId, sale.supplierUrl) });
+  await ctx.answerCallbackQuery("Disponible ✅ — à commander");
 });
 
-// ─── Revérifier le stock Temu ────────────────────────────────────────────────
+// ─── Revérifier le stock Temu → petite fenêtre, la fiche reste propre ────────
 
 bot.callbackQuery(/^check_stock:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("check_stock:", "");
-  await ctx.answerCallbackQuery("Vérification sur Temu…");
   const res = await api.checkAvailability(saleId);
-  if (!res.ok || !res.data) {
-    await ctx.reply(`⚠️ Impossible de vérifier : ${res.error ?? "erreur"}`);
-    return;
-  }
+  if (!res.ok || !res.data) { await ctx.answerCallbackQuery({ text: `⚠️ Impossible de vérifier : ${res.error ?? "erreur"}`, show_alert: true }); return; }
   const a = res.data;
-  const esc = (t) => String(t ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const eur = (n) => (n == null ? "?" : `${n.toFixed(2).replace(".", ",")} €`);
-  const line = a.available === null ? "❔ Stock inconnu"
-    : a.available ? `🟢 <b>Disponible</b> — ${a.stock} en stock` : "🔴 <b>Rupture de stock</b>";
   const lines = [
-    `📦 <b>${esc(a.productTitle)}</b>${a.variantLabel ? ` · ${esc(a.variantLabel)}` : ""}`,
-    line,
-    a.costChanged ? `⚠️ Prix Temu : ${eur(a.costAtSaleEur)} → <b>${eur(a.currentCostEur)}</b>` : `Prix Temu : ${eur(a.currentCostEur ?? a.costAtSaleEur)}`,
-    a.error ? `<i>Lecture Temu impossible (${esc(a.error)}) — données du ${esc(a.checkedAt ?? "?")}</i>` : "<i>Vérifié à l'instant</i>",
+    a.available === null ? "❔ Stock inconnu" : a.available ? `🟢 Disponible — ${a.stock} en stock` : "🔴 Rupture de stock",
+    a.costChanged ? `⚠️ Prix Temu : ${eur(a.costAtSaleEur)} → ${eur(a.currentCostEur)}` : `Prix Temu : ${eur(a.currentCostEur ?? a.costAtSaleEur)}`,
+    a.error ? "(Temu illisible, dernières données connues)" : "Vérifié à l'instant",
   ];
-  const kb = new InlineKeyboard()
-    .text("✅ Disponible", `avail_yes:${saleId}`)
-    .text("❌ Pas disponible", `cancel_ask:${saleId}`);
-  await ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
+  await ctx.answerCallbackQuery({ text: lines.join("\n").slice(0, 200), show_alert: true });
 });
 
-// ─── Annuler → confirmation (l'annulation prévient l'acheteur) ───────────────
+// ─── NON → confirmation dans la même fiche ───────────────────────────────────
 
 bot.callbackQuery(/^cancel_ask:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("cancel_ask:", "");
   const kb = new InlineKeyboard()
-    .text("Oui, annuler et prévenir l'acheteur", `avail_no:${saleId}`).row()
-    .text("Non, garder la vente", `cancel_keep:${saleId}`);
-  await ctx.answerCallbackQuery();
-  await ctx.reply("❌ Article pas disponible ? La vente sera annulée et l'acheteur prévenu sur Leboncoin.", { reply_markup: kb });
+    .text("❌ Oui, annuler la vente", `avail_no:${saleId}`).row()
+    .text("↩️ Non, garder la vente", `cancel_keep:${saleId}`);
+  await ctx.editMessageReplyMarkup({ reply_markup: kb }).catch(() => ctx.reply("Annuler la vente ? L'acheteur sera prévenu sur Leboncoin.", { reply_markup: kb }));
+  await ctx.answerCallbackQuery("L'acheteur sera prévenu sur Leboncoin");
 });
 
 bot.callbackQuery(/^cancel_keep:(.+)$/, async ctx => {
-  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  const saleId = ctx.callbackQuery.data.replace("cancel_keep:", "");
+  const res = await api.getSale(saleId);
+  const sale = res?.data ?? {};
+  const kb = sale.status === "order_placed" ? new InlineKeyboard().text("📬 Ajouter le suivi", `add_tracking:${saleId}`) : orderKb(saleId, sale.supplierUrl);
+  await ctx.editMessageReplyMarkup({ reply_markup: kb }).catch(() => {});
   await ctx.answerCallbackQuery("Vente conservée 👍");
 });
-
-// ─── NON → annulation LBC + message acheteur + confirmation Telegram ─────────
 
 bot.callbackQuery(/^avail_no:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("avail_no:", "");
   await ctx.answerCallbackQuery("Annulation en cours…");
-
   const res = await api.cancelSale(saleId);
-  const okText = res?.ok
-    ? "✅ Annulation envoyée à l'acheteur sur Leboncoin \\(message automatique\\)\\."
-    : "⚠️ Annulation enregistrée, message LBC à envoyer manuellement\\.";
-
-  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
-  await ctx.reply(
-    `❌ *Vente annulée*\n\n${okText}`,
-    { parse_mode: "MarkdownV2" }
-  );
+  const status = [STEPS.cancelled, res?.ok ? "❌ Vente annulée · acheteur prévenu sur Leboncoin" : "⚠️ Annulée — message Leboncoin à envoyer à la main"].join("\n");
+  const ok = await updateCard(ctx, cardRef(ctx.callbackQuery.message), status);
+  if (!ok) await ctx.reply(status);
 });
 
-// ─── VALIDER → instructions suivi + bouton inline ────────────────────────────
+// ─── J'ai commandé → la fiche passe en « commandé » + bouton suivi ───────────
 
 bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("confirm_payment:", "");
-  // Enregistre la commande Temu → la vente passe en « Commandée » sur le dashboard
   const ord = await api.markOrdered(saleId);
   if (!ord.ok) { await ctx.answerCallbackQuery(`Erreur : ${ord.error ?? "commande non enregistrée"}`); return; }
-  const res = await api.getSale(saleId);
-  if (!res.ok || !res.data) { await ctx.answerCallbackQuery("Vente introuvable"); return; }
-
-  const sale = res.data;
-  const lines = [
-    "✅ *Commande validée \\!*",
-    "",
-    `🔗 ${msg.escMd(sale.supplierUrl ?? "Lien manquant")}`,
-    "",
-    "Dès que vous avez le numéro de suivi, appuyez sur le bouton ci\\-dessous\\.",
-  ].join("\n");
-
-  const kb = new InlineKeyboard()
-    .text("📦 Ajouter le numéro de suivi", `add_tracking:${saleId}`);
-
-  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
-  await ctx.reply(lines, { parse_mode: "MarkdownV2", reply_markup: kb });
+  const kb = new InlineKeyboard().text("📬 Ajouter le numéro de suivi", `add_tracking:${saleId}`);
+  const status = `${STEPS.ordered}\n🛒 Commandé sur Temu · en attente du suivi`;
+  const ok = await updateCard(ctx, cardRef(ctx.callbackQuery.message), status, kb);
+  if (!ok) await ctx.reply(status, { reply_markup: kb });
   await ctx.answerCallbackQuery("✅ Commande enregistrée !");
 });
 
-// ─── Bouton "Ajouter suivi" → demande transporteur + numéro ──────────────────
+// ─── Ajouter le suivi → on retient la fiche pour la mettre à jour ensuite ────
 
 bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("add_tracking:", "");
   ctx.session.state = "awaiting_tracking_inline";
   ctx.session.pendingTrackingSaleId = saleId;
-
-  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  const m = ctx.callbackQuery.message;
+  ctx.session.trackingCard = m && (m.photo || (m.text ?? "").includes(SEP)) ? cardRef(m) : null;
   await ctx.reply("📬 Colle le <b>numéro de suivi</b> 👇\n<i>Le transporteur est reconnu tout seul.</i>", { parse_mode: "HTML" });
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, BTN };
+module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, BTN, cardRef, cardText, SEP };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
