@@ -62,7 +62,9 @@ function buildAlertText(sale, a, accountLabel) {
   const cost = (a.currentCostEur ?? sale.costEur) + TEMU_FEE();
   const net = sale.salePriceEur - cost;
   return [
-    "🔔 <b>NOUVELLE VENTE</b>",
+    "🔔 <b>NOUVELLE VENTE</b> · Tyno",
+    "━━━━━━━━━━━━━━",
+    "✅ Payé ─ 🟠 Commandé ─ ⚪ Expédié ─ ⚪ Reçu",
     "",
     `🏪 Compte : <b>${esc(accountLabel ?? sale.accountId)}</b>`,
     `📦 <b>${esc(a.productTitle)}</b>`,

@@ -16,7 +16,26 @@ app.use(express.urlencoded({ extended: false }));
 // ─── Site privé : mot de passe obligatoire (WEB_SECRET_TOKEN) ────────────────
 const crypto = require("crypto");
 const SESSION_DAYS = 30;
-const PUBLIC_PATHS = new Set(["/login", "/logout", "/logo.svg", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/robots.txt"]);
+const PUBLIC_PATHS = new Set(["/login", "/logout", "/logo.svg", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/robots.txt", "/tg"]);
+// Mini-app Telegram : accès prouvé par la signature Telegram (initData) + compte autorisé
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
+const TG_ALLOWED = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+function tgAuthed(req) {
+  const init = req.headers["x-tg-init-data"];
+  if (!init || !TG_TOKEN || !TG_ALLOWED.length) return false;
+  try {
+    const p = new URLSearchParams(String(init));
+    const hash = p.get("hash") ?? "";
+    p.delete("hash");
+    const check = [...p.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join("\n");
+    const secret = crypto.createHmac("sha256", "WebAppData").update(TG_TOKEN).digest();
+    const calc = crypto.createHmac("sha256", secret).update(check).digest("hex");
+    if (calc.length !== hash.length || !crypto.timingSafeEqual(Buffer.from(calc), Buffer.from(hash))) return false;
+    if (Date.now() / 1000 - Number(p.get("auth_date")) > 86400) return false; // signature de moins de 24 h
+    const user = JSON.parse(p.get("user") ?? "{}");
+    return TG_ALLOWED.includes(String(user.id));
+  } catch { return false; }
+}
 const IS_PROD = process.env.NODE_ENV === "production";
 if (!SECRET_TOKEN) console.warn(`[web] ⚠️  WEB_SECRET_TOKEN vide : ${IS_PROD ? "site bloqué tant qu'il n'est pas défini" : "site ouvert (développement)"}`);
 else if (SECRET_TOKEN.length < 12 || /changeme/i.test(SECRET_TOKEN)) console.warn("[web] ⚠️  WEB_SECRET_TOKEN trop faible : choisis un mot de passe long et unique");
@@ -42,6 +61,7 @@ function setSession(req, res) {
   res.setHeader("Set-Cookie", `tyno_session=${makeSession()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_DAYS * 86400}${secure}`);
 }
 function isAuthed(req) {
+  if (tgAuthed(req)) return true;
   if (!SECRET_TOKEN) return !IS_PROD;
   if (validSession(cookies(req).tyno_session)) return true;
   const t = req.headers["x-hermes-token"];
@@ -66,6 +86,7 @@ function tooMany(ip) {
   attempts.set(ip, a);
   return a.length >= 8;
 }
+app.get("/tg", (req, res) => res.sendFile(path.join(__dirname, "../public/tg.html")));
 app.get("/login", (req, res) => {
   if (isAuthed(req) && SECRET_TOKEN) return res.redirect(safeNext(req.query.next));
   res.sendFile(path.join(__dirname, "../public/login.html"));
@@ -93,6 +114,11 @@ app.use((req, res, next) => {
     setSession(req, res);
     const u = new URL(req.originalUrl, "http://x"); u.searchParams.delete("token");
     return res.redirect(u.pathname + u.search);
+  }
+  if (tgAuthed(req)) {
+    // session ouverte pour que les photos (/media) s'affichent aussi dans la mini-app
+    if (SECRET_TOKEN && !validSession(cookies(req).tyno_session)) setSession(req, res);
+    return next();
   }
   if (isAuthed(req)) return next();
   if (req.path.startsWith("/api/") || req.path.startsWith("/media/")) return res.status(401).json({ ok: false, error: "Connexion requise" });

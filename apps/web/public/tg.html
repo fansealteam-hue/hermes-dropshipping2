@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Tyno Entreprise</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #080706; --surface: #12100e; --surface-2: #1a1714; --surface-3: #24201c; --border: #26221e; --border-strong: #3a3430;
+    --text: #f3ede6; --text-2: #b4aaa0; --text-3: #7d746c; --accent: #e8702a; --accent-soft: rgba(232,112,42,.14);
+    --green: #4fbf8a; --green-soft: rgba(79,191,138,.13); --amber: #e6b04a; --amber-soft: rgba(230,176,74,.13); --red: #e5675f; --red-soft: rgba(229,103,95,.13);
+    --serif: "Cormorant Garamond", Georgia, serif; --sans: "Inter", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); }
+  body { color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; padding: 0 0 calc(76px + env(safe-area-inset-bottom)); -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(500px 300px at 90% -10%, rgba(232,112,42,.16), transparent 70%); background-attachment: fixed; }
+  button, input { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+  .pos { color: var(--green); } .amb { color: var(--amber); } .neg { color: var(--red); } .muted { color: var(--text-3); }
+
+  header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(140deg, #f59a52, #e8702a 55%, #a83d0c); box-shadow: 0 8px 20px -8px #e8702a; flex-shrink: 0; }
+  .logo svg { width: 24px; height: 24px; }
+  .brand { font-family: var(--serif); font-size: 21px; font-weight: 600; line-height: 1; background: linear-gradient(90deg, #fff, #f0c9a8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
+  .hbtn { margin-left: auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; color: var(--text-2); }
+  .hbtn svg { width: 16px; height: 16px; }
+  .hbtn.spin svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main { padding: 0 14px; }
+  .page { display: none; animation: fade .25s ease; }
+  .page.on { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  h2 { font-family: var(--serif); font-size: 26px; font-weight: 600; margin: 4px 2px 12px; }
+  .sec { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); margin: 18px 2px 8px; display: flex; align-items: center; gap: 8px; }
+  .sec::before { content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--accent); }
+
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi { padding: 12px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, #fff), var(--surface)); border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(232,112,42,.6), transparent); }
+  .kpi.hero { background: linear-gradient(150deg, rgba(232,112,42,.18), var(--surface) 65%); border-color: rgba(232,112,42,.3); }
+  .kpi .l { font-size: 11.5px; color: var(--text-2); }
+  .kpi .v { font-size: 22px; font-weight: 750; letter-spacing: -.5px; margin-top: 6px; }
+  .kpi .d { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 10px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font-size: 12.5px; font-weight: 500; }
+  .chip.on { background: linear-gradient(180deg, #f08a3e, #e2651f); color: #fff; border-color: #e2651f; }
+  .chip .n { opacity: .65; }
+  .chip svg { width: 13px; height: 13px; }
+
+  .sc { padding: 12px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, #fff), var(--surface)); border: 1px solid var(--border); margin-bottom: 8px; }
+  .sc.ko { opacity: .6; }
+  .sc-top { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .th { width: 46px; height: 46px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 13px; overflow: hidden; position: relative; }
+  .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #fff; }
+  .t { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-3); margin-top: 4px; }
+  .acc { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 3px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+  .acc i { width: 11px; height: 11px; border-radius: 50%; }
+  .steps { display: flex; align-items: center; gap: 5px; margin: 10px 0 0; flex-wrap: wrap; }
+  .st { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: var(--text-3); }
+  .st svg { width: 14px; height: 14px; }
+  .st.done { color: var(--text); } .st.done svg { color: var(--green); }
+  .st.cur { color: var(--amber); }
+  .st.x { color: var(--red); }
+  .ln { width: 9px; height: 1px; background: var(--border-strong); }
+  .ln.done { background: rgba(79,191,138,.55); }
+  .sc-bot { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; }
+  .status svg { width: 15px; height: 15px; }
+  .status.wait { color: var(--amber); } .status.ok { color: var(--green); } .status.ko { color: var(--red); }
+  .profit { font-size: 14.5px; font-weight: 750; }
+  .profit.wait { color: var(--amber); } .profit.ok { color: var(--green); } .profit.ko { color: var(--text-3); text-decoration: line-through; }
+  .inv { margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-2); }
+  .note { margin-top: 8px; font-size: 11.5px; color: var(--red); background: var(--red-soft); padding: 6px 9px; border-radius: 8px; }
+
+  .money { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 11px; margin-top: 10px; overflow: hidden; }
+  .money > div { padding: 7px 9px; } .money > div + div { border-left: 1px solid var(--border); }
+  .money small { display: block; font-size: 10px; color: var(--text-3); }
+  .money b { font-size: 13.5px; }
+  .buyer { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12.5px; }
+  .buyer b { font-weight: 600; } .buyer span { color: var(--text-3); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface-2); font-weight: 600; font-size: 12.5px; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn.primary { background: linear-gradient(180deg, #f08a3e, #e2651f); border-color: #e2651f; color: #fff; box-shadow: 0 8px 18px -10px #e8702a; }
+  .btn.block { width: 100%; height: 42px; margin-top: 10px; font-size: 13.5px; }
+  .row { display: flex; gap: 6px; margin-top: 8px; }
+  .row input { flex: 1; min-width: 0; height: 38px; padding: 0 11px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; font-size: 13.5px; }
+  .row input:focus { border-color: var(--accent); }
+  .ml-auto { margin-left: auto; }
+
+  .nt { padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); margin-bottom: 8px; border-left: 3px solid var(--nc); }
+  .nt-h { display: flex; align-items: center; gap: 10px; }
+  .av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-family: var(--serif); font-weight: 600; flex-shrink: 0; }
+  .nt-n { font-weight: 650; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .grid3 small { display: block; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; }
+  .grid3 b { font-size: 13.5px; }
+  .nl { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 0 0; color: var(--text-2); }
+  .nl i { width: 8px; height: 8px; border-radius: 50%; }
+  .nl b { margin-left: auto; }
+
+  .empty { text-align: center; color: var(--text-3); padding: 28px 10px; font-size: 13px; }
+  .site { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0 6px; color: var(--text-3); font-size: 12.5px; text-decoration: none; }
+  .demo { margin: 0 14px 10px; padding: 8px 11px; border-radius: 10px; background: var(--amber-soft); color: var(--amber); font-size: 12px; display: none; }
+
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: rgba(18,16,14,.9); backdrop-filter: blur(14px); border-top: 1px solid var(--border); }
+  nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border: none; background: none; color: var(--text-3); font-size: 10.5px; font-weight: 500; position: relative; }
+  nav button svg { width: 20px; height: 20px; }
+  nav button.on { color: var(--accent); }
+  nav .bdg { position: absolute; top: 1px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9px; background: var(--red); color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; }
+  nav .bdg:empty { display: none; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 20px); opacity: 0; background: var(--text); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: all .25s; pointer-events: none; z-index: 9; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1 13H6z"/><path d="M9 7a3 3 0 0 1 6 0"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11h10.2L20 8H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3.5 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+</svg>
+
+<header>
+  <span class="logo"><svg viewBox="0 0 64 64"><path d="M32 11 52 22 32 33 12 22Z" fill="#fff"/><path d="M12 22 32 33V54L12 43Z" fill="#fff" fill-opacity=".8"/><path d="M52 22 32 33V54L52 43Z" fill="#fff" fill-opacity=".55"/><path d="M22 16.5 42 27.5" stroke="#e8702a" stroke-width="3.6" stroke-linecap="round"/><path d="M32 33V54" stroke="#a83d0c" stroke-width="2.8" stroke-linecap="round"/></svg></span>
+  <div><div class="brand">Tyno Entreprise</div><div class="sub" id="sub">—</div></div>
+  <button class="hbtn" id="refresh" aria-label="Actualiser"><svg><use href="#i-refresh"/></svg></button>
+</header>
+<div class="demo" id="demo">Mode démo : chiffres fictifs</div>
+
+<main>
+  <section class="page on" id="p-home">
+    <div class="kpis" id="kpis"></div>
+    <div class="sec">Par compte · 30 jours</div>
+    <div id="home-acc"></div>
+    <div class="sec">Dernières ventes</div>
+    <div id="home-sales"></div>
+  </section>
+  <section class="page" id="p-sales">
+    <h2>Ventes</h2>
+    <div class="chips" id="sales-tabs"></div>
+    <div id="sales-list"></div>
+  </section>
+  <section class="page" id="p-temu">
+    <h2>Achats Temu</h2>
+    <div class="chips" id="temu-tabs"></div>
+    <div id="temu-list"></div>
+  </section>
+  <section class="page" id="p-acc">
+    <h2>Comptes</h2>
+    <div id="acc-list"></div>
+  </section>
+  <a class="site" id="site-link" href="/"><svg width="13" height="13"><use href="#i-link"/></svg>Ouvrir le site complet</a>
+</main>
+
+<nav>
+  <button class="on" data-p="home"><svg><use href="#i-home"/></svg>Accueil</button>
+  <button data-p="sales"><svg><use href="#i-bag"/></svg>Ventes</button>
+  <button data-p="temu"><svg><use href="#i-cart"/></svg>Temu<span class="bdg" id="b-temu"></span></button>
+  <button data-p="acc"><svg><use href="#i-users"/></svg>Comptes</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+try { tg.ready(); tg.expand(); tg.setHeaderColor("#080706"); tg.setBackgroundColor("#080706"); } catch {}
+const DEMO = new URLSearchParams(location.search).has("demo");
+const SHIP = 2.99;
+const HUES = ["#e8702a", "#4fbf8a", "#6aa5e8", "#c9a45c", "#b979e0", "#e5675f"];
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+const fmt0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const eur = (n) => (n == null || isNaN(n) ? "—" : fmt.format(n));
+const initials = (t) => esc((t || "?").replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?");
+const haptic = (t = "light") => { try { tg.HapticFeedback.impactOccurred(t); } catch {} };
+let S = { sales: [], listings: [], accounts: [], wd: null, invoices: [] }, tab = "home", salesTab = "wait", temuTab = "todo";
+
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2200); }
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (tg?.initData) headers["x-tg-init-data"] = tg.initData;
+  const r = await fetch(path, { ...opts, headers, credentials: "same-origin" });
+  const j = await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }));
+  if (r.status === 401) throw new Error("Accès refusé : ouvre l'app depuis ton bot Telegram");
+  if (!j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+  return j;
+}
+
+// ── données ──
+const titleOf = (x) => { const l = S.listings.find((y) => y.listing_id === x.listingId); return l?.title || l?.product_title || x.productTitle || "Produit"; };
+const imgOf = (x) => {
+  const ok = (u) => typeof u === "string" && (/^https:\/\//.test(u) || u.startsWith("/media/") || u.startsWith("data:image/"));
+  const parse = (v) => { try { const a = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(a) ? a : []; } catch { return []; } };
+  const l = S.listings.find((y) => y.listing_id === x.listingId) ?? S.listings.find((y) => y.temu_item_id === x.temuItemId);
+  return l ? [...parse(l.media_urls), ...parse(l.variant_images)].find(ok) : null;
+};
+const accOf = (id) => S.accounts.find((a) => a.accountId === id);
+const accColor = (id) => HUES[Math.max(0, S.accounts.findIndex((a) => a.accountId === id)) % HUES.length];
+const nicheOf = (x) => S.listings.find((y) => y.temu_item_id === x.temuItemId && y.product_niche)?.product_niche || accOf(x.accountId)?.niche || "Sans niche";
+const invOf = (id) => S.invoices.find((i) => i.saleId === id && i.kind === "invoice")?.invoiceNo;
+const profitOf = (x) => x.salePriceEur - (x.actualCostEur ?? x.costEur) - SHIP;
+const relDay = (iso) => { const d0 = new Date(); d0.setHours(0, 0, 0, 0); const d = new Date(iso); const dd = new Date(d); dd.setHours(0, 0, 0, 0); const n = Math.round((d0 - dd) / 864e5);
+  return n <= 0 ? `aujourd'hui · ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : n === 1 ? "hier" : n === 2 ? "avant-hier" : n < 7 ? `il y a ${n} jours` : d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); };
+const daysSince = (iso) => Math.floor((Date.now() - new Date(iso)) / 864e5);
+
+async function load() {
+  $("#refresh").classList.add("spin");
+  try {
+    if (DEMO) S = demo();
+    else {
+      const [d, l, a, w, inv] = await Promise.all([api("/api/dashboard"), api("/api/listings?limit=500").catch(() => ({ data: [] })), api("/api/accounts/stats").catch(() => ({ data: [] })),
+        api("/api/withdrawals").catch(() => ({ data: null })), api("/api/invoices").catch(() => ({ data: [] }))]);
+      S = { sales: d.data.activeSales ?? [], need: d.data.salesNeedingAction ?? [], listings: l.data ?? [], accounts: a.data ?? [], wd: w.data, invoices: inv.data ?? [] };
+    }
+    render();
+    $("#sub").textContent = "Mis à jour " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) { $("#sub").textContent = e.message; toast(e.message); }
+  setTimeout(() => $("#refresh").classList.remove("spin"), 300);
+}
+
+// ── rendu ──
+function steps(x) {
+  const ORDER = ["confirmed", "order_placed", "tracking_added", "delivered"];
+  if (x.status === "cancelled") return `<span class="st done"><svg><use href="#i-ok"/></svg>Payé</span><span class="ln"></span><span class="st x"><svg><use href="#i-x"/></svg>Annulée</span>`;
+  const lvl = ORDER.indexOf(x.status);
+  return ["Payé", "Commandé", "Expédié", "Reçu"].map((l, i) => `${i ? `<span class="ln ${i <= lvl ? "done" : ""}"></span>` : ""}<span class="st ${i <= lvl ? "done" : i === lvl + 1 ? "cur" : ""}"><svg><use href="#${i <= lvl ? "i-ok" : "i-clock"}"/></svg>${l}</span>`).join("");
+}
+function thumb(x) { const u = imgOf(x); return `<div class="th">${u ? `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${initials(titleOf(x))}</div>`; }
+function saleCard(x) {
+  const k = x.status === "cancelled" ? "ko" : x.status === "delivered" ? "ok" : "wait";
+  const lab = { ko: ["Annulée", "i-x"], ok: ["Validée", "i-ok"], wait: ["En attente", "i-clock"] }[k];
+  const p = profitOf(x), inv = invOf(x.saleId), a = accOf(x.accountId);
+  return `<div class="sc ${k}">
+    <div class="sc-top">${thumb(x)}<div style="min-width:0"><div class="t">${esc(titleOf(x))}</div>
+      <div class="meta"><span class="acc"><i style="background:${accColor(x.accountId)}"></i>${esc(a?.label ?? x.accountId)}</span><span>${relDay(x.confirmedAt)}</span></div></div></div>
+    <div class="steps">${steps(x)}</div>
+    <div class="sc-bot"><span class="status ${k}"><svg><use href="#${lab[1]}"/></svg>${lab[0]}</span><span class="profit num ${k}">${p >= 0 ? "+" : "−"}${fmt0.format(Math.abs(p))}</span>${inv ? `<span class="inv">${esc(inv)}</span>` : ""}</div>
+    ${x.manualActionRequired && k !== "ko" ? `<div class="note">⚠️ ${esc(x.manualActionNote ?? "Action manuelle requise")}</div>` : ""}
+  </div>`;
+}
+function render() {
+  const live = S.sales.filter((x) => x.status !== "cancelled");
+  const since = Date.now() - 30 * 864e5;
+  const m30 = live.filter((x) => new Date(x.confirmedAt) >= since);
+  const rev = m30.reduce((a, x) => a + x.salePriceEur, 0), prof = m30.reduce((a, x) => a + profitOf(x), 0);
+  const todo = S.sales.filter((x) => x.status === "confirmed"), waitTrk = S.sales.filter((x) => x.status === "order_placed");
+  const action = S.sales.filter((x) => x.manualActionRequired && x.status !== "cancelled");
+  $("#b-temu").textContent = todo.length || "";
+  $("#kpis").innerHTML = [
+    ["Chiffre d'affaires", eur(rev), `${m30.length} ventes · 30 j`, "hero"],
+    ["Bénéfice net", `<span class="pos">${eur(prof)}</span>`, rev ? `${Math.round((prof / rev) * 100)} % de marge` : "—"],
+    ["À commander", todo.length, todo.length ? `<span class="neg">${todo.filter((x) => daysSince(x.confirmedAt) >= 2).length} en retard</span>` : "tout est à jour"],
+    ["Attente du suivi", waitTrk.length, `${action.length} à traiter`],
+  ].map(([l, v, d, c]) => `<div class="kpi ${c ?? ""}"><div class="l">${l}</div><div class="v num">${v}</div><div class="d">${d}</div></div>`).join("");
+
+  // par compte → niches
+  const accIds = S.accounts.length ? S.accounts.map((a) => a.accountId) : [...new Set(S.sales.map((x) => x.accountId))];
+  $("#home-acc").innerHTML = accIds.map((id) => {
+    const ss = m30.filter((x) => x.accountId === id);
+    const r = ss.reduce((a, x) => a + x.salePriceEur, 0), pr = ss.reduce((a, x) => a + profitOf(x), 0);
+    const N = {}; ss.forEach((x) => { const k = nicheOf(x); N[k] = (N[k] ?? 0) + x.salePriceEur; });
+    const c = accColor(id), a = accOf(id);
+    return { r, html: `<div class="nt" style="--nc:${c}"><div class="nt-h"><span class="av" style="background:linear-gradient(140deg, ${c}, color-mix(in srgb, ${c} 55%, #000))">${initials(a?.label ?? id)}</span>
+      <div style="min-width:0"><div class="nt-n">${esc(a?.label ?? id)}</div><div class="muted" style="font-size:11.5px">${ss.length} vente${ss.length > 1 ? "s" : ""}</div></div></div>
+      <div class="grid3"><div><small>CA</small><b class="num">${eur(r)}</b></div><div><small>Achats Temu</small><b class="num amb">−${eur(r - pr).replace("−", "")}</b></div><div><small>Bénéfice</small><b class="num pos">${eur(pr)}</b></div></div>
+      ${Object.entries(N).sort((x, y) => y[1] - x[1]).map(([k, v]) => `<div class="nl"><i style="background:${c}"></i>${esc(k)}<b class="num">${eur(v)}</b></div>`).join("")}</div>` };
+  }).sort((x, y) => y.r - x.r).map((x) => x.html).join("") || `<div class="empty">Aucun compte</div>`;
+  $("#home-sales").innerHTML = S.sales.slice(0, 3).map(saleCard).join("") || `<div class="empty">Aucune vente</div>`;
+
+  // ventes
+  const TABS = [["all", "Toutes", () => true, null], ["wait", "En attente", (x) => x.status !== "cancelled" && x.status !== "delivered", "i-clock"], ["ok", "Validées", (x) => x.status === "delivered", "i-ok"], ["ko", "Annulées", (x) => x.status === "cancelled", "i-x"]];
+  $("#sales-tabs").innerHTML = TABS.map(([k, l, f, ic]) => `<button class="chip ${salesTab === k ? "on" : ""}" data-k="${k}">${ic ? `<svg><use href="#${ic}"/></svg>` : ""}${l}<span class="n">${S.sales.filter(f).length}</span></button>`).join("");
+  document.querySelectorAll("#sales-tabs .chip").forEach((b) => (b.onclick = () => { salesTab = b.dataset.k; haptic(); render(); }));
+  $("#sales-list").innerHTML = S.sales.filter(TABS.find((t) => t[0] === salesTab)[2]).map(saleCard).join("") || `<div class="empty">Aucune vente</div>`;
+
+  // temu
+  $("#temu-tabs").innerHTML = [["todo", "À commander", todo.length], ["trk", "Attente du suivi", waitTrk.length]].map(([k, l, n]) => `<button class="chip ${temuTab === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
+  document.querySelectorAll("#temu-tabs .chip").forEach((b) => (b.onclick = () => { temuTab = b.dataset.k; haptic(); render(); }));
+  $("#temu-list").innerHTML = (temuTab === "todo" ? todo : waitTrk).map((x) => {
+    const id = esc(x.saleId), late = temuTab === "todo" ? daysSince(x.confirmedAt) >= 2 : daysSince(x.orderPlacedAt ?? x.confirmedAt) >= 3;
+    const url = /^https:\/\//.test(x.supplierUrl ?? "") ? x.supplierUrl : null;
+    return `<div class="sc">
+      <div class="sc-top">${thumb(x)}<div style="min-width:0"><div class="t">${esc(titleOf(x))}</div>
+        <div class="meta"><span class="acc"><i style="background:${accColor(x.accountId)}"></i>${esc(accOf(x.accountId)?.label ?? x.accountId)}</span><span class="${late ? "neg" : ""}">${relDay(temuTab === "todo" ? x.confirmedAt : (x.orderPlacedAt ?? x.confirmedAt))}</span></div></div></div>
+      <div class="money"><div><small>Vendu</small><b class="num">${eur(x.salePriceEur)}</b></div><div><small>Temu</small><b class="num amb">−${eur(x.costEur + SHIP)}</b></div><div><small>Bénéfice</small><b class="num pos">${eur(profitOf(x))}</b></div></div>
+      <div class="buyer"><div><b>${esc(x.buyerName ?? "Acheteur")}</b> <span>${esc(x.deliveryAddress ?? "")}</span></div>${x.buyerName ? `<button class="btn ml-auto" onclick='copy(${JSON.stringify([x.buyerName, x.deliveryAddress].filter(Boolean).join("\n"))})'><svg><use href="#i-copy"/></svg>Copier</button>` : ""}</div>
+      ${temuTab === "todo"
+        ? `${url ? `<button class="btn primary block" onclick='openTemu(${JSON.stringify(url)})'><svg><use href="#i-cart"/></svg>Commander sur Temu</button>` : ""}
+           <div class="row"><input id="ref-${id}" placeholder="Réf. de commande Temu" /><button class="btn" onclick="markOrdered('${id}')">Commandé</button></div>`
+        : `<div class="row"><input id="trk-${id}" placeholder="N° de suivi" /><button class="btn primary" onclick="addTracking('${id}')"><svg><use href="#i-truck"/></svg>Ajouter</button></div>`}
+    </div>`;
+  }).join("") || `<div class="empty">${temuTab === "todo" ? "Rien à commander 🎉" : "Aucune commande en attente de suivi"}</div>`;
+
+  // comptes
+  $("#acc-list").innerHTML = accIds.map((id) => {
+    const w = S.wd?.accounts?.find((a) => a.accountId === id);
+    const a = accOf(id), c = accColor(id);
+    const ok = w?.availableEur ?? S.sales.filter((x) => x.accountId === id && x.status === "delivered").reduce((s, x) => s + x.salePriceEur, 0);
+    const wait = w?.pendingEur ?? S.sales.filter((x) => x.accountId === id && ["confirmed", "order_placed", "tracking_added"].includes(x.status)).reduce((s, x) => s + x.salePriceEur, 0);
+    return `<div class="nt" style="--nc:${c}"><div class="nt-h"><span class="av" style="background:linear-gradient(140deg, ${c}, color-mix(in srgb, ${c} 55%, #000))">${initials(a?.label ?? id)}</span>
+      <div style="min-width:0"><div class="nt-n">${esc(a?.label ?? id)}</div><div class="muted" style="font-size:11.5px">${esc(a?.niche ?? "Sans niche")} · ${a?.activeListings ?? 0} annonces en ligne</div></div></div>
+      <div class="grid3"><div><small>Disponible</small><b class="num pos">${eur(ok)}</b></div><div><small>En attente</small><b class="num amb">${eur(wait)}</b></div><div><small>Ventes</small><b class="num">${a?.totalSales ?? "—"}</b></div></div></div>`;
+  }).join("") || `<div class="empty">Aucun compte</div>`;
+}
+
+// ── actions ──
+function copy(t) { navigator.clipboard?.writeText(t).then(() => toast("Copié ✓"), () => toast("Copie impossible")); haptic(); }
+function openTemu(u) { haptic("medium"); try { tg.openLink(u); } catch { window.open(u, "_blank", "noopener"); } }
+async function patch(id, body, okMsg) {
+  if (DEMO) return toast("Mode démo : rien n'a été enregistré");
+  try { await api(`/api/sales/${encodeURIComponent(id)}/tracking`, { method: "PATCH", body: JSON.stringify(body) }); try { tg.HapticFeedback.notificationOccurred("success"); } catch {} toast(okMsg); load(); }
+  catch (e) { try { tg.HapticFeedback.notificationOccurred("error"); } catch {} toast("Erreur : " + e.message); }
+}
+function markOrdered(id) { const v = document.getElementById("ref-" + id).value.trim(); if (!v) return toast("Colle la référence Temu"); patch(id, { orderRef: v }, "Commande enregistrée ✓"); }
+function addTracking(id) { const v = document.getElementById("trk-" + id).value.trim(); if (!v) return toast("Colle le numéro de suivi"); patch(id, { trackingNumber: v }, "Suivi ajouté ✓ — message envoyé à l'acheteur"); }
+
+document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => {
+  tab = b.dataset.p; haptic();
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === "p-" + tab));
+  scrollTo(0, 0);
+}));
+$("#refresh").onclick = () => { haptic(); load(); };
+$("#site-link").onclick = (e) => { e.preventDefault(); try { tg.openLink(location.origin + "/"); } catch { location.href = "/"; } };
+if (DEMO) $("#demo").style.display = "block";
+load();
+setInterval(() => { if (!document.hidden) load(); }, 60000);
+
+// ── démo (aperçu sans backend : /tg?demo) ──
+function demo() {
+  let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const P = ["Perceuse visseuse sans fil 21V", "Lampe LED solaire jardin x4", "Aspirateur à main sans fil", "Coffret 46 douilles chrome", "Montre connectée sport", "Table d'appoint ronde bois blanc"];
+  const E = ["🪛", "💡", "🧹", "🧰", "⌚", "🪑"], BG = ["#ffe3cc", "#fff6c9", "#dff0ff", "#e7e1ff", "#d9f5e6", "#f3eadb"], NI = ["Bricolage", "Jardin", "Maison & Déco", "Bricolage", "Tech & Gadgets", "Maison & Déco"];
+  const img = (i) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="${BG[i]}"/><text x="48" y="62" font-size="46" text-anchor="middle">${E[i]}</text></svg>`);
+  const accounts = [{ accountId: "a1", label: "Sarah_gooddeal", niche: "Maison & Déco", totalSales: 31, activeListings: 14 }, { accountId: "a2", label: "Brico Discount", niche: "Bricolage", totalSales: 24, activeListings: 9 }];
+  const listings = P.map((t, i) => ({ listing_id: "l" + i, temu_item_id: "t" + i, title: t, product_niche: NI[i], media_urls: JSON.stringify([img(i)]), status: "published" }));
+  const ST = ["confirmed", "confirmed", "order_placed", "tracking_added", "delivered", "delivered", "delivered", "cancelled"];
+  const sales = Array.from({ length: 16 }, (_, i) => { const p = i % P.length, price = Math.round((25 + rnd() * 50) * 100) / 100, st = ST[i % ST.length], d = new Date(Date.now() - (i * 0.9 + 0.1) * 864e5).toISOString();
+    return { saleId: "s" + i, listingId: "l" + p, temuItemId: "t" + p, accountId: accounts[i % 2].accountId, salePriceEur: price, costEur: Math.round(price * 0.42 * 100) / 100, status: st, buyerName: ["Julie M.", "Karim B.", "Léa D.", "Thomas R."][i % 4], deliveryAddress: ["Lyon", "Paris", "Lille", "Nantes"][i % 4], confirmedAt: d, orderPlacedAt: st !== "confirmed" ? d : undefined, supplierUrl: "https://www.temu.com/", manualActionRequired: i === 1, manualActionNote: "Commander chez Temu puis ajouter le suivi" }; });
+  return { sales, listings, accounts, wd: null, invoices: sales.filter((x, i) => i > 3 && x.status !== "cancelled").map((x, i) => ({ saleId: x.saleId, kind: "invoice", invoiceNo: `FA-2026-${String(i + 1).padStart(4, "0")}` })) };
+}
+</script>
+</body>
+</html>

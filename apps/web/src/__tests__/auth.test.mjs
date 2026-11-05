@@ -9,6 +9,8 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 process.env.WEB_SECRET_TOKEN = "mot-de-passe-tres-long-42";
 process.env.API_BASE_URL = "http://127.0.0.1:1";
+process.env.TELEGRAM_BOT_TOKEN = "123:ABC";
+process.env.TELEGRAM_ALLOWED_CHAT_IDS = "777";
 const app = require("../server.js");
 
 let server, base;
@@ -58,4 +60,23 @@ test("anti force brute : bloqué après 8 essais", async () => {
   let last;
   for (let i = 0; i < 9; i++) last = await fetch(base + "/login", { method: "POST", redirect: "manual", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "password=nope" });
   assert.match(last.headers.get("location"), /err=wait/);
+});
+
+import crypto from "crypto";
+function initData(userId, ageSec = 0, token = "123:ABC") {
+  const p = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000) - ageSec), query_id: "q", user: JSON.stringify({ id: userId, first_name: "T" }) });
+  const check = [...p.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join("\n");
+  const secret = crypto.createHmac("sha256", "WebAppData").update(token).digest();
+  p.set("hash", crypto.createHmac("sha256", secret).update(check).digest("hex"));
+  return p.toString();
+}
+
+test("mini-app Telegram : page publique, API ouverte seulement avec une signature valide du bon compte", async () => {
+  assert.equal((await get("/tg")).status, 200);
+  const ok = await get("/api/dashboard", { "x-tg-init-data": initData(777) });
+  assert.equal(ok.status, 502, "accès autorisé (backend absent dans le test)");
+  assert.match(ok.headers.get("set-cookie") ?? "", /tyno_session=/, "session ouverte pour les photos");
+  assert.equal((await get("/api/dashboard", { "x-tg-init-data": initData(999) })).status, 401, "autre compte Telegram refusé");
+  assert.equal((await get("/api/dashboard", { "x-tg-init-data": initData(777, 0, "999:FAUX") })).status, 401, "signature falsifiée refusée");
+  assert.equal((await get("/api/dashboard", { "x-tg-init-data": initData(777, 90000) })).status, 401, "signature trop ancienne refusée");
 });

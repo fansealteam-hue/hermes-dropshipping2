@@ -28,17 +28,45 @@ bot.use(async (ctx, next) => {
 
 // ─── /start & /aide ───────────────────────────────────────────────────────────
 
+// ─── Design Tyno (messages HTML) ──────────────────────────────────────────────
+
+const h = (t) => String(t ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const eur = (n) => (n == null || isNaN(n) ? "—" : `${Number(n).toFixed(2).replace(".", ",")} €`);
+const eur0 = (n) => `${Math.round(Math.abs(n))} €`;
+const SHIP = parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99");
+const LINE = "━━━━━━━━━━━━━━";
+const appUrl = () => (/^https:\/\//.test(config.miniAppUrl ?? "") ? `${config.miniAppUrl.replace(/\/$/, "")}/tg` : null);
+const appButton = (label = "📱 Ouvrir Tyno") => (appUrl() ? new InlineKeyboard().webApp(label, appUrl()) : undefined);
+function relDay(iso) {
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const d = new Date(iso); const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+  const n = Math.round((d0 - dd) / 86_400_000);
+  return n <= 0 ? `aujourd'hui ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : n === 1 ? "hier" : n === 2 ? "avant-hier" : n < 7 ? `il y a ${n} j` : d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+/** Frise Payé → Commandé → Expédié → Reçu, comme sur le site. */
+function stepsLine(s) {
+  if (s.status === "cancelled") return "✅ Payé ─ ❌ Annulée";
+  const lvl = ["confirmed", "order_placed", "tracking_added", "delivered"].indexOf(s.status);
+  return ["Payé", "Commandé", "Expédié", "Reçu"].map((l, i) => `${i <= lvl ? "✅" : i === lvl + 1 ? "🟠" : "⚪"} ${l}`).join(" ─ ");
+}
+
 const MENU = [
-  "👋 *Hermès* — assistant dropshipping",
-  "",
-  "/lien — analyser un produit Temu",
-  "/dashboard — tableau de bord",
-  "/commande — référence commande fournisseur",
-  "/suivi — numéro de suivi transporteur",
-  "/ventes — ventes actives",
+  "📦 <b>Tyno Entreprise</b>",
+  "Ton assistant dropshipping Temu → Leboncoin",
+  LINE,
+  "📊 /dashboard — chiffres du mois",
+  "🛍️ /ventes — ventes en cours",
+  "🔗 /lien — analyser un produit Temu",
+  "🧾 /commande — référence de commande Temu",
+  "📬 /suivi — numéro de suivi",
+  "📱 /app — ouvrir l'application",
 ].join("\n");
 
-bot.command(["start", "aide"], ctx => ctx.reply(MENU, { parse_mode: "MarkdownV2" }));
+bot.command(["start", "aide"], ctx => ctx.reply(MENU, { parse_mode: "HTML", reply_markup: appButton() }));
+
+bot.command("app", ctx => appUrl()
+  ? ctx.reply("📱 <b>Tyno Entreprise</b>\nTes ventes, tes achats Temu et tes comptes, dans Telegram.", { parse_mode: "HTML", reply_markup: appButton() })
+  : ctx.reply("⚠️ L'application a besoin d'une adresse HTTPS : renseigne MINI_APP_URL (ex. https://tyno.mondomaine.fr) dans le fichier .env, puis redémarre le bot."));
 
 // ─── /lien ────────────────────────────────────────────────────────────────────
 
@@ -211,22 +239,50 @@ bot.callbackQuery(/^schedule:(.+)$/, async ctx => {
 // ─── /dashboard ───────────────────────────────────────────────────────────────
 
 bot.command("dashboard", async ctx => {
-  const res = await api.getDashboard();
-  if (!res.ok || !res.data) return ctx.reply("❌ Tableau de bord indisponible\\.", { parse_mode: "MarkdownV2" });
-  return ctx.reply(msg.fmtDashboard(res.data), { parse_mode: "MarkdownV2" });
+  const [fin, dash] = await Promise.all([api.getFinance("30d"), api.getDashboard()]);
+  if (!fin.ok || !dash.ok) return ctx.reply("❌ Tableau de bord indisponible pour le moment.");
+  const s = fin.data.summary;
+  const sales = dash.data.activeSales ?? [];
+  const toOrder = sales.filter((x) => x.status === "confirmed").length;
+  const waitTrk = sales.filter((x) => x.status === "order_placed").length;
+  const action = (dash.data.salesNeedingAction ?? []).length;
+  const net = s.marginEur - s.totalSales * SHIP;
+  const lines = [
+    "📊 <b>Tyno Entreprise · 30 jours</b>",
+    LINE,
+    `💶 Chiffre d'affaires : <b>${eur(s.revenueEur)}</b>`,
+    `🛒 Achats Temu : ${eur(s.costEur + s.totalSales * SHIP)}`,
+    `📈 Bénéfice net : <b>${eur(net)}</b>${s.revenueEur ? ` (${Math.round((net / s.revenueEur) * 100)} %)` : ""}`,
+    `🛍️ Ventes : <b>${s.totalSales}</b>`,
+    LINE,
+    `${toOrder ? "🟠" : "✅"} À commander sur Temu : <b>${toOrder}</b>`,
+    `${waitTrk ? "🟠" : "✅"} En attente du suivi : <b>${waitTrk}</b>`,
+    `${action ? "⚠️" : "✅"} À traiter : <b>${action}</b>`,
+  ];
+  return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: appButton("📱 Tout voir dans Tyno") });
 });
 
 // ─── /ventes ──────────────────────────────────────────────────────────────────
 
 bot.command("ventes", async ctx => {
-  const res = await api.getActiveSales();
-  if (!res.ok || !res.data?.length) return ctx.reply("Aucune vente active\\.", { parse_mode: "MarkdownV2" });
-
-  const lines = res.data.slice(0, 10).map(s => {
-    const icon = s.leboncoinDeliveryConfirmed ? "✅" : s.manualActionRequired ? "⚠️" : "⏳";
-    return `${icon} \`${s.saleId.slice(0, 10)}\` — ${msg.escMd(s.status)} — ${s.salePriceEur?.toFixed(2)} €`;
+  const [res, lst, acc, inv] = await Promise.all([api.getActiveSales(), api.getListings(), api.getAccountsStats(), api.getInvoices()]);
+  if (!res.ok) return ctx.reply("❌ Ventes indisponibles pour le moment.");
+  const sales = (res.data ?? []).filter((s) => s.status !== "delivered" && s.status !== "cancelled");
+  if (!sales.length) return ctx.reply("✅ Aucune vente en attente : tout est livré.", { reply_markup: appButton() });
+  const titleOf = Object.fromEntries((lst.data ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
+  const accOf = Object.fromEntries((acc.data ?? []).map((a) => [a.accountId, a.label]));
+  const invOf = Object.fromEntries((inv.data ?? []).filter((i) => i.kind === "invoice").map((i) => [i.saleId, i.invoiceNo]));
+  const cards = sales.slice(0, 8).map((s) => {
+    const profit = s.salePriceEur - (s.actualCostEur ?? s.costEur) - SHIP;
+    return [
+      `<b>${h(titleOf[s.listingId] ?? "Produit")}</b>`,
+      `🏪 ${h(accOf[s.accountId] ?? s.accountId)} · ${relDay(s.confirmedAt)}`,
+      stepsLine(s),
+      `🕐 En attente · <b>+${eur0(profit)}</b>${invOf[s.saleId] ? ` · 🧾 <code>${h(invOf[s.saleId])}</code>` : ""}${s.manualActionRequired ? "\n⚠️ " + h(s.manualActionNote ?? "Action requise") : ""}`,
+    ].join("\n");
   });
-  return ctx.reply(["🛒 *Ventes actives*", ...lines].join("\n"), { parse_mode: "MarkdownV2" });
+  const more = sales.length > 8 ? `\n${LINE}\n+ ${sales.length - 8} autre(s) dans l'application` : "";
+  return ctx.reply([`🛍️ <b>Ventes en attente · ${sales.length}</b>`, LINE, cards.join(`\n${LINE}\n`)].join("\n") + more, { parse_mode: "HTML", reply_markup: appButton("📱 Ouvrir les ventes") });
 });
 
 // ─── /commande ────────────────────────────────────────────────────────────────
@@ -431,12 +487,19 @@ bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert };
+module.exports = { bot, sendSaleAlert, stepsLine, relDay };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 if (require.main === module) {
   if (!config.botToken) { console.error("[bot] TELEGRAM_BOT_TOKEN manquant"); process.exit(1); }
+  // Bouton « Tyno » à côté du champ de saisie (ouvre la mini-app) + liste des commandes
+  if (appUrl()) bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: "Tyno", web_app: { url: appUrl() } } }).catch((e) => console.warn("[bot] menu app:", e.message));
+  bot.api.setMyCommands([
+    { command: "dashboard", description: "Chiffres du mois" }, { command: "ventes", description: "Ventes en cours" },
+    { command: "app", description: "Ouvrir l'application" }, { command: "lien", description: "Analyser un produit Temu" },
+    { command: "commande", description: "Référence de commande Temu" }, { command: "suivi", description: "Numéro de suivi" },
+  ]).catch(() => {});
   bot.start();
-  console.log("[bot] Hermès Telegram bot démarré (long polling)");
+  console.log("[bot] Tyno Entreprise — bot Telegram démarré (long polling)");
 }
