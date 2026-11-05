@@ -902,6 +902,51 @@ aside { background: linear-gradient(180deg, rgba(18,16,14,.85), rgba(10,9,8,.9))
 .sc-acts .icon-btn:hover { border-color: var(--border-strong); background: var(--surface-2); }
 .sc-acts .icon-btn.danger:hover { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent); }
 .sc-acts .icon-btn svg { width: 16px; height: 16px; }
+/* Boutons d'action « comme sur Telegram » sous chaque vente */
+.sa { grid-column: 2 / -1; display: grid; gap: 8px; padding-top: 12px; margin-top: -2px; border-top: 1px dashed var(--border); }
+.sa-q { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sa-q b { color: var(--text); }
+.sa-row { display: flex; gap: 8px; flex-wrap: wrap; max-width: 680px; }
+.sa-btn { flex: 1 1 0; min-width: 130px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 11px;
+  font: 600 13px/1 var(--sans); cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); text-decoration: none; transition: transform .1s, filter .15s, border-color .15s; }
+.sa-btn:hover { border-color: var(--accent); }
+.sa-btn:active { transform: scale(.97); }
+.sa-btn:disabled { opacity: .55; cursor: default; }
+.sa-btn.ok { background: linear-gradient(180deg, #3fcf8a, #2aa86c); border-color: #2aa86c; color: #06130c; }
+.sa-btn.no { background: var(--red-soft); border-color: color-mix(in srgb, var(--red) 45%, transparent); color: var(--red); }
+.sa-btn.go { background: linear-gradient(180deg, #f08a3e, #e2651f); border-color: #e2651f; color: #fff; box-shadow: 0 8px 20px -12px #e8702a; }
+.sa-btn.ok:hover, .sa-btn.go:hover { filter: brightness(1.08); }
+.sa-btn.ghost { flex: 0 0 auto; min-width: 0; }
+.sa-in { flex: 1 1 200px; min-width: 0; height: 40px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); padding: 0 12px; font: 500 13px var(--sans); }
+.sa-in:focus { outline: none; border-color: var(--accent); }
+.sa-stk { font-size: 12px; color: var(--text-3); min-height: 0; }
+.sa-stk:empty { display: none; }
+.sa-auto { font-size: 11.5px; color: var(--text-3); }
+@media (max-width: 760px) { .sa { grid-column: 1 / -1; } .sa-btn { min-width: 0; flex-basis: calc(50% - 4px); } .sa-btn.wide { flex-basis: 100%; } }
+
+/* Fiche « nouvelle vente » (comme la notification Telegram) */
+.ns { position: fixed; right: 22px; bottom: 22px; z-index: 80; width: 360px; max-width: calc(100vw - 32px); border-radius: 18px; overflow: hidden;
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: 0 24px 60px -18px rgba(0,0,0,.7), 0 0 0 1px rgba(232,112,42,.08);
+  transform: translateY(140%); opacity: 0; transition: transform .35s cubic-bezier(.2,.9,.2,1.1), opacity .25s; }
+.ns.show { transform: none; opacity: 1; }
+.ns-img { height: 150px; background: var(--surface-2) center/cover no-repeat; position: relative; }
+.ns-img .prod-thumb { width: 100%; height: 100%; border-radius: 0; font-size: 40px; }
+.ns-tag { position: absolute; left: 12px; top: 12px; padding: 5px 10px; border-radius: 999px; background: rgba(8,7,6,.78); backdrop-filter: blur(6px); color: #fff; font: 700 11px/1 var(--sans); letter-spacing: .06em; }
+.ns-tag i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 6px; box-shadow: 0 0 0 3px rgba(232,112,42,.3); animation: nsPulse 1.4s infinite; }
+@keyframes nsPulse { 50% { box-shadow: 0 0 0 6px rgba(232,112,42,0); } }
+.ns-x { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(8,7,6,.7); color: #fff; cursor: pointer; font-size: 15px; }
+.ns-body { padding: 14px 16px 16px; display: grid; gap: 10px; }
+.ns-t { font-weight: 700; font-size: 15px; line-height: 1.3; }
+.ns-m { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+.ns-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ns-nums div { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; }
+.ns-nums span { display: block; font-size: 10.5px; color: var(--text-3); }
+.ns-nums b { font-size: 14px; }
+.ns .sa { grid-column: auto; border-top: 0; padding-top: 0; margin: 0; }
+.ns .sa-btn { min-width: 0; flex-basis: calc(50% - 4px); }
+.ns .sa-btn.wide, .ns .sa-btn.ghost { flex-basis: 100%; }
+@media (max-width: 760px) { .ns { right: 16px; left: 16px; bottom: 84px; width: auto; } }
+
 .sc-note { grid-column: 2 / -1; font-size: 12px; color: var(--red); background: var(--red-soft); padding: 6px 10px; border-radius: 8px; margin-top: -4px; }
 .fair-use { display: flex; gap: 10px; align-items: flex-start; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.55; color: var(--text-3); }
 .fair-use svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
@@ -1912,6 +1957,7 @@ function hideBanner() { if (!DEMO) $("#banner").className = "banner"; }
 
 // ═══ Render ════════════════════════════════════════════════════════════════
 function renderAll() {
+  setTimeout(() => { try { nsRefresh(); nsCheck(); } catch (e) { console.warn(e); } }, 0);
   buildNiches();
   buildImages();
   document.querySelectorAll(".skeleton").forEach((el) => el.classList.remove("skeleton"));
@@ -2135,9 +2181,157 @@ function renderSales() {
         </div>
       </div>
       ${v.manualActionRequired && k !== "ko" ? `<div class="sc-note">⚠️ ${esc(v.manualActionNote ?? "Action manuelle requise")}</div>` : ""}
+      ${saleActions(v)}
     </div>`;
   }).join("") || `<div class="card"><div class="empty"><svg><use href="#i-empty"/></svg><div>${q || salesTab !== "all" ? "Aucune vente ne correspond" : "Aucune vente pour l'instant"}</div></div></div>`;
 }
+
+// ═══ Boutons d'action « comme sur Telegram » ═══════════════════════════════
+// Payée → Disponible ? → Commander sur Temu → J'ai commandé → Suivi → Expédiée.
+const AVAIL_KEY = "tyno_avail_ok";
+const availOk = new Set((() => { try { return JSON.parse(localStorage.getItem(AVAIL_KEY) ?? "[]"); } catch { return []; } })());
+const saveAvail = () => { try { localStorage.setItem(AVAIL_KEY, JSON.stringify([...availOk].slice(-300))); } catch { /* */ } };
+const findSale = (id) => (state.dash?.activeSales ?? []).find((s) => s.saleId === id) ?? (state.history ?? []).find((s) => s.saleId === id);
+const jsq = (x) => esc(String(x).replace(/\\/g, "\\\\").replace(/'/g, "\\'"));
+
+/** Barre d'actions d'une vente selon son étape (même parcours que dans Telegram). */
+function saleActions(v, where = "card") {
+  const id = jsq(v.saleId), w = jsq(where);
+  const url = safeUrl(v.supplierUrl);
+  const stk = `<div class="sa-stk" id="sa-stk-${w}-${esc(v.saleId)}"></div>`;
+  if (v.status === "confirmed" && !availOk.has(v.saleId)) {
+    return `<div class="sa"><div class="sa-q">👉 <b>L'article est disponible sur Temu ?</b></div>
+      <div class="sa-row">
+        <button class="sa-btn ok" onclick="saleAvail('${id}')">✅ Disponible</button>
+        <button class="sa-btn no" onclick="saleNoAvail('${id}')">❌ Pas disponible</button>
+        <button class="sa-btn ghost" title="Revérifier le stock Temu" onclick="saleRecheck('${id}', this, '${w}')">🔄 Revérifier</button>
+      </div>${stk}</div>`;
+  }
+  if (v.status === "confirmed") {
+    const who = [v.buyerName, v.deliveryAddress].filter(Boolean).join(" · ");
+    return `<div class="sa"><div class="sa-q">👍 Disponible → commande sur Temu${who ? ` pour <b>${esc(who)}</b>` : ""}</div>
+      <div class="sa-row">
+        ${url ? `<a class="sa-btn go wide" href="${esc(url)}" target="_blank" rel="noopener">🛒 Commander sur Temu</a>` : ""}
+        <button class="sa-btn ok" onclick="saleOrdered('${id}', this)">✅ J'ai commandé</button>
+        <button class="sa-btn no" onclick="saleNoAvail('${id}')">❌ Annuler</button>
+      </div>${stk}</div>`;
+  }
+  if (v.status === "order_placed" && !v.trackingNumber) {
+    return `<div class="sa"><div class="sa-q">🛒 Commandé sur Temu · <b>en attente du numéro de suivi</b></div>
+      <div class="sa-row">
+        <input class="sa-in" id="sa-trk-${w}-${esc(v.saleId)}" placeholder="Colle le numéro de suivi" onkeydown="if(event.key==='Enter')saleTrackAdd('${id}', '${w}')" />
+        <button class="sa-btn go" onclick="saleTrackAdd('${id}', '${w}')">📬 Ajouter le suivi</button>
+      </div><div class="sa-auto">Le transporteur est reconnu tout seul et le suivi est envoyé à l'acheteur.</div></div>`;
+  }
+  if (v.status === "tracking_added" && v.trackingNumber) {
+    return `<div class="sa"><div class="sa-row">
+        <a class="sa-btn" href="${trackUrl(v.trackingNumber)}" target="_blank" rel="noopener">📍 Suivre le colis</a>
+        <button class="sa-btn" onclick="syncTrack('${id}', this)">📤 Renvoyer le suivi à l'acheteur</button>
+      </div></div>`;
+  }
+  return "";
+}
+function refreshSaleViews() { if (view === "sales") renderSales(); if (view === "temu" && typeof renderTemu === "function") renderTemu(); nsRefresh(); }
+function saleAvail(id) {
+  availOk.add(id); saveAvail();
+  toast("Disponible ✅ — à toi de commander sur Temu");
+  refreshSaleViews();
+}
+function saleNoAvail(id) { nsClose(); cancelSale(id); }
+async function saleOrdered(id, btn) {
+  if (DEMO) { toast("Mode démo : rien n'a été enregistré"); return; }
+  if (btn) btn.disabled = true;
+  try {
+    await api("/api/sales/order-placed", { method: "POST", body: JSON.stringify({ saleIds: [id] }) });
+    toast("✅ Commande enregistrée — ajoute le suivi dès que tu l'as");
+    nsClose(); load();
+  } catch (e) { toast("Erreur : " + e.message); if (btn) btn.disabled = false; }
+}
+async function saleRecheck(id, btn, where = "card") {
+  const out = document.getElementById(`sa-stk-${where}-${id}`);
+  if (!out) return;
+  if (DEMO) { out.innerHTML = '<span class="pos">🟢 Disponible — 42 en stock</span> · prix Temu inchangé'; return; }
+  btn.disabled = true; out.textContent = "Vérification sur Temu…";
+  try {
+    const a = (await api(`/api/sales/${encodeURIComponent(id)}/availability?refresh=1`)).data;
+    out.innerHTML = (a.available === null ? "❔ Stock inconnu" : a.available ? `<span class="pos">🟢 Disponible — ${a.stock} en stock</span>` : '<span class="neg">🔴 Rupture de stock</span>')
+      + (a.costChanged ? ` · <span class="age-warn">prix Temu ${eur(a.costAtSaleEur)} → ${eur(a.currentCostEur)}</span>` : " · prix Temu inchangé")
+      + (a.error ? ' · <span class="muted">lecture Temu impossible, dernières données</span>' : "");
+  } catch (e) { out.textContent = "Erreur : " + e.message; }
+  btn.disabled = false;
+}
+/** Transporteur reconnu à partir du numéro (comme dans le bot). */
+function guessCarrier(n) {
+  n = String(n).trim().toUpperCase();
+  if (/^[A-Z]{2}\d{9}FR$/.test(n)) return /^(6|8|C|L)/.test(n) ? "Colissimo" : "La Poste";
+  if (/^\d{8}$|^\d{12}$/.test(n)) return "Mondial Relay";
+  if (/^1Z/.test(n)) return "UPS";
+  if (/^(XW|XY|XS)\d+/.test(n)) return "Chronopost";
+  if (/^(YT|YW)\d+/.test(n)) return "Yanwen";
+  if (/^(LP|CN)\d+/.test(n)) return "Cainiao";
+  return "";
+}
+async function saleTrackAdd(id, where = "card") {
+  const inp = document.getElementById(`sa-trk-${where}-${id}`);
+  const num = inp?.value.trim().replace(/\s+/g, "");
+  if (!num) { toast("Colle d'abord le numéro de suivi"); inp?.focus(); return; }
+  if (DEMO) { toast(`Mode démo : suivi ${guessCarrier(num) || ""} non enregistré`); return; }
+  const carrier = guessCarrier(num);
+  try {
+    await api(`/api/sales/${encodeURIComponent(id)}/tracking`, { method: "PATCH", body: JSON.stringify({ trackingNumber: num, ...(carrier ? { trackingCarrier: carrier } : {}) }) });
+    api(`/api/sales/${encodeURIComponent(id)}/sync-tracking`, { method: "POST" }).catch(() => {});
+    toast(`📬 Suivi ${carrier ? carrier + " " : ""}ajouté — envoyé à l'acheteur`);
+    load();
+  } catch (e) { toast("Erreur : " + e.message); }
+}
+
+// ═══ Fiche « nouvelle vente » (comme la notification Telegram) ════════════
+const SEEN_KEY = "tyno_seen_sales";
+let nsId = null;
+function nsSeen() { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "null") ?? []); } catch { return new Set(); } }
+function nsMark(ids) { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...ids].slice(-500))); } catch { /* */ } }
+function nsCheck() {
+  const sales = state.dash?.activeSales ?? [];
+  if (!sales.length) return;
+  let raw = null;
+  try { raw = localStorage.getItem(SEEN_KEY); } catch { /* */ }
+  const seen = nsSeen();
+  if (raw === null && !DEMO) { nsMark(sales.map((s) => s.saleId)); return; } // 1re visite : pas d'avalanche
+  const fresh = sales.filter((s) => s.status === "confirmed" && !seen.has(s.saleId)).sort((a, b) => String(b.confirmedAt).localeCompare(String(a.confirmedAt)));
+  if (DEMO) { if (!sessionStorage.getItem("tyno_ns_demo") && fresh[0]) { sessionStorage.setItem("tyno_ns_demo", "1"); setTimeout(() => nsShow(fresh[0].saleId), 2500); } return; }
+  if (!fresh.length) return;
+  fresh.forEach((s) => seen.add(s.saleId));
+  nsMark(seen);
+  nsShow(fresh[0].saleId, fresh.length - 1);
+}
+function nsShow(id, more = 0) {
+  const v = findSale(id);
+  if (!v) return;
+  nsId = id;
+  const fee = shipFee();
+  const cost = (v.actualCostEur ?? v.costEur) + fee;
+  const profit = v.salePriceEur - cost;
+  const acc = state.accounts.find((a) => a.accountId === v.accountId)?.label ?? v.accountId ?? "";
+  let el = document.getElementById("ns");
+  if (!el) { el = document.createElement("div"); el.id = "ns"; el.className = "ns"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="ns-img">${thumb({ listing: v.listingId, item: v.temuItemId }, saleTitle(v))}
+      <span class="ns-tag"><i></i>NOUVELLE VENTE${more > 0 ? ` · +${more}` : ""}</span><button class="ns-x" onclick="nsClose()" title="Fermer">✕</button></div>
+    <div class="ns-body">
+      <div><div class="ns-t">${esc(saleTitle(v))}</div><div class="ns-m">🏪 ${esc(acc)}${v.buyerName ? ` · 👤 ${esc(v.buyerName)}` : ""}${v.deliveryAddress ? ` · 📍 ${esc(v.deliveryAddress)}` : ""}</div></div>
+      <div class="ns-nums"><div><span>Vendu</span><b class="num">${eur(v.salePriceEur)}</b></div><div><span>Achat Temu</span><b class="num">${eur(cost)}</b></div>
+        <div><span>Bénéfice</span><b class="num ${profit >= 0 ? "pos" : "neg"}">${profit >= 0 ? "+" : "−"}${eur(Math.abs(profit))}</b></div></div>
+      <div id="ns-acts">${saleActions(v, "ns")}</div>
+    </div>`;
+  requestAnimationFrame(() => el.classList.add("show"));
+}
+function nsRefresh() {
+  if (!nsId) return;
+  const v = findSale(nsId);
+  const box = document.getElementById("ns-acts");
+  if (!v || v.status !== "confirmed") { nsClose(); return; }
+  if (box) box.innerHTML = saleActions(v, "ns");
+}
+function nsClose() { nsId = null; document.getElementById("ns")?.classList.remove("show"); }
 async function cancelSale(id) {
   if (!confirm("Annuler cette vente ?\n\nL'acheteur recevra ton message d'annulation sur Leboncoin et un avoir sera créé si la vente était facturée.")) return;
   if (DEMO) return toast("Mode démo : rien n'a été annulé");
