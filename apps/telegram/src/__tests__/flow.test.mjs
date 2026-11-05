@@ -113,3 +113,22 @@ test("annuler une saisie : plus d'attente de lien", async () => {
   await text("bonjour");
   assert.match(last("sendMessage").text, /Utilise les boutons/);
 });
+
+test("photo du produit + bouton « Voir sur Temu », photo de la variante ensuite", async () => {
+  const before = out.length;
+  api.fetchTemuProduct = async () => ({ ok: true, data: { temuItemId: "tm2", title: "Miroir", warehouseStatus: "local", temuUrl: "https://www.temu.com/miroir-g-7.html",
+    imageUrls: ["https://img.temu.com/miroir.jpg"],
+    variants: [{ variantId: "m1", label: "Doré", costEur: 15, stock: 5, imageUrls: ["https://img.temu.com/miroir-dore.jpg"] }] } });
+  await text("https://www.temu.com/miroir-g-7.html");
+  const photo = out.slice(before).find((o) => o.method === "sendPhoto")?.payload;
+  assert.ok(photo, "fiche envoyée avec la photo");
+  assert.equal(photo.photo, "https://img.temu.com/miroir.jpg");
+  assert.match(photo.caption, /Miroir/);
+  assert.equal(buttons(photo)[0].url, "https://www.temu.com/miroir-g-7.html", "bouton Temu en premier");
+  // La variante change la photo de la fiche
+  await press("variant:m1", { message_id: 11, date: 0, chat, caption: "x", photo: [{ file_id: "f", file_unique_id: "u", width: 1, height: 1 }] });
+  const media = last("editMessageMedia");
+  assert.equal(media.media.media, "https://img.temu.com/miroir-dore.jpg");
+  assert.match(media.media.caption, /Choisis ton prix/);
+  assert.ok(buttons(media).some((b) => b.url === "https://www.temu.com/miroir-g-7.html"));
+});

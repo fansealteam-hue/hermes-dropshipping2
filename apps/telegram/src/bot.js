@@ -129,7 +129,7 @@ bot.callbackQuery("flow:cancel", async (ctx) => {
   ctx.session.pendingProduct = ctx.session.pendingListingDraft = ctx.session.pendingTrackingSaleId = undefined;
   ctx.session.trackingCard = null;
   await ctx.answerCallbackQuery("Annulé");
-  await ctx.editMessageText("✖️ Annulé. Les boutons en bas sont toujours là 👇").catch(() => {});
+  await flowEdit(ctx, "✖️ Annulé. Les boutons en bas sont toujours là 👇");
 });
 // Bouton déjà utilisé (ex. « ✔️ commandé ») : rien à faire
 bot.callbackQuery("noop", (ctx) => ctx.answerCallbackQuery("C'est déjà fait ✔️"));
@@ -180,6 +180,40 @@ function parseTracking(text) {
 
 // ─── Lien Temu → variante → prix → compte → publication ──────────────────────
 
+const isUrl = (u) => typeof u === "string" && /^https?:\/\//i.test(u);
+/** Photo de la variante choisie, sinon du produit. */
+function photoOf(product, variant) {
+  return [...(variant?.imageUrls ?? []), ...(product?.imageUrls ?? []), ...(product?.variants ?? []).flatMap((v) => v.imageUrls ?? [])].find(isUrl) ?? null;
+}
+/** Ajoute le bouton « 👀 Voir sur Temu » (lien du produit) en haut du clavier. */
+function withTemu(ctx, kb) {
+  const url = ctx.session.pendingLink;
+  if (!/^https:\/\//.test(url ?? "")) return kb;
+  const out = new InlineKeyboard().url("👀 Voir le produit sur Temu", url).row();
+  for (const row of kb.inline_keyboard) { row.forEach((b) => out.add(b)); out.row(); }
+  return out;
+}
+/**
+ * Met à jour le message du parcours : légende si c'est une photo (et change la
+ * photo si besoin), texte sinon. Les légendes Telegram sont limitées à 1024 caractères.
+ */
+async function flowEdit(ctx, text, reply_markup, photo) {
+  const m = ctx.callbackQuery?.message;
+  const markup = reply_markup ?? { inline_keyboard: [] };
+  if (m?.photo?.length) {
+    const caption = text.length > 1024 ? text.slice(0, 1020) + "…" : text;
+    if (isUrl(photo) && photo !== ctx.session.flowPhoto) {
+      try {
+        await ctx.editMessageMedia({ type: "photo", media: photo, caption, parse_mode: "HTML" }, { reply_markup: markup });
+        ctx.session.flowPhoto = photo;
+        return;
+      } catch { /* photo refusée : on garde l'ancienne */ }
+    }
+    return ctx.editMessageCaption({ caption, parse_mode: "HTML", reply_markup: markup }).catch(() => ctx.reply(text, { parse_mode: "HTML", reply_markup: markup }));
+  }
+  return ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: markup, link_preview_options: { is_disabled: true } })
+    .catch(() => ctx.reply(text, { parse_mode: "HTML", reply_markup: markup }));
+}
 const STEPS_NEW = (n) => ["Lien", "Variante", "Prix", "Compte", "Publication"].map((l, i) => `${i < n ? "✅" : i === n ? "🟠" : "⚪"} ${l}`).join(" ─ ");
 const priceOf = (cost, mult) => Math.max(cost + 5, Math.floor(cost * mult) + 0.99);
 function draftLines(d) {
@@ -200,13 +234,29 @@ async function handleTemuUrl(ctx, url) {
   }
   ctx.session.state = "idle";
   const status = await ctx.reply("⏳ <b>Analyse du produit sur Temu…</b>\n<i>entrepôt, variantes, prix</i>", { parse_mode: "HTML" });
-  const edit = (text, reply_markup) => ctx.api.editMessageText(ctx.chat.id, status.message_id, text, { parse_mode: "HTML", reply_markup, link_preview_options: { is_disabled: true } });
+  const editStatus = (text, reply_markup) => ctx.api.editMessageText(ctx.chat.id, status.message_id, text, { parse_mode: "HTML", reply_markup, link_preview_options: { is_disabled: true } });
   const res = await api.fetchTemuProduct(link);
   if (!res.ok || !res.data) {
-    return edit(`❌ <b>Lecture du produit impossible</b>\n${h(res.error ?? "Temu ne répond pas")}`, new InlineKeyboard().text("🔁 Réessayer avec un autre lien", "new:again"));
+    return editStatus(`❌ <b>Lecture du produit impossible</b>\n${h(res.error ?? "Temu ne répond pas")}`, new InlineKeyboard().text("🔁 Réessayer avec un autre lien", "new:again"));
   }
   const product = res.data;
   ctx.session.pendingProduct = product;
+  ctx.session.pendingLink = /^https:\/\//.test(product.temuUrl ?? "") ? product.temuUrl : link;
+  ctx.session.flowPhoto = null;
+  // Avec photo : on remplace le message « Analyse… » par la photo du produit + sa fiche
+  const photo = photoOf(product);
+  const edit = async (text, kb) => {
+    const markup = withTemu(ctx, kb);
+    if (photo) {
+      try {
+        await ctx.replyWithPhoto(photo, { caption: text.slice(0, 1024), parse_mode: "HTML", reply_markup: markup });
+        ctx.session.flowPhoto = photo;
+        await ctx.api.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
+        return;
+      } catch { /* photo inaccessible : fiche en texte */ }
+    }
+    return editStatus(text, markup);
+  };
   const head = [`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(1), LINE, `📦 <b>${h(product.title)}</b>`];
   if (product.warehouseStatus !== "local") {
     return edit([...head,
@@ -244,9 +294,9 @@ bot.callbackQuery(/^variant:(.+)$/, async ctx => {
     mediaUrls: variant.imageUrls, title: product.title, variantLabel: variant.label,
   };
   ctx.session.state = "awaiting_price_confirm";
-  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(2), LINE, draftLines(ctx.session.pendingListingDraft),
-    `📷 ${variant.imageUrls?.length ?? 0} photo${(variant.imageUrls?.length ?? 0) > 1 ? "s" : ""}`, "", "👇 <b>Choisis ton prix de vente</b>"].join("\n"),
-    { parse_mode: "HTML", reply_markup: priceKeyboard(variant.costEur) });
+  await flowEdit(ctx, [`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(2), LINE, draftLines(ctx.session.pendingListingDraft),
+    `📷 ${variant.imageUrls?.length ?? 0} photo${(variant.imageUrls?.length ?? 0) > 1 ? "s" : ""} pour l'annonce`, "", "👇 <b>Choisis ton prix de vente</b>"].join("\n"),
+    withTemu(ctx, priceKeyboard(variant.costEur)), photoOf(product, variant));
   await ctx.answerCallbackQuery();
 });
 bot.callbackQuery("edit_price", async (ctx) => {
@@ -273,13 +323,13 @@ bot.callbackQuery(/^confirm_price:(.+)$/, async ctx => {
   ctx.session.state = "awaiting_account_choice";
   const res = await api.getLeboncoinAccounts();
   if (!res.ok || !res.data?.length) {
-    await ctx.editMessageText("❌ Aucun compte Leboncoin actif : ajoute un compte sur le site (Comptes & trésorerie).", { reply_markup: withSite(new InlineKeyboard(), "comptes", "🌐 Ouvrir mes comptes") });
+    await flowEdit(ctx, "❌ Aucun compte Leboncoin actif : ajoute un compte sur le site (Comptes & trésorerie).", withSite(new InlineKeyboard(), "comptes", "🌐 Ouvrir mes comptes"));
     return ctx.answerCallbackQuery();
   }
   const kb = new InlineKeyboard();
   res.data.forEach(a => kb.text(`🏪 ${a.label}${a.niche ? ` · ${a.niche}` : ""}`, `account:${a.accountId}`).row());
   kb.text("↩️ Changer le prix", `variant:${d.variantId}`).text("✖️ Annuler", "flow:cancel");
-  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(3), LINE, draftLines(d), "", "👇 <b>Sur quel compte publier ?</b>"].join("\n"), { parse_mode: "HTML", reply_markup: kb });
+  await flowEdit(ctx, [`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(3), LINE, draftLines(d), "", "👇 <b>Sur quel compte publier ?</b>"].join("\n"), withTemu(ctx, kb));
   await ctx.answerCallbackQuery();
 });
 
@@ -293,8 +343,8 @@ bot.callbackQuery(/^account:(.+)$/, async ctx => {
     .text("⚡ Maintenant", "schedule:now").text("⏰ Dans 1 h", `schedule:${Date.now() + 3_600_000}`).row()
     .text("🌙 Ce soir 19 h", "schedule:tonight").text("☀️ Demain 9 h", "schedule:tomorrow").row()
     .text("✖️ Annuler", "flow:cancel");
-  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(4), LINE, draftLines(d), "", "👇 <b>Quand publier l'annonce ?</b>",
-    "<i>Garde un rythme raisonnable : quelques annonces par jour et par compte.</i>"].join("\n"), { parse_mode: "HTML", reply_markup: kb });
+  await flowEdit(ctx, [`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(4), LINE, draftLines(d), "", "👇 <b>Quand publier l'annonce ?</b>",
+    "<i>Garde un rythme raisonnable : quelques annonces par jour et par compte.</i>"].join("\n"), withTemu(ctx, kb));
   await ctx.answerCallbackQuery();
 });
 
@@ -313,12 +363,14 @@ bot.callbackQuery(/^schedule:(.+)$/, async ctx => {
   ctx.session.pendingProduct = undefined;
   ctx.session.pendingListingDraft = undefined;
   if (!res.ok || !res.data) {
-    return ctx.editMessageText(`❌ <b>Annonce non créée</b>\n${h(res.error ?? "erreur")}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔗 Recommencer", "new:again") });
+    return flowEdit(ctx, `❌ <b>Annonce non créée</b>\n${h(res.error ?? "erreur")}`, new InlineKeyboard().text("🔗 Recommencer", "new:again"));
   }
   const whenTxt = scheduledAt ? `📅 Publication ${new Date(scheduledAt).toLocaleString("fr-FR", { weekday: "long", hour: "2-digit", minute: "2-digit" })}` : "⚡ Publication en cours sur Leboncoin";
   const kb = new InlineKeyboard().text("🔗 Ajouter un autre produit", "new:again");
   withSite(kb, "annonces", "🌐 Voir mes annonces");
-  return ctx.editMessageText([`✅ <b>ANNONCE CRÉÉE</b>`, STEPS_NEW(5), LINE, draftLines(d), whenTxt].join("\n"), { parse_mode: "HTML", reply_markup: kb });
+  const done = withTemu(ctx, kb);
+  ctx.session.pendingLink = undefined;
+  return flowEdit(ctx, [`✅ <b>ANNONCE CRÉÉE</b>`, STEPS_NEW(5), LINE, draftLines(d), whenTxt].join("\n"), done);
 });
 
 // ─── /dashboard ───────────────────────────────────────────────────────────────
