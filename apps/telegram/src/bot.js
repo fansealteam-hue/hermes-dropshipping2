@@ -5,7 +5,6 @@ require("dotenv").config();
 const { Bot, InlineKeyboard, Keyboard, session } = require("grammy");
 const { isAllowed, config } = require("./config.js");
 const api = require("./api.js");
-const msg = require("./messages.js");
 
 // ─── Session ──────────────────────────────────────────────────────────────────
 
@@ -113,13 +112,27 @@ async function openApp(ctx) {
 bot.command("app", openApp);
 bot.command(["site", "web"], openSite);
 
-// ─── /lien ────────────────────────────────────────────────────────────────────
+// ─── Nouveau produit ──────────────────────────────────────────────────────────
 
-async function askProduct(ctx) { ctx.session.state = "awaiting_temu_link"; return ctx.reply("🔗 Colle le lien du produit Temu 👇"); }
+const cancelKb = (label = "✖️ Annuler") => new InlineKeyboard().text(label, "flow:cancel");
+async function askProduct(ctx) {
+  ctx.session.state = "awaiting_temu_link";
+  return ctx.reply("🔗 <b>Nouveau produit</b>\nColle le lien du produit Temu 👇\n<i>Je vérifie l'entrepôt, les variantes et je te propose un prix.</i>", { parse_mode: "HTML", reply_markup: cancelKb() });
+}
 bot.command("lien", async ctx => {
   const url = ctx.match?.trim();
   return url ? handleTemuUrl(ctx, url) : askProduct(ctx);
 });
+// Annuler une saisie en cours (lien, prix, suivi…)
+bot.callbackQuery("flow:cancel", async (ctx) => {
+  ctx.session.state = "idle";
+  ctx.session.pendingProduct = ctx.session.pendingListingDraft = ctx.session.pendingTrackingSaleId = undefined;
+  ctx.session.trackingCard = null;
+  await ctx.answerCallbackQuery("Annulé");
+  await ctx.editMessageText("✖️ Annulé. Les boutons en bas sont toujours là 👇").catch(() => {});
+});
+// Bouton déjà utilisé (ex. « ✔️ commandé ») : rien à faire
+bot.callbackQuery("noop", (ctx) => ctx.answerCallbackQuery("C'est déjà fait ✔️"));
 
 // ─── Free text router ─────────────────────────────────────────────────────────
 
@@ -133,6 +146,7 @@ bot.on("message:text", async ctx => {
   const { state } = ctx.session;
 
   if (state === "awaiting_temu_link") { ctx.session.state = "idle"; return handleTemuUrl(ctx, text); }
+  if (state === "awaiting_price") { ctx.session.state = "idle"; return handlePrice(ctx, text); }
   if (state === "awaiting_order_ref")  { ctx.session.state = "idle"; const [id, ref] = text.split(" "); return handleOrderRef(ctx, id, ref); }
   if (state === "awaiting_tracking")   { ctx.session.state = "idle"; const [id, carrier, num] = text.split(" "); return handleTracking(ctx, id, carrier, num); }
   if (state === "awaiting_tracking_inline") {
@@ -164,144 +178,147 @@ function parseTracking(text) {
   return { carrier, number };
 }
 
-// ─── Temu URL handler ────────────────────────────────────────────────────────
+// ─── Lien Temu → variante → prix → compte → publication ──────────────────────
 
-async function handleTemuUrl(ctx, url) {
-  if (!url.includes("temu.com") && !url.includes("tem.com")) {
-    return ctx.reply("❌ Ce lien ne ressemble pas à Temu\\.", { parse_mode: "MarkdownV2" });
-  }
-  const status = await ctx.reply("⏳ Analyse du produit…");
-  const res = await api.fetchTemuProduct(url);
-
-  if (!res.ok || !res.data) {
-    return ctx.api.editMessageText(ctx.chat.id, status.message_id,
-      `❌ ${msg.escMd(res.error ?? "Erreur")}`, { parse_mode: "MarkdownV2" });
-  }
-
-  const product = res.data;
-  ctx.session.pendingProduct = product;
-
-  if (product.warehouseStatus !== "local") {
-    return ctx.api.editMessageText(ctx.chat.id, status.message_id,
-      `${msg.fmtProduct(product)}\n\n❌ *Inéligible* : entrepôt non local\\.`,
-      { parse_mode: "MarkdownV2" });
-  }
-
-  ctx.session.state = "awaiting_variant_choice";
-  const kb = new InlineKeyboard();
-  product.variants.forEach(v => kb.text(v.label, `variant:${v.variantId}`).row());
-
-  const lines = [msg.fmtProduct(product), "", "Choisissez une variante :"].join("\n");
-  return ctx.api.editMessageText(ctx.chat.id, status.message_id, lines,
-    { parse_mode: "MarkdownV2", reply_markup: kb });
+const STEPS_NEW = (n) => ["Lien", "Variante", "Prix", "Compte", "Publication"].map((l, i) => `${i < n ? "✅" : i === n ? "🟠" : "⚪"} ${l}`).join(" ─ ");
+const priceOf = (cost, mult) => Math.max(cost + 5, Math.floor(cost * mult) + 0.99);
+function draftLines(d) {
+  const net = d.priceEur - d.costEur - SHIP;
+  return [
+    `📦 <b>${h(d.title)}</b>`,
+    d.variantLabel ? `🎨 ${h(d.variantLabel)}` : "",
+    `🛒 Coût Temu : ${eur(d.costEur)} <i>+ ${eur(SHIP)} de port</i>`,
+    d.priceEur ? `💶 Prix de vente : <b>${eur(d.priceEur)}</b> · 📈 bénéfice <b>${eur(net)}</b>${net < 5 ? " ⚠️" : ""}` : "",
+  ].filter(Boolean).join("\n");
 }
 
-// ─── Variant → Price ──────────────────────────────────────────────────────────
+async function handleTemuUrl(ctx, url) {
+  const link = (String(url).match(/https?:\/\/\S+/) ?? [url])[0];
+  if (!/temu\.com|tem\.com/i.test(link)) {
+    ctx.session.state = "awaiting_temu_link";
+    return ctx.reply("❌ Ce lien ne ressemble pas à un produit Temu.\nColle un lien qui commence par <code>https://www.temu.com/</code> 👇", { parse_mode: "HTML", reply_markup: cancelKb() });
+  }
+  ctx.session.state = "idle";
+  const status = await ctx.reply("⏳ <b>Analyse du produit sur Temu…</b>\n<i>entrepôt, variantes, prix</i>", { parse_mode: "HTML" });
+  const edit = (text, reply_markup) => ctx.api.editMessageText(ctx.chat.id, status.message_id, text, { parse_mode: "HTML", reply_markup, link_preview_options: { is_disabled: true } });
+  const res = await api.fetchTemuProduct(link);
+  if (!res.ok || !res.data) {
+    return edit(`❌ <b>Lecture du produit impossible</b>\n${h(res.error ?? "Temu ne répond pas")}`, new InlineKeyboard().text("🔁 Réessayer avec un autre lien", "new:again"));
+  }
+  const product = res.data;
+  ctx.session.pendingProduct = product;
+  const head = [`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(1), LINE, `📦 <b>${h(product.title)}</b>`];
+  if (product.warehouseStatus !== "local") {
+    return edit([...head,
+      product.warehouseStatus === "china" ? "🇨🇳 Expédié depuis la Chine : <b>inéligible</b> (livraison trop longue)" : "❔ Entrepôt inconnu : <b>inéligible</b>",
+      "", "Choisis un produit en entrepôt Europe 🇪🇺"].join("\n"), new InlineKeyboard().text("🔗 Essayer un autre produit", "new:again"));
+  }
+  const variants = (product.variants ?? []).filter((v) => v.stock == null || v.stock > 0);
+  if (!variants.length) return edit([...head, "🔴 Toutes les variantes sont en rupture de stock."].join("\n"), new InlineKeyboard().text("🔗 Essayer un autre produit", "new:again"));
+  ctx.session.state = "awaiting_variant_choice";
+  const kb = new InlineKeyboard();
+  variants.slice(0, 20).forEach((v) => kb.text(`${v.label.slice(0, 28)} · ${eur(v.costEur)}${v.stock ? ` · ${v.stock} en stock` : ""}`, `variant:${v.variantId}`).row());
+  kb.text("✖️ Annuler", "flow:cancel");
+  return edit([...head, "🇪🇺 Entrepôt Europe : <b>éligible</b> ✅", `${variants.length} variante${variants.length > 1 ? "s" : ""} en stock`, "", "👇 <b>Choisis la variante à vendre</b>"].join("\n"), kb);
+}
+bot.callbackQuery("new:again", async (ctx) => { await ctx.answerCallbackQuery(); await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } }).catch(() => {}); return askProduct(ctx); });
 
+// Variante → choix du prix (3 propositions + prix libre)
+function priceKeyboard(cost) {
+  const kb = new InlineKeyboard();
+  [[2.5, "Vente rapide"], [3, "Conseillé"], [3.5, "Grosse marge"]].forEach(([m, l]) => {
+    const p = priceOf(cost, m);
+    kb.text(`${m === 3 ? "⭐ " : ""}${eur(p)} · ${l} (+${eur0(p - cost - SHIP)})`, `confirm_price:${p}`).row();
+  });
+  return kb.text("✏️ Autre prix", "edit_price").text("✖️ Annuler", "flow:cancel");
+}
 bot.callbackQuery(/^variant:(.+)$/, async ctx => {
   const product = ctx.session.pendingProduct;
-  if (!product) return ctx.answerCallbackQuery("Session expirée — /lien");
-
+  if (!product) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
   const variantId = ctx.callbackQuery.data.replace("variant:", "");
   const variant = product.variants.find(v => v.variantId === variantId);
   if (!variant) return ctx.answerCallbackQuery("Variante introuvable");
-
   ctx.session.pendingVariantId = variantId;
-  const suggested = (Math.floor(variant.costEur * 3) + 0.99);
   ctx.session.pendingListingDraft = {
-    temuItemId: product.temuItemId,
-    variantId,
-    costEur: variant.costEur,
-    priceEur: suggested,
-    mediaUrls: variant.imageUrls,
+    temuItemId: product.temuItemId, variantId, costEur: variant.costEur, priceEur: 0,
+    mediaUrls: variant.imageUrls, title: product.title, variantLabel: variant.label,
   };
   ctx.session.state = "awaiting_price_confirm";
-
-  const kb = new InlineKeyboard()
-    .text(`✅ Confirmer ${suggested.toFixed(2)} €`, `confirm_price:${suggested}`)
-    .row()
-    .text("✏️ Modifier", "edit_price");
-
-  await ctx.editMessageText(
-    [`📦 *${msg.escMd(variant.label)}*`,
-     `Coût : ${variant.costEur.toFixed(2)} €`,
-     `Prix suggéré : *${msg.escMd(suggested.toFixed(2))} €*`,
-     `Marge : ${(suggested - variant.costEur).toFixed(2)} €`,
-     `Photos : ${variant.imageUrls.length} image\\(s\\)`].join("\n"),
-    { parse_mode: "MarkdownV2", reply_markup: kb }
-  );
+  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(2), LINE, draftLines(ctx.session.pendingListingDraft),
+    `📷 ${variant.imageUrls?.length ?? 0} photo${(variant.imageUrls?.length ?? 0) > 1 ? "s" : ""}`, "", "👇 <b>Choisis ton prix de vente</b>"].join("\n"),
+    { parse_mode: "HTML", reply_markup: priceKeyboard(variant.costEur) });
   await ctx.answerCallbackQuery();
 });
+bot.callbackQuery("edit_price", async (ctx) => {
+  if (!ctx.session.pendingListingDraft) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
+  ctx.session.state = "awaiting_price";
+  await ctx.answerCallbackQuery();
+  return ctx.reply(`✏️ Écris ton prix de vente en euros 👇\n<i>ex. 29,90 — coût Temu ${eur(ctx.session.pendingListingDraft.costEur + SHIP)} port inclus</i>`, { parse_mode: "HTML", reply_markup: cancelKb() });
+});
+async function handlePrice(ctx, text) {
+  const d = ctx.session.pendingListingDraft;
+  if (!d) return askProduct(ctx);
+  const price = parseFloat(String(text).replace(",", ".").replace(/[^\d.]/g, ""));
+  if (!(price > 0 && price < 10000)) { ctx.session.state = "awaiting_price"; return ctx.reply("❌ Prix non compris. Écris juste un nombre, ex. <code>29,90</code> 👇", { parse_mode: "HTML", reply_markup: cancelKb() }); }
+  const r = Math.round(price * 100) / 100;
+  const kb = new InlineKeyboard().text(`✅ Valider ${eur(r)}`, `confirm_price:${r}`).row().text("✏️ Changer", "edit_price").text("✖️ Annuler", "flow:cancel");
+  return ctx.reply([draftLines({ ...d, priceEur: r }), r - d.costEur - SHIP < 5 ? "\n⚠️ Moins de 5 € de bénéfice : vise un prix un peu plus haut." : ""].join("\n"), { parse_mode: "HTML", reply_markup: kb });
+}
 
-// ─── Price → Account ─────────────────────────────────────────────────────────
-
+// Prix → compte Leboncoin
 bot.callbackQuery(/^confirm_price:(.+)$/, async ctx => {
-  const price = parseFloat(ctx.callbackQuery.data.replace("confirm_price:", ""));
-  ctx.session.pendingListingDraft.priceEur = price;
+  const d = ctx.session.pendingListingDraft;
+  if (!d) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
+  d.priceEur = parseFloat(ctx.callbackQuery.data.replace("confirm_price:", ""));
   ctx.session.state = "awaiting_account_choice";
-
   const res = await api.getLeboncoinAccounts();
   if (!res.ok || !res.data?.length) {
-    await ctx.editMessageText("❌ Aucun compte Leboncoin disponible\\.", { parse_mode: "MarkdownV2" });
+    await ctx.editMessageText("❌ Aucun compte Leboncoin actif : ajoute un compte sur le site (Comptes & trésorerie).", { reply_markup: withSite(new InlineKeyboard(), "comptes", "🌐 Ouvrir mes comptes") });
     return ctx.answerCallbackQuery();
   }
-
   const kb = new InlineKeyboard();
-  res.data.forEach(a => kb.text(a.label, `account:${a.accountId}`).row());
-  await ctx.editMessageText("🏪 Choisissez le compte Leboncoin :", { reply_markup: kb });
+  res.data.forEach(a => kb.text(`🏪 ${a.label}${a.niche ? ` · ${a.niche}` : ""}`, `account:${a.accountId}`).row());
+  kb.text("↩️ Changer le prix", `variant:${d.variantId}`).text("✖️ Annuler", "flow:cancel");
+  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(3), LINE, draftLines(d), "", "👇 <b>Sur quel compte publier ?</b>"].join("\n"), { parse_mode: "HTML", reply_markup: kb });
   await ctx.answerCallbackQuery();
 });
 
-// ─── Account → Schedule ───────────────────────────────────────────────────────
-
+// Compte → quand publier
 bot.callbackQuery(/^account:(.+)$/, async ctx => {
-  ctx.session.pendingListingDraft.accountId = ctx.callbackQuery.data.replace("account:", "");
+  const d = ctx.session.pendingListingDraft;
+  if (!d) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
+  d.accountId = ctx.callbackQuery.data.replace("account:", "");
   ctx.session.state = "awaiting_schedule";
-
   const kb = new InlineKeyboard()
-    .text("⚡ Maintenant", "schedule:now").row()
-    .text("📅 Dans 1h", `schedule:${Date.now() + 3_600_000}`).row()
-    .text("📅 Demain 9h", "schedule:tomorrow");
-
-  await ctx.editMessageText("🕐 Quand publier ?", { reply_markup: kb });
+    .text("⚡ Maintenant", "schedule:now").text("⏰ Dans 1 h", `schedule:${Date.now() + 3_600_000}`).row()
+    .text("🌙 Ce soir 19 h", "schedule:tonight").text("☀️ Demain 9 h", "schedule:tomorrow").row()
+    .text("✖️ Annuler", "flow:cancel");
+  await ctx.editMessageText([`🔗 <b>NOUVEAU PRODUIT</b>`, STEPS_NEW(4), LINE, draftLines(d), "", "👇 <b>Quand publier l'annonce ?</b>",
+    "<i>Garde un rythme raisonnable : quelques annonces par jour et par compte.</i>"].join("\n"), { parse_mode: "HTML", reply_markup: kb });
   await ctx.answerCallbackQuery();
 });
 
-// ─── Schedule → Create listing ────────────────────────────────────────────────
-
+// Publication
 bot.callbackQuery(/^schedule:(.+)$/, async ctx => {
   const when = ctx.callbackQuery.data.replace("schedule:", "");
-  const draft = ctx.session.pendingListingDraft ?? {};
-
+  const d = ctx.session.pendingListingDraft;
+  if (!d) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
   let scheduledAt;
-  if (when !== "now") {
-    if (when === "tomorrow") {
-      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
-      scheduledAt = d.toISOString();
-    } else {
-      scheduledAt = new Date(parseInt(when)).toISOString();
-    }
-  }
-
-  const res = await api.createListing({
-    temuItemId: draft.temuItemId,
-    variantId: draft.variantId,
-    accountId: draft.accountId,
-    priceEur: draft.priceEur,
-    ...(scheduledAt ? { scheduledAt } : {}),
-  });
-
+  if (when === "tomorrow") { const x = new Date(); x.setDate(x.getDate() + 1); x.setHours(9, 0, 0, 0); scheduledAt = x.toISOString(); }
+  else if (when === "tonight") { const x = new Date(); x.setHours(19, 0, 0, 0); if (x < new Date()) x.setDate(x.getDate() + 1); scheduledAt = x.toISOString(); }
+  else if (when !== "now") scheduledAt = new Date(parseInt(when)).toISOString();
+  await ctx.answerCallbackQuery("Création de l'annonce…");
+  const res = await api.createListing({ temuItemId: d.temuItemId, variantId: d.variantId, accountId: d.accountId, priceEur: d.priceEur, ...(scheduledAt ? { scheduledAt } : {}) });
   ctx.session.state = "idle";
   ctx.session.pendingProduct = undefined;
   ctx.session.pendingListingDraft = undefined;
-
   if (!res.ok || !res.data) {
-    await ctx.editMessageText(`❌ ${msg.escMd(res.error ?? "Erreur")}`, { parse_mode: "MarkdownV2" });
-    return ctx.answerCallbackQuery();
+    return ctx.editMessageText(`❌ <b>Annonce non créée</b>\n${h(res.error ?? "erreur")}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔗 Recommencer", "new:again") });
   }
-
-  await ctx.editMessageText(msg.fmtListing(res.data), { parse_mode: "MarkdownV2" });
-  await ctx.answerCallbackQuery("✅ Annonce créée");
+  const whenTxt = scheduledAt ? `📅 Publication ${new Date(scheduledAt).toLocaleString("fr-FR", { weekday: "long", hour: "2-digit", minute: "2-digit" })}` : "⚡ Publication en cours sur Leboncoin";
+  const kb = new InlineKeyboard().text("🔗 Ajouter un autre produit", "new:again");
+  withSite(kb, "annonces", "🌐 Voir mes annonces");
+  return ctx.editMessageText([`✅ <b>ANNONCE CRÉÉE</b>`, STEPS_NEW(5), LINE, draftLines(d), whenTxt].join("\n"), { parse_mode: "HTML", reply_markup: kb });
 });
 
 // ─── /dashboard ───────────────────────────────────────────────────────────────
@@ -331,6 +348,7 @@ async function showDashboard(ctx) {
   if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
   if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
   kb.row().text("🛍️ Voir les ventes", "nav:sales").text("📑 Rapport financier", "recap:menu");
+  kb.row().text("🔄 Actualiser", "nav:dash");
   if (appUrl()) kb.row().webApp("📱 Tyno", appUrl());
   withSite(kb, "", "🌐 Ouvrir le site Tyno");
   return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
@@ -394,7 +412,7 @@ async function showToOrder(ctx) {
     todo.length > 12 ? `\n+ ${todo.length - 12} autre(s)` : "", LINE,
     `💳 Total à payer sur Temu : <b>${eur(total)}</b>`,
     "Commande avec les boutons 🛒, puis valide une par une ou tout d'un coup 👇",
-  ].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: kb });
+  ].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: withSite(kb, "temu", "🌐 Achats Temu sur le site") });
 }
 bot.command(["acommander", "valider"], showToOrder);
 
@@ -404,12 +422,19 @@ bot.callbackQuery(/^order_one:(.+)$/, async ctx => {
   const r = await api.markOrdered(saleId);
   if (!r.ok) { await ctx.answerCallbackQuery(`Erreur : ${r.error ?? "non enregistré"}`); return; }
   ctx.session.bulkIds = (ctx.session.bulkIds ?? []).filter((x) => x !== saleId);
+  // Le bouton devient « ✔️ commandé » (on garde le reste de la liste)
+  const rows = ctx.callbackQuery.message?.reply_markup?.inline_keyboard;
+  if (rows) {
+    const next = rows.map((row) => row.map((b) => (b.callback_data === `order_one:${saleId}` ? { text: b.text.replace("✅", "✔️").replace("commandé", "fait"), callback_data: "noop" } : b)))
+      .map((row) => row.filter((b) => !(b.callback_data === "bulk_ordered" && !(ctx.session.bulkIds ?? []).length)));
+    await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: next.filter((r) => r.length) } }).catch(() => {});
+  }
   await ctx.answerCallbackQuery("✅ Commandée — pense au suivi");
 });
 
 bot.callbackQuery("bulk_ordered", async ctx => {
   const ids = ctx.session.bulkIds ?? [];
-  if (!ids.length) { await ctx.answerCallbackQuery("Liste expirée : relance /acommander"); return; }
+  if (!ids.length) { await ctx.answerCallbackQuery({ text: "Liste expirée : appuie sur « 🛒 À commander »", show_alert: true }); return; }
   const r = await api.markOrderedBulk(ids);
   if (!r.ok) { await ctx.answerCallbackQuery(`Erreur : ${r.error ?? "non enregistré"}`); return; }
   ctx.session.bulkIds = [];
@@ -419,7 +444,7 @@ bot.callbackQuery("bulk_ordered", async ctx => {
     `✅ <b>${r.data.done.length} vente${r.data.done.length > 1 ? "s" : ""} passée${r.data.done.length > 1 ? "s" : ""} en « Commandée »</b>`,
     r.data.skipped.length ? `${r.data.skipped.length} déjà traitée(s) entre-temps.` : "",
     "📬 Ajoute les numéros de suivi dès que Temu les donne : l'acheteur reçoit ton message d'expédition automatiquement (rappel si oubli).",
-  ].filter(Boolean).join("\n"), { parse_mode: "HTML" });
+  ].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("📬 Ajouter les suivis", "nav:track") });
 });
 
 // ─── Ajouter un suivi : choisir la vente avec un bouton ───────────────────────
@@ -436,6 +461,7 @@ async function showTrackingList(ctx) {
     const t = (titleOf[s.listingId] ?? "Produit").slice(0, 26);
     kb.text(`📦 ${t} · ${s.buyerName ?? "acheteur"}`, `add_tracking:${s.saleId}`).row();
   });
+  kb.text("✖️ Fermer", "flow:cancel");
   return ctx.reply(`📬 <b>Ajouter un numéro de suivi</b>\nChoisis la commande (${waiting.length} en attente) 👇`, { parse_mode: "HTML", reply_markup: kb });
 }
 
@@ -449,15 +475,17 @@ bot.callbackQuery("recap:menu", async (ctx) => {
   const kb = new InlineKeyboard()
     .text("📊 Semaine dernière", "recap:last-week").text("📈 Cette semaine", "recap:week").row()
     .text(`📅 ${label(prev)} (à déclarer)`, `recap:${ym(prev)}`).row()
-    .text(`📈 ${label(n)} (en cours)`, `recap:${ym(n)}`);
+    .text(`📈 ${label(n)} (en cours)`, `recap:${ym(n)}`).row();
+  withSite(kb, "rapports", "🌐 Voir les rapports sur le site");
   await ctx.answerCallbackQuery();
   await ctx.reply("📑 <b>Rapport financier</b> : quelle période ?\n<i>Tu reçois le récap, le rapport complet en PDF et, pour un mois, le fichier compta Excel.</i>", { parse_mode: "HTML", reply_markup: kb });
 });
 bot.callbackQuery(/^recap:(\d{4}-\d{2}|last-week|week)$/, async (ctx) => {
-  await ctx.answerCallbackQuery("Préparation du récap…");
+  await ctx.answerCallbackQuery("Préparation du rapport…");
+  await ctx.editMessageText("⏳ <b>Préparation du rapport…</b>\n<i>récap, PDF et fichier compta arrivent juste en dessous</i>", { parse_mode: "HTML" }).catch(() => {});
   const res = await api.sendMonthlyRecap(ctx.match[1]);
-  if (!res.ok) return ctx.reply(`⚠️ Récap impossible : ${res.error ?? "erreur"}`);
-  await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } }).catch(() => {});
+  if (!res.ok) return ctx.editMessageText(`⚠️ Rapport impossible : ${h(res.error ?? "erreur")}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔁 Réessayer", "recap:menu") }).catch(() => {});
+  await ctx.editMessageText(res.data?.sent ? "✅ <b>Rapport envoyé</b> 👇" : "⚠️ Rapport non envoyé : vérifie TELEGRAM_ALLOWED_CHAT_IDS dans le .env", { parse_mode: "HTML" }).catch(() => {});
 });
 
 bot.callbackQuery(/^nav:(\w+)$/, async ctx => {
@@ -480,16 +508,16 @@ bot.command("commande", async ctx => {
   const parts = (ctx.match ?? "").trim().split(" ").filter(Boolean);
   if (parts.length < 2) {
     ctx.session.state = "awaiting_order_ref";
-    return ctx.reply("📦 Envoyez : `<id_vente> <ref_commande>`", { parse_mode: "MarkdownV2" });
+    return showToOrder(ctx);
   }
   return handleOrderRef(ctx, parts[0], parts[1]);
 });
 
 async function handleOrderRef(ctx, saleId, ref) {
-  if (!saleId || !ref) return ctx.reply("❌ Format : `/commande <id_vente> <ref>`", { parse_mode: "MarkdownV2" });
+  if (!saleId || !ref) return showToOrder(ctx);
   const res = await api.addTracking(saleId, { orderRef: ref, trackingNumber: "" });
-  if (!res.ok) return ctx.reply(`❌ ${msg.escMd(res.error ?? "")}`, { parse_mode: "MarkdownV2" });
-  return ctx.reply(`✅ Référence \`${msg.escMd(ref)}\` enregistrée\\.`, { parse_mode: "MarkdownV2" });
+  if (!res.ok) return ctx.reply(`❌ ${h(res.error ?? "erreur")}`, { parse_mode: "HTML" });
+  return ctx.reply(`✅ Référence Temu <code>${h(ref)}</code> enregistrée.`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("📬 Ajouter le suivi", `add_tracking:${saleId}`) });
 }
 
 // ─── /suivi ───────────────────────────────────────────────────────────────────
@@ -497,8 +525,7 @@ async function handleOrderRef(ctx, saleId, ref) {
 bot.command("suivi", async ctx => {
   const parts = (ctx.match ?? "").trim().split(" ").filter(Boolean);
   if (parts.length < 3) {
-    ctx.session.state = "awaiting_tracking";
-    return ctx.reply("📬 Envoyez : `<id_vente> <transporteur> <numéro>`", { parse_mode: "MarkdownV2" });
+    return showTrackingList(ctx);
   }
   return handleTracking(ctx, parts[0], parts[1], parts[2]);
 });
@@ -506,13 +533,10 @@ bot.command("suivi", async ctx => {
 async function handleTracking(ctx, saleId, carrier, tracking) {
   if (!saleId || !tracking) return ctx.reply("❌ Numéro de suivi manquant : appuie sur « 📬 Ajouter un suivi » et colle le numéro.", { reply_markup: mainKeyboard() });
   const res = await api.addTracking(saleId, { orderRef: "", trackingNumber: tracking, trackingCarrier: carrier || undefined });
-  if (!res.ok || !res.data) return ctx.reply(`❌ ${msg.escMd(res.error ?? "")}`, { parse_mode: "MarkdownV2" });
+  if (!res.ok || !res.data) return ctx.reply(`❌ <b>Suivi non enregistré</b>\n${h(res.error ?? "erreur")}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔁 Réessayer", `add_tracking:${saleId}`) });
 
   // Auto-transmission du suivi à l'acheteur Leboncoin via le job queue
   const syncRes = await api.syncTracking(saleId);
-  const syncStatus = syncRes?.ok
-    ? "✅ Transmis automatiquement à l'acheteur Leboncoin\\."
-    : "⚠️ Transmission automatique échouée — à envoyer manuellement sur Leboncoin\\.";
 
   const card = ctx.session.trackingCard;
   ctx.session.trackingCard = null;
@@ -520,34 +544,21 @@ async function handleTracking(ctx, saleId, carrier, tracking) {
     const line = `📬 Expédié · ${carrier ? `${carrier} ` : ""}${tracking}\n${syncRes?.ok ? "✅ Suivi envoyé à l'acheteur sur Leboncoin" : "⚠️ Suivi à envoyer à la main sur Leboncoin"}`;
     if (await updateCard(ctx, card, `${STEPS.shipped}\n${line}`)) return ctx.reply("✅ Suivi ajouté — la fiche de la vente est à jour ☝️", { reply_markup: mainKeyboard() });
   }
-  return ctx.reply(
-    msg.fmtTrackingAdded(res.data) + "\n\n" + syncStatus,
-    { parse_mode: "MarkdownV2" }
-  );
+  // Pas de fiche à mettre à jour : confirmation au design Tyno + suivi suivant
+  const sale = res.data;
+  const left = await api.getActiveSales().then((r) => (r.data ?? []).filter((x) => x.status === "order_placed" && !x.trackingNumber && x.saleId !== saleId).length).catch(() => 0);
+  const kb = new InlineKeyboard().url("📍 Suivre le colis", `https://t.17track.net/fr#nums=${encodeURIComponent(tracking)}`);
+  if (left) kb.row().text(`📬 Suivi suivant (${left})`, "nav:track");
+  return ctx.reply([
+    "📬 <b>SUIVI AJOUTÉ</b>", LINE, STEPS.shipped,
+    `🚚 ${h(carrier || sale.trackingCarrier || "Transporteur")} · <code>${h(tracking)}</code>`,
+    syncRes?.ok ? "✅ Envoyé automatiquement à l'acheteur sur Leboncoin" : "⚠️ Envoi automatique impossible : envoie le numéro à l'acheteur sur Leboncoin",
+  ].join("\n"), { parse_mode: "HTML", reply_markup: kb });
 }
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 
 bot.catch(err => console.error("[bot]", err.message));
-
-// ─── Sale alert : photo + OUI DISPONIBLE / NON PLUS DISPO ────────────────────
-
-async function sendSaleAlert(chatId, { sale, productTitle, variantLabel, imageUrls = [], variantOptions = "" }) {
-  const text = msg.fmtSaleAlert(sale, productTitle, variantLabel, variantOptions);
-  const kb = new InlineKeyboard()
-    .text("✅ Disponible", `avail_yes:${sale.saleId}`)
-    .text("❌ Pas disponible", `cancel_ask:${sale.saleId}`).row()
-    .text("🔄 Revérifier le stock Temu", `check_stock:${sale.saleId}`);
-
-  const photoUrl = imageUrls?.[0];
-  if (photoUrl) {
-    try {
-      await bot.api.sendPhoto(chatId, photoUrl, { caption: text, parse_mode: "MarkdownV2", reply_markup: kb });
-      return;
-    } catch (_) { /* fallback texte */ }
-  }
-  await bot.api.sendMessage(chatId, text, { parse_mode: "MarkdownV2", reply_markup: kb });
-}
 
 // ─── Fiche de vente : UN message (photo + infos + boutons) mis à jour en place ─
 const SEP = "━━━━━━━━━━━━━━";
@@ -684,11 +695,11 @@ bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   ctx.session.pendingTrackingSaleId = saleId;
   const m = ctx.callbackQuery.message;
   ctx.session.trackingCard = m && (m.photo || (m.text ?? "").includes(SEP)) ? cardRef(m) : null;
-  await ctx.reply("📬 Colle le <b>numéro de suivi</b> 👇\n<i>Le transporteur est reconnu tout seul.</i>", { parse_mode: "HTML" });
+  await ctx.reply("📬 Colle le <b>numéro de suivi</b> 👇\n<i>Le transporteur est reconnu tout seul et l'acheteur est prévenu sur Leboncoin.</i>", { parse_mode: "HTML", reply_markup: cancelKb() });
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, siteUrl, siteKeyboard, BTN, cardRef, cardText, SEP };
+module.exports = { bot, stepsLine, relDay, parseTracking, mainKeyboard, siteUrl, siteKeyboard, BTN, cardRef, cardText, SEP };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
