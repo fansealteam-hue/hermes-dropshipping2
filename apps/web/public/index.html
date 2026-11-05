@@ -253,11 +253,18 @@ tbody tr:hover { background: var(--surface-2); }
   transition: all .15s;
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
+.rep-frame { padding: 0; overflow: hidden; position: relative; min-height: 420px; background: #0b0b0c; }
+.rep-frame iframe { display: block; width: 100%; height: 1200px; border: 0; background: #0b0b0c; }
+.rep-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); font-size: 13px; pointer-events: none; transition: opacity .2s; }
+.rep-loading.off { opacity: 0; }
+.rep-auto { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.rep-auto span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
+.rep-auto b { color: var(--text); font-weight: 600; }
 .compta-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 @media (max-width: 700px) {
   .compta-actions { margin-left: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .compta-actions > * { justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .compta-actions > #recap-btn, .compta-actions > #export-btn { grid-column: 1 / -1; }
+  .compta-actions > #recap-btn, .compta-actions > #export-btn, .compta-actions > #rep-tg { grid-column: 1 / -1; }
 }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { filter: brightness(1.08); color: #fff; }
@@ -1186,6 +1193,7 @@ th.sort.on { color: var(--accent); }
       <button class="nav-btn" data-view="listings"><svg><use href="#i-tag"/></svg>Annonces</button>
       <div class="nav-label">Bureau</div>
       <button class="nav-btn" data-view="compta"><svg><use href="#i-book"/></svg>Comptabilité</button>
+      <button class="nav-btn" data-view="reports"><svg><use href="#i-trend"/></svg>Rapports<span class="count" style="background:var(--accent-soft);color:var(--accent)">PDF</span></button>
       <button class="nav-btn" data-view="facturation"><svg><use href="#i-file"/></svg>Facturation</button>
       <button class="nav-btn" data-view="accounts"><svg><use href="#i-users"/></svg>Comptes & trésorerie</button>
     </nav>
@@ -1640,6 +1648,20 @@ th.sort.on { color: var(--accent); }
           <table><thead><tr><th>Date</th><th>Compte</th><th>Déclenché</th><th class="r">Montant</th><th>Statut</th><th>Note</th><th></th></tr></thead><tbody id="wd-table"></tbody></table>
         </div>
       </div>
+    </section>
+
+    <!-- ── Rapports financiers ─────────────────────────── -->
+    <section class="view" id="v-reports">
+      <div class="toolbar">
+        <div class="chips" id="rep-range"></div>
+        <div class="compta-actions">
+          <button class="btn primary" id="rep-print"><svg width="13" height="13"><use href="#i-down"/></svg>Enregistrer en PDF</button>
+          <button class="btn" id="rep-csv"><svg width="13" height="13"><use href="#i-file"/></svg>Fichier compta Excel</button>
+          <button class="btn" id="rep-tg">📲 Envoyer sur Telegram</button>
+        </div>
+      </div>
+      <div class="rep-auto" id="rep-auto"></div>
+      <div class="rep-frame card"><div class="rep-loading" id="rep-loading">Préparation du rapport…</div><iframe id="rep-iframe" title="Rapport financier" sandbox="allow-same-origin allow-modals"></iframe></div>
     </section>
 
     <!-- ── Facturation ────────────────────────────────── -->
@@ -3934,7 +3956,7 @@ $("#tasks-bg").onclick = (e) => { if (e.target.id === "tasks-bg") closeTasks(); 
 // ═══ Recherche rapide (Ctrl+K) ════════════════════════════════════════════
 let cmdkSel = 0, cmdkItems = [];
 const PAGES = [["overview", "Vue d'ensemble", "🏠"], ["warehouse", "Entrepôt 3D", "🏭"], ["products", "Produits", "📦"], ["temu", "Achats Temu", "🛒"], ["sales", "Ventes", "🛍️"],
-  ["compta", "Comptabilité", "📒"], ["facturation", "Facturation & URSSAF", "🧾"], ["messages", "Messages", "💬"], ["listings", "Annonces", "📢"], ["accounts", "Comptes & retraits", "👥"]];
+  ["compta", "Comptabilité", "📒"], ["reports", "Rapports financiers (semaine, mois)", "📊"], ["facturation", "Facturation & URSSAF", "🧾"], ["messages", "Messages", "💬"], ["listings", "Annonces", "📢"], ["accounts", "Comptes & retraits", "👥"]];
 function searchAll(q) {
   const n = (x) => String(x ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const qq = n(q).trim();
@@ -5094,13 +5116,73 @@ async function openReport(month, withCsv) {
     toast(`📊 ${data.period.label} : ${eur(t.caEur)} de CA · ${eur(t.netProfitEur)} net${withCsv ? " — fichier compta téléchargé ✓" : ""}`);
   } catch (e) { w?.close(); toast("Rapport impossible : " + e.message); }
 }
-$("#recap-btn").onclick = () => openReport(recapMonth(), true);
-$("#recap-week-btn").onclick = () => openReport("last-week", false);
+$("#recap-btn").onclick = () => { repRange = comptaRange === "month" ? "month" : "last-month"; go("reports"); };
+$("#recap-week-btn").onclick = () => { repRange = "last-week"; go("reports"); };
 $("#recap-tg-btn").onclick = async () => {
   if (!SERVER()) { toast("📲 En mode démo : le rapport part sur Telegram chaque lundi (semaine) et le 1er du mois"); return; }
   try {
     const { data } = await api("/api/reports/monthly/send", { method: "POST", body: JSON.stringify({ month: recapMonth() }) });
     toast(data.sent ? "📲 Récap + fichier envoyés sur Telegram ✓" : "Telegram n'est pas configuré (token / chat autorisé)");
+  } catch (e) { toast("Envoi impossible : " + e.message); }
+};
+
+// ═══ Rapports financiers : affichés dans la page ════════════════════════════
+let repRange = store.get("hermes_rep_range") ?? "last-week";
+let repData = null;
+function repSpec(k) {
+  const n = new Date(), p2 = (x) => String(x).padStart(2, "0");
+  const ym = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}`;
+  if (k === "week" || k === "last-week") return k;
+  if (k === "month") return ym(n);
+  if (k === "last-month") return ym(new Date(n.getFullYear(), n.getMonth() - 1, 1));
+  if (k === "quarter") return `quarter:${n.getFullYear()}-${p2(Math.floor(n.getMonth() / 3) * 3 + 1)}`;
+  return "last-week";
+}
+function fitReport() {
+  const f = $("#rep-iframe");
+  try { const h = f.contentDocument?.documentElement?.scrollHeight; if (h) f.style.height = h + "px"; } catch { /* */ }
+}
+async function renderReports() {
+  const ranges = [["last-week", "Semaine dernière"], ["week", "Cette semaine"], ["last-month", "Mois dernier"], ["month", "Ce mois"], ["quarter", "Ce trimestre"]];
+  $("#rep-range").innerHTML = ranges.map(([k, l]) => `<button class="chip ${repRange === k ? "on" : ""}" data-k="${k}">${l}</button>`).join("");
+  $$("#rep-range .chip").forEach((c) => (c.onclick = () => { repRange = c.dataset.k; store.set("hermes_rep_range", repRange); renderReports(); }));
+  const a = SERVER() ? state.autoSettings?.auto : null;
+  const on = (k) => (a ? a[k] !== false : true);
+  $("#rep-auto").innerHTML = `<span>📊 Rapport de la semaine : <b>${on("weeklyRecap") ? "chaque lundi sur Telegram" : "désactivé"}</b></span>
+    <span>📑 Rapport du mois + fichier compta : <b>${on("monthlyRecap") ? "le 1er du mois sur Telegram" : "désactivé"}</b></span>
+    <span><a href="#facturation" style="color:var(--accent)">Régler les envois</a></span>`;
+  const f = $("#rep-iframe");
+  $("#rep-loading").classList.remove("off");
+  $("#rep-loading").textContent = "Préparation du rapport…";
+  f.onload = () => { fitReport(); setTimeout(fitReport, 300); $("#rep-loading").classList.add("off"); };
+  if (!SERVER()) { // démo : rapport d'exemple chargé en ligne (le site interdit d'être affiché en cadre)
+    repData = null;
+    try { f.srcdoc = await (await fetch("/demo-rapport.html")).text(); } catch (e) { $("#rep-loading").textContent = "Rapport d'exemple indisponible"; }
+    return;
+  }
+  try {
+    const { data } = await api(`/api/reports/monthly?month=${encodeURIComponent(repSpec(repRange))}`);
+    repData = data;
+    f.removeAttribute("src");
+    f.srcdoc = data.html;
+  } catch (e) { $("#rep-loading").textContent = "Rapport indisponible : " + e.message; }
+}
+window.addEventListener("resize", () => { if (view === "reports") fitReport(); });
+$("#rep-print").onclick = () => {
+  try { $("#rep-iframe").contentWindow.focus(); $("#rep-iframe").contentWindow.print(); toast("Choisis « Enregistrer au format PDF » 📄"); }
+  catch { toast("Impression impossible dans ce navigateur"); }
+};
+$("#rep-csv").onclick = () => {
+  if (!repData) { toast("📎 En mode démo : le fichier compta se crée avec tes vraies ventes"); return; }
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([repData.csv], { type: "text/csv;charset=utf-8" })), download: repData.fileName });
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("Fichier compta téléchargé ✓");
+};
+$("#rep-tg").onclick = async () => {
+  if (!SERVER()) { toast("📲 En mode démo : le rapport part sur Telegram chaque lundi et le 1er du mois"); return; }
+  try {
+    const { data } = await api("/api/reports/monthly/send", { method: "POST", body: JSON.stringify({ month: repSpec(repRange) }) });
+    toast(data.sent ? "📲 Rapport envoyé sur Telegram ✓" : "Telegram n'est pas configuré (token / chat autorisé)");
   } catch (e) { toast("Envoi impossible : " + e.message); }
 };
 
@@ -5368,12 +5450,13 @@ const SUBS = {
   products: "Ce qui marche, ce qui bloque, et le bon prix",
   listings: "Tes annonces Leboncoin et leurs publications",
   compta: "Recettes, dépenses et bénéfice — prêt pour ton comptable",
+  reports: "Ton rapport financier de la semaine ou du mois, avec des conseils pour gagner plus",
   facturation: "Factures, avoirs et déclaration URSSAF",
   accounts: "Tes comptes par niche, leur porte-monnaie et les retraits",
   account: "Le détail d'un compte",
 };
-const TITLES = { temu: "Achats Temu", messages: "Messages acheteurs", warehouse: "Tyno Warehouse", products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes & trésorerie" };
-const HASH = { temu: "temu", messages: "messages", warehouse: "entrepot", products: "produits", overview: "", sales: "ventes", compta: "compta", facturation: "facturation", listings: "annonces", accounts: "comptes" };
+const TITLES = { temu: "Achats Temu", messages: "Messages acheteurs", warehouse: "Tyno Warehouse", products: "Produits", overview: "Vue d'ensemble", compta: "Comptabilité", reports: "Rapports financiers", facturation: "Facturation", sales: "Ventes", listings: "Annonces", accounts: "Comptes & trésorerie" };
+const HASH = { temu: "temu", messages: "messages", warehouse: "entrepot", products: "produits", overview: "", sales: "ventes", compta: "compta", reports: "rapports", facturation: "facturation", listings: "annonces", accounts: "comptes" };
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   if (h.startsWith("compte/")) { accId = h.slice(7); return go("account", true); }
@@ -5393,6 +5476,7 @@ function go(v, fromHash = false) {
   if (v === "warehouse") { initWarehouse(); renderWhFeed(); setTimeout(whSize, 30); }
   if (v === "compta") setTimeout(renderYearChart, 30);
   if (v === "sales") renderSales();
+  if (v === "reports") renderReports();
   $("#period-seg").style.display = v === "overview" ? "" : "none";
   if (v === "overview" && state.fin) chart(fillDays(state.fin.daily ?? [], period));
   window.scrollTo({ top: 0, behavior: "smooth" });

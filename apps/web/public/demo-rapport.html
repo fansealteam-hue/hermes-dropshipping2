@@ -1,0 +1,178 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Démo · Tyno · Rapport du mois · octobre 2026</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0b0c; color: #f3f1ee; font: 12.5px/1.45 "Liberation Sans", "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: 794px; margin: 0 auto; padding: 34px 38px 30px; }
+  .head { display: flex; align-items: center; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid #262626; }
+  .logo { width: 42px; height: 42px; border-radius: 11px; background: linear-gradient(135deg, #ff9a3c, #ff6a00); display: grid; place-items: center; font-weight: 800; font-size: 22px; color: #111; }
+  .brand { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #ff8a2a; font-weight: 700; }
+  h1 { margin: 2px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+  .period { margin-left: auto; text-align: right; color: #a8a29e; font-size: 12px; }
+  .period b { display: block; color: #f3f1ee; font-size: 14px; } .period b::first-letter { text-transform: uppercase; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0 10px; }
+  .kpi { background: #151515; border: 1px solid #262626; border-radius: 12px; padding: 12px 13px; }
+  .kpi.hero { background: linear-gradient(160deg, #2a1607, #151515 70%); border-color: #5a2d0c; }
+  .kpi .l { color: #a8a29e; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .kpi .v { font-size: 22px; font-weight: 800; margin: 3px 0 2px; }
+  .kpi .v.green { color: #2fd27a; } .kpi .v.red { color: #ff5a4f; }
+  .d { font-size: 11px; color: #a8a29e; } .d.up { color: #2fd27a; } .d.down { color: #ff5a4f; }
+  .mini { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 18px; }
+  .mini div { background: #121212; border: 1px solid #222; border-radius: 10px; padding: 8px 10px; }
+  .mini span { display: block; color: #8f8a85; font-size: 10.5px; } .mini b { font-size: 14px; }
+  h2 { font-size: 14px; margin: 20px 0 9px; display: flex; align-items: center; gap: 8px; }
+  h2:before { content: ""; width: 4px; height: 15px; border-radius: 2px; background: #ff7a1a; }
+  .card { background: #131313; border: 1px solid #242424; border-radius: 12px; padding: 13px 14px; }
+  .chart { width: 100%; height: auto; display: block; } .chart text { fill: #8f8a85; font-size: 10px; }
+  .legend { display: flex; gap: 14px; color: #a8a29e; font-size: 11px; margin-top: 6px; } .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .flow { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: #222; margin: 6px 0 8px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  table { width: 100%; border-collapse: collapse; } th { text-align: left; color: #8f8a85; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; padding: 0 6px 6px; border-bottom: 1px solid #262626; }
+  td { padding: 6px; border-bottom: 1px solid #1d1d1d; } tr:last-child td { border-bottom: 0; } .r { text-align: right; white-space: nowrap; }
+  .pos { color: #2fd27a; font-weight: 700; } .neg { color: #ff5a4f; font-weight: 700; } .muted { color: #8f8a85; }
+  .bar { height: 5px; border-radius: 3px; background: #262626; margin-top: 4px; } .bar i { display: block; height: 100%; border-radius: 3px; background: #ff7a1a; }
+  .advice { display: grid; gap: 8px; } .advice > .tip { display: flex; gap: 10px; align-items: flex-start; background: linear-gradient(90deg, #1d1209, #131313); border: 1px solid #3a210d; border-radius: 10px; padding: 9px 12px; break-inside: avoid; }
+  .advice .ic { font-size: 16px; line-height: 1.2; flex: none; } .advice .tx { flex: 1; min-width: 0; } .advice b { color: #ffb070; }
+  .card, .kpi, .decl, .two > div { break-inside: avoid; page-break-inside: avoid; } h2 { break-after: avoid; page-break-after: avoid; }
+  .empty { color: #8f8a85; padding: 8px 0; }
+  .foot { margin-top: 22px; padding-top: 12px; border-top: 1px solid #262626; color: #77716b; font-size: 10.5px; display: flex; justify-content: space-between; }
+  .decl { margin-top: 12px; padding: 10px 13px; border-radius: 10px; background: #151515; border: 1px dashed #5a2d0c; }
+  @media (max-width: 640px) { .page { padding: 20px 16px; } .kpis { grid-template-columns: 1fr 1fr; } .mini { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } .period { display: none; } }
+</style></head><body><div class="page">
+  <div class="head"><div class="logo">T</div><div><div class="brand">Tyno Entreprise</div><h1>Rapport du mois</h1></div>
+    <div class="period"><b>octobre 2026</b>généré le 5 novembre 2026</div></div>
+
+  <div class="kpis">
+    <div class="kpi hero"><div class="l">Chiffre d'affaires</div><div class="v">1 867 €</div><span class="d up">▲ +66 %</span> <span class="d">vs septembre 2026</span></div>
+    <div class="kpi"><div class="l">Bénéfice net</div><div class="v green">863 €</div><span class="d up">▲ +72 %</span></div>
+    <div class="kpi"><div class="l">Ventes</div><div class="v">46</div><span class="d up">▲ +53 %</span></div>
+    <div class="kpi"><div class="l">Marge nette</div><div class="v">46 %</div><span class="d">18,76 € par vente</span></div>
+  </div>
+  <div class="mini">
+    <div><span>Achats Temu</span><b>774 €</b></div>
+    <div><span>URSSAF (12,3 %)</span><b>230 €</b></div>
+    <div><span>Panier moyen</span><b>40,58 €</b></div>
+    <div><span>Annulations</span><b>1 · 2 %</b></div>
+    <div><span>En attente</span><b>374 €</b></div>
+  </div>
+
+  <h2>Évolution jour par jour</h2>
+  <div class="card"><svg viewBox="0 0 700 170" class="chart"><line x1="0" x2="700" y1="115.5" y2="115.5" stroke="#2a2a2a"/><text x="2" y="112.5" text-anchor="start">51 €</text><line x1="0" x2="700" y1="83" y2="83" stroke="#2a2a2a"/><text x="2" y="80" text-anchor="start">102 €</text><line x1="0" x2="700" y1="50.5" y2="50.5" stroke="#2a2a2a"/><text x="2" y="47.5" text-anchor="start">153 €</text><line x1="0" x2="700" y1="18" y2="18" stroke="#2a2a2a"/><text x="2" y="15" text-anchor="start">205 €</text>
+    <rect x="4.290322580645162" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="8.210322580645162" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    <text x="11.290322580645162" y="164" text-anchor="middle">1</text>
+    <rect x="26.870967741935488" y="103.65004887585533" width="14" height="44.34995112414467" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="30.79096774193549" y="122.44477028347995" width="6.16" height="25.555229716520046" rx="2" fill="#2fd27a"/>
+    
+    <rect x="49.45161290322581" y="59.23655913978496" width="14" height="88.76344086021504" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="53.37161290322581" y="96.83235581622678" width="6.16" height="51.16764418377322" rx="2" fill="#2fd27a"/>
+    <text x="56.45161290322581" y="164" text-anchor="middle">3</text>
+    <rect x="72.03225806451614" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="75.95225806451614" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    
+    <rect x="94.61290322580646" y="94.05571847507332" width="14" height="53.94428152492668" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="98.53290322580646" y="116.21798631476051" width="6.16" height="31.78201368523949" rx="2" fill="#2fd27a"/>
+    <text x="101.61290322580646" y="164" text-anchor="middle">5</text>
+    <rect x="117.19354838709678" y="119.40762463343108" width="14" height="28.592375366568916" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="121.11354838709678" y="131.7913000977517" width="6.16" height="16.2086999022483" rx="2" fill="#2fd27a"/>
+    
+    <rect x="139.7741935483871" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="143.6941935483871" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    <text x="146.7741935483871" y="164" text-anchor="middle">7</text>
+    <rect x="162.3548387096774" y="90.94232649071358" width="14" height="57.05767350928642" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="166.2748387096774" y="114.62952101661779" width="6.16" height="33.37047898338221" rx="2" fill="#2fd27a"/>
+    
+    <rect x="184.93548387096774" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="188.85548387096773" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    <text x="191.93548387096774" y="164" text-anchor="middle">9</text>
+    <rect x="207.51612903225808" y="78.23460410557185" width="14" height="69.76539589442815" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="211.43612903225807" y="110.49315738025416" width="6.16" height="37.50684261974584" rx="2" fill="#2fd27a"/>
+    
+    <rect x="230.09677419354838" y="18" width="14" height="130" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="234.01677419354837" y="69.4980449657869" width="6.16" height="78.5019550342131" rx="2" fill="#2fd27a"/>
+    <text x="237.09677419354838" y="164" text-anchor="middle">11</text>
+    <rect x="252.67741935483872" y="68.70381231671554" width="14" height="79.29618768328446" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="256.59741935483873" y="100.6446725317693" width="6.16" height="47.3553274682307" rx="2" fill="#2fd27a"/>
+    
+    <rect x="275.2580645161291" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="279.1780645161291" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    <text x="282.2580645161291" y="164" text-anchor="middle">13</text>
+    <rect x="297.8387096774194" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="301.7587096774194" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    
+    <rect x="320.4193548387097" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="324.3393548387097" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    <text x="327.4193548387097" y="164" text-anchor="middle">15</text>
+    <rect x="343.00000000000006" y="97.29618768328446" width="14" height="50.70381231671554" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="346.9200000000001" y="116.85337243401759" width="6.16" height="31.146627565982413" rx="2" fill="#2fd27a"/>
+    
+    <rect x="365.58064516129036" y="106.82697947214076" width="14" height="41.17302052785924" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="369.5006451612904" y="126.70185728250244" width="6.16" height="21.298142717497555" rx="2" fill="#2fd27a"/>
+    <text x="372.58064516129036" y="164" text-anchor="middle">17</text>
+    <rect x="388.16129032258067" y="65.4633431085044" width="14" height="82.5366568914956" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="392.0812903225807" y="100.00928641251221" width="6.16" height="47.99071358748779" rx="2" fill="#2fd27a"/>
+    
+    <rect x="410.74193548387103" y="119.40762463343108" width="14" height="28.592375366568916" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="414.66193548387105" y="131.7913000977517" width="6.16" height="16.2086999022483" rx="2" fill="#2fd27a"/>
+    <text x="417.74193548387103" y="164" text-anchor="middle">19</text>
+    <rect x="433.32258064516134" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="437.24258064516135" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    
+    <rect x="455.90322580645164" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="459.82322580645166" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    <text x="462.90322580645164" y="164" text-anchor="middle">21</text>
+    <rect x="478.483870967742" y="62.34995112414467" width="14" height="85.65004887585533" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="482.403870967742" y="98.42082111436949" width="6.16" height="49.57917888563051" rx="2" fill="#2fd27a"/>
+    
+    <rect x="501.0645161290323" y="106.82697947214076" width="14" height="41.17302052785924" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="504.98451612903233" y="124.16031280547409" width="6.16" height="23.839687194525908" rx="2" fill="#2fd27a"/>
+    <text x="508.0645161290323" y="164" text-anchor="middle">23</text>
+    <rect x="523.6451612903226" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="527.5651612903225" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    
+    <rect x="546.2258064516129" y="68.70381231671554" width="14" height="79.29618768328446" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="550.1458064516129" y="100.6446725317693" width="6.16" height="47.3553274682307" rx="2" fill="#2fd27a"/>
+    <text x="553.2258064516129" y="164" text-anchor="middle">25</text>
+    <rect x="568.8064516129032" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="572.7264516129031" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    
+    <rect x="591.3870967741935" y="94.05571847507332" width="14" height="53.94428152492668" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="595.3070967741935" y="116.21798631476051" width="6.16" height="31.78201368523949" rx="2" fill="#2fd27a"/>
+    <text x="598.3870967741935" y="164" text-anchor="middle">27</text>
+    <rect x="613.9677419354839" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="617.8877419354839" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    
+    <rect x="636.5483870967741" y="129.0019550342131" width="14" height="18.998044965786903" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="640.4683870967741" y="138.01808406647115" width="6.16" height="9.981915933528853" rx="2" fill="#2fd27a"/>
+    <text x="643.5483870967741" y="164" text-anchor="middle">29</text>
+    <rect x="659.1290322580645" y="122.64809384164224" width="14" height="25.351906158357764" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="663.0490322580645" y="132.4266862170088" width="6.16" height="15.573313782991193" rx="2" fill="#2fd27a"/>
+    
+    <rect x="681.7096774193549" y="148" width="14" height="0" rx="3" fill="#ff7a1a" opacity=".9"/>
+    <rect x="685.6296774193548" y="148" width="6.16" height="0" rx="2" fill="#2fd27a"/>
+    <text x="688.7096774193549" y="164" text-anchor="middle">31</text></svg>
+    <div class="legend"><span><i style="background:#ff7a1a"></i>Chiffre d'affaires</span><span><i style="background:#2fd27a"></i>Bénéfice</span><span style="margin-left:auto">Meilleur jour : <b style="color:#f3f1ee">dimanche</b></span></div></div>
+
+  <h2>Où va l'argent</h2>
+  <div class="card">
+    <div class="flow"><div style="width:41.47548888293598%;background:#ffb347" title="Achats Temu"></div><div style="width:12.300026788106083%;background:#8b5cf6" title="URSSAF"></div><div style="width:46.22448432895794%;background:#2fd27a" title="Bénéfice net"></div></div>
+    <div class="legend"><span><i style="background:#ffb347"></i>Achats Temu 774 €</span><span><i style="background:#8b5cf6"></i>URSSAF 230 €</span><span><i style="background:#2fd27a"></i>Bénéfice net 863 €</span></div>
+  </div>
+
+  <div class="two">
+    <div><h2>Par compte</h2><div class="card"><table><thead><tr><th class="">Compte</th><th class="r">Ventes</th><th class="r">Bénéfice</th></tr></thead><tbody><tr><td class="">Maison &amp; Déco #1<div class="bar"><i style="width:79%"></i></div></td><td class="r">36</td><td class="r"><span class="pos">700 €</span></td></tr><tr><td class="">Brico Pro<div class="bar"><i style="width:19%"></i></div></td><td class="r">8</td><td class="r"><span class="pos">155 €</span></td></tr><tr><td class="">Tech Store<div class="bar"><i style="width:2%"></i></div></td><td class="r">2</td><td class="r"><span class="pos">7 €</span></td></tr></tbody></table></div></div>
+    <div><h2>Par niche</h2><div class="card"><table><thead><tr><th class="">Niche</th><th class="r">Marge</th><th class="r">Bénéfice</th></tr></thead><tbody><tr><td class="">Maison</td><td class="r">47 %</td><td class="r"><span class="pos">700 €</span></td></tr><tr><td class="">Bricolage</td><td class="r">43 %</td><td class="r"><span class="pos">155 €</span></td></tr><tr><td class="">Tech</td><td class="r">25 %</td><td class="r"><span class="pos">7 €</span></td></tr></tbody></table></div></div>
+  </div>
+
+  <div class="two">
+    <div><h2>Ce qui se vend</h2><div class="card"><table><thead><tr><th class="">Produit</th><th class="r">Ventes</th><th class="r">Bénéfice</th></tr></thead><tbody><tr><td class="">Lampe de bureau LED pliable</td><td class="r">24</td><td class="r"><span class="pos">470 €</span></td></tr><tr><td class="">Miroir rond doré 60 cm</td><td class="r">11</td><td class="r"><span class="pos">220 €</span></td></tr><tr><td class="">Perceuse visseuse 21V + 2 batteries</td><td class="r">6</td><td class="r"><span class="pos">131 €</span></td></tr><tr><td class="">Coffret 46 douilles</td><td class="r">2</td><td class="r"><span class="pos">24 €</span></td></tr><tr><td class="">Coussins velours (lot de 2)</td><td class="r">1</td><td class="r"><span class="pos">10 €</span></td></tr></tbody></table></div></div>
+    <div><h2>Ce qui ne se vend pas</h2><div class="card"><table><thead><tr><th class="">Annonce</th><th class="r">Prix</th><th class="r">En ligne</th></tr></thead><tbody><tr><td class="">Écouteurs sans fil ANC</td><td class="r">35 €</td><td class="r"><span class="muted">65 j</span></td></tr><tr><td class="">Tapis berbère 160x230</td><td class="r">60 €</td><td class="r"><span class="muted">46 j</span></td></tr><tr><td class="">Horloge murale scandinave</td><td class="r">60 €</td><td class="r"><span class="muted">46 j</span></td></tr><tr><td class="">Niveau laser 360°</td><td class="r">60 €</td><td class="r"><span class="muted">46 j</span></td></tr></tbody></table></div></div>
+  </div>
+
+  <h2>Pour augmenter ton bénéfice</h2>
+  <div class="advice"><div class="tip"><span class="ic">🎯</span><div class="tx">La niche <b>Maison</b> rapporte 19 € par vente (47 % de marge) : c'est là qu'il faut publier plus d'annonces.</div></div><div class="tip"><span class="ic">📈</span><div class="tx">CA en hausse de 66 % : ce qui marche, c'est <b>Lampe de bureau LED pliable</b> — duplique-le sur tes autres comptes.</div></div><div class="tip"><span class="ic">🏷️</span><div class="tx">4 annonces en ligne depuis plus de 7 jours sans vente : baisse le prix de 5 à 10 % ou remplace-les par des produits de ta meilleure niche.</div></div><div class="tip"><span class="ic">🏪</span><div class="tx">Le compte <b>Tech Store</b> rapporte 3× moins que <b>Maison &amp; Déco #1</b> : copie-lui les produits qui marchent ou change sa niche.</div></div><div class="tip"><span class="ic">📅</span><div class="tx">Ton meilleur jour est le <b>dimanche</b> : publie tes nouvelles annonces la veille au soir.</div></div></div>
+
+  <div class="decl">🧾 <b>URSSAF</b> : chiffre d'affaires à déclarer <b>1 867 €</b> · cotisations estimées 229,58 € · pas encore déclaré</div>
+  <div class="foot"><span>Tyno Entreprise · rapport généré automatiquement</span><span>Chiffres estimés à partir des ventes enregistrées · port Temu 2,99 € par commande</span></div>
+</div></body></html>
