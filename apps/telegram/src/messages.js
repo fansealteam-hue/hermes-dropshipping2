@@ -77,4 +77,4 @@ function fmtListing(l) {
   return `📋 Annonce \`${l.listingId?.slice(0, 8)}\` — ${l.status} — ${l.priceEur?.toFixed(2)} €`;
 }
 
-export { escMd, fmtProduct, fmtVariant, fmtSaleAlert, fmtTrackingAdded, fmtDashboard, fmtListing };
+module.exports = { escMd, fmtProduct, fmtVariant, fmtSaleAlert, fmtTrackingAdded, fmtDashboard, fmtListing };

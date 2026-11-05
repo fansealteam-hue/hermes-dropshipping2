@@ -229,32 +229,6 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
   }
 }
 
-// --- Claude 4 / bot alert ----------------------------------------------------
-
-async function handleSendAlert({ saleId }, job) {
-  const sale = getSale(saleId);
-  if (!sale) throw new Error(`Sale ${saleId} not found`);
-
-  const product = db.prepare("SELECT * FROM products WHERE temu_item_id = ?").get(sale.temuItemId);
-  const variant = db.prepare("SELECT * FROM variants WHERE variant_id = ?").get(sale.variantId);
-
-  try {
-    const { sendSaleAlert } = require("../../telegram/dist/bot");
-    const chatIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? "").split(",").filter(Boolean).map(Number);
-    for (const chatId of chatIds) {
-      await sendSaleAlert(chatId, {
-        sale,
-        productTitle: product?.title ?? sale.temuItemId,
-        variantLabel: variant?.label ?? sale.variantId,
-      });
-    }
-    db.prepare("UPDATE sales SET alert_sent = 1 WHERE sale_id = ?").run(saleId);
-  } catch (e) {
-    console.warn(`[jobs] sendAlert: ${e.message}`);
-    db.prepare("UPDATE sales SET alert_sent = 1, manual_action_note = 'Alerte Telegram a envoyer manuellement' WHERE sale_id = ?").run(saleId);
-  }
-}
-
 // --- Mark listing sold on LBC + auto-reply "non disponible" (Claude B) --------
 
 /**
