@@ -433,19 +433,8 @@ router.post("/sales/:id/cancel", (req, res) => {
   const sale = getSale(req.params.id);
   if (!sale) return res.status(404).json({ ok: false, error: "Vente introuvable" });
 
-  const { randomUUID } = require("crypto");
-  // Marquer annulée en DB
-  db.prepare("UPDATE sales SET status = 'cancelled', updated_at = datetime('now') WHERE sale_id = ?").run(sale.saleId);
-  try { require("../services/automation").ensureCreditNote(sale.saleId); } catch (e) { console.warn("[auto] avoir:", e.message); }
-
-  // Job pour envoyer message LBC à l'acheteur + annuler sur LBC
-  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  db.prepare(`
-    INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
-    VALUES (?, 'cancel_sale_lbc', ?, 'pending', ?, datetime('now'), datetime('now'))
-  `).run(jobId, JSON.stringify({ saleId: sale.saleId, listingId: sale.listingId }), `cancel:${sale.saleId}`);
-
-  res.json({ ok: true, data: { jobId, status: "enqueued" } });
+  // statut annulé + avoir + message à l'acheteur et retrait de l'annonce (job)
+  res.json({ ok: true, data: require("../services/sales").cancelSale(sale.saleId) });
 });
 
 // ─── Confirmer disponibilité (OUI bouton Telegram) ───────────────────────────
@@ -555,6 +544,13 @@ router.get("/sales/:id/availability", async (req, res) => {
   } catch (e) {
     res.status(e.code === "NOT_FOUND" ? 404 : 500).json({ ok: false, error: e.message ?? String(e) });
   }
+});
+
+// Validation groupée (Telegram « Tout est commandé », mini-app, site)
+router.post("/sales/order-placed", (req, res) => {
+  const ids = Array.isArray(req.body?.saleIds) ? req.body.saleIds.map(String) : [];
+  if (!ids.length) return res.status(400).json({ ok: false, error: "saleIds requis" });
+  res.json({ ok: true, data: require("../services/sales").markOrderedBulk(ids) });
 });
 
 router.post("/sales/:id/order-placed", (req, res) => {

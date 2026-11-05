@@ -24,6 +24,7 @@ module.exports = {
   negotiate: (listingId, offerEur) => apiFetch("/api/negotiate", "POST", { listingId, offerEur }),
   cancelSale: saleId => apiFetch(`/api/sales/${saleId}/cancel`, "POST"),
   confirmAvailable: saleId => apiFetch(`/api/sales/${saleId}/confirm-available`, "POST"),
+  markOrderedBulk: (saleIds) => apiFetch("/api/sales/order-placed", "POST", { saleIds }),
   getListings: () => apiFetch("/api/listings?limit=500"),
   getFinance: (period = "30d") => apiFetch(`/api/finance?period=${period}`),
   getInvoices: () => apiFetch("/api/invoices"),

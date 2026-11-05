@@ -12,7 +12,8 @@ const db = require("../db/db");
 
 const DEFAULT_SETTINGS = {
   seller: { first: "", last: "", company: "", address: "", email: "", siret: "", vatNumber: "", vat: "TVA non applicable, art. 293 B du CGI", prefix: "FA" },
-  auto: { invoices: true, creditNotes: true, trackingReminders: true, declarationReminders: true },
+  auto: { invoices: true, creditNotes: true, trackingReminders: true, declarationReminders: true, autoAvailability: true, autoCancelOutOfStock: false },
+  maxCostIncreasePct: 15,
   trackingReminderDays: 3,
   urssaf: { mode: "month", rate: 12.3, vl: false },
   templates: {
@@ -90,6 +91,7 @@ function saveSettings(patch = {}) {
     const t = String(next.templates[k] ?? "").slice(0, 1000);
     next.templates[k] = t.trim() ? t : DEFAULT_SETTINGS.templates[k]; // vide = modèle par défaut
   }
+  if (patch.maxCostIncreasePct !== undefined) next.maxCostIncreasePct = Math.max(0, Math.min(100, parseFloat(patch.maxCostIncreasePct) || 0));
   if (patch.trackingReminderDays !== undefined) next.trackingReminderDays = Math.max(1, Math.min(30, parseInt(patch.trackingReminderDays) || 3));
   for (const k of Object.keys(next.seller)) next.seller[k] = String(next.seller[k] ?? "").trim().slice(0, 200);
   for (const k of Object.keys(next.auto)) next.auto[k] = !!next.auto[k];

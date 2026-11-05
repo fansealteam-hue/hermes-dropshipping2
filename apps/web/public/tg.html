@@ -294,7 +294,9 @@ function render() {
   // temu
   $("#temu-tabs").innerHTML = [["todo", "À commander", todo.length], ["trk", "Attente du suivi", waitTrk.length]].map(([k, l, n]) => `<button class="chip ${temuTab === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
   document.querySelectorAll("#temu-tabs .chip").forEach((b) => (b.onclick = () => { temuTab = b.dataset.k; haptic(); render(); }));
-  $("#temu-list").innerHTML = (temuTab === "todo" ? todo : waitTrk).map((x) => {
+  const bulk = temuTab === "todo" && todo.length > 1
+    ? `<button class="btn primary block" style="margin:0 0 10px" onclick="bulkOrdered()"><svg><use href="#i-ok"/></svg>Tout est commandé (${todo.length})</button>` : "";
+  $("#temu-list").innerHTML = bulk + (temuTab === "todo" ? todo : waitTrk).map((x) => {
     const id = esc(x.saleId), late = temuTab === "todo" ? daysSince(x.confirmedAt) >= 2 : daysSince(x.orderPlacedAt ?? x.confirmedAt) >= 3;
     const url = /^https:\/\//.test(x.supplierUrl ?? "") ? x.supplierUrl : null;
     return `<div class="sc">
@@ -328,6 +330,17 @@ async function patch(id, body, okMsg) {
   if (DEMO) return toast("Mode démo : rien n'a été enregistré");
   try { await api(`/api/sales/${encodeURIComponent(id)}/tracking`, { method: "PATCH", body: JSON.stringify(body) }); try { tg.HapticFeedback.notificationOccurred("success"); } catch {} toast(okMsg); load(); }
   catch (e) { try { tg.HapticFeedback.notificationOccurred("error"); } catch {} toast("Erreur : " + e.message); }
+}
+async function bulkOrdered() {
+  const ids = S.sales.filter((x) => x.status === "confirmed").map((x) => x.saleId);
+  const go = async (ok) => {
+    if (!ok) return;
+    if (DEMO) return toast("Mode démo : rien n'a été enregistré");
+    try { const r = (await api("/api/sales/order-placed", { method: "POST", body: JSON.stringify({ saleIds: ids }) })).data; try { tg.HapticFeedback.notificationOccurred("success"); } catch {} toast(`${r.done.length} vente(s) commandée(s) ✓`); load(); }
+    catch (e) { toast("Erreur : " + e.message); }
+  };
+  const q = `Marquer les ${ids.length} ventes comme commandées sur Temu ?`;
+  try { tg.showConfirm(q, go); } catch { go(confirm(q)); }
 }
 function markOrdered(id) { const v = document.getElementById("ref-" + id).value.trim(); if (!v) return toast("Colle la référence Temu"); patch(id, { orderRef: v }, "Commande enregistrée ✓"); }
 function addTracking(id) { const v = document.getElementById("trk-" + id).value.trim(); if (!v) return toast("Colle le numéro de suivi"); patch(id, { trackingNumber: v }, "Suivi ajouté ✓ — message envoyé à l'acheteur"); }

@@ -119,3 +119,45 @@ test("photo /media/… de l'annonce : lue dans MEDIA_DIR puis uploadée", async 
   assert.match(calls[0].url, /sendPhoto$/);
   assert.equal(calls[0].form, true, "fichier local envoyé en upload");
 });
+
+test("décision auto : en stock + rentable + prix stable → commande directe ; sinon on demande", () => {
+  const sale = { salePriceEur: 45, costEur: 15 };
+  const on = { auto: { autoAvailability: true, autoCancelOutOfStock: false }, maxCostIncreasePct: 15 };
+  assert.equal(alert.decide(sale, { available: true, costChanged: false, currentCostEur: 15 }, on).kind, "order");
+  assert.equal(alert.decide(sale, { available: true, costChanged: true, currentCostEur: 18 }, on).kind, "ask", "prix +20 % > 15 %");
+  assert.match(alert.decide(sale, { available: true, costChanged: true, currentCostEur: 18 }, on).reason, /\+20 %/);
+  assert.equal(alert.decide({ salePriceEur: 10, costEur: 15 }, { available: true, currentCostEur: 15 }, on).kind, "ask", "à perte");
+  assert.equal(alert.decide(sale, { available: false }, on).kind, "ask");
+  assert.equal(alert.decide(sale, { available: false }, { ...on, auto: { ...on.auto, autoCancelOutOfStock: true } }).kind, "cancel");
+  assert.equal(alert.decide(sale, { available: true, currentCostEur: 15 }, { ...on, auto: { autoAvailability: false } }).kind, "ask", "désactivé");
+  const kb = alert.orderKeyboard("sX", "https://www.temu.com/p.html").inline_keyboard;
+  assert.equal(kb[0][0].url, "https://www.temu.com/p.html");
+  assert.deepEqual(kb[1].map((b) => b.callback_data), ["confirm_payment:sX", "cancel_ask:sX"]);
+});
+
+test("validation groupée : seules les ventes « à commander » passent en commandées", () => {
+  const { markOrderedBulk } = require("../services/sales");
+  db.prepare(`INSERT INTO sales (sale_id, listing_id, channel, account_id, temu_item_id, variant_id, supplier_url, sale_price_eur_cents, cost_eur_cents,
+    status, external_event_id, confirmed_at, updated_at) VALUES ('b1', 'l', 'leboncoin', 'lbc_compte_a', 'tm1', 'v1', 'u', 3000, 1000, 'confirmed', 'eb1', datetime('now'), datetime('now'))`).run();
+  const r = markOrderedBulk(["b1", "s_ok", "inconnu", "b1"]);
+  assert.deepEqual(r.done, ["b1"]);
+  assert.deepEqual(r.skipped.sort(), ["inconnu", "s_ok"]);
+  assert.equal(getSale("b1").status, "order_placed");
+});
+
+test("annulation automatique en cas de rupture (si activée)", async () => {
+  require("../services/automation").saveSettings({ auto: { autoCancelOutOfStock: true } });
+  db.prepare(`INSERT INTO sales (sale_id, listing_id, channel, account_id, temu_item_id, variant_id, supplier_url, sale_price_eur_cents, cost_eur_cents,
+    status, external_event_id, confirmed_at, updated_at) VALUES ('r1', 'l', 'leboncoin', 'lbc_compte_a', 'tm1', 'v2', 'u', 3000, 1500, 'confirmed', 'er1', datetime('now'), datetime('now'))`).run();
+  process.env.TELEGRAM_BOT_TOKEN = "123:abc"; process.env.TELEGRAM_ALLOWED_CHAT_IDS = "111";
+  const calls = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url, o) => { calls.push(o.body instanceof FormData ? Object.fromEntries(o.body) : JSON.parse(o.body)); return { status: 200, json: async () => ({ ok: true, result: {} }) }; };
+  try { await alert.sendSaleAlert("r1"); } finally { globalThis.fetch = orig; }
+  assert.equal(getSale("r1").status, "cancelled");
+  assert.ok(db.prepare("SELECT 1 FROM jobs WHERE operation = 'cancel_sale_lbc' AND payload LIKE '%r1%'").get(), "message d'annulation programmé");
+  const sent = calls.at(-1);
+  assert.match(sent.caption ?? sent.text, /Annulée automatiquement/);
+  assert.equal(sent.reply_markup, undefined, "pas de boutons");
+  require("../services/automation").saveSettings({ auto: { autoCancelOutOfStock: false } });
+});

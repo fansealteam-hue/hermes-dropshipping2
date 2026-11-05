@@ -59,6 +59,7 @@ const MENU = [
   "🔗 /lien — analyser un produit Temu",
   "🧾 /commande — référence de commande Temu",
   "📬 /suivi — numéro de suivi",
+  "✅ /acommander — tout valider d'un coup",
   "📱 /app — ouvrir l'application",
 ].join("\n");
 
@@ -285,6 +286,48 @@ bot.command("ventes", async ctx => {
   return ctx.reply([`🛍️ <b>Ventes en attente · ${sales.length}</b>`, LINE, cards.join(`\n${LINE}\n`)].join("\n") + more, { parse_mode: "HTML", reply_markup: appButton("📱 Ouvrir les ventes") });
 });
 
+// ─── /acommander : tout valider d'un coup ─────────────────────────────────────
+
+bot.command(["acommander", "valider"], async ctx => {
+  const [res, lst, acc] = await Promise.all([api.getActiveSales(), api.getListings(), api.getAccountsStats()]);
+  if (!res.ok) return ctx.reply("❌ Ventes indisponibles pour le moment.");
+  const todo = (res.data ?? []).filter((s) => s.status === "confirmed").sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt));
+  if (!todo.length) return ctx.reply("✅ Rien à commander sur Temu : tout est à jour.");
+  ctx.session.bulkIds = todo.map((s) => s.saleId);
+  const titleOf = Object.fromEntries((lst.data ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
+  const accOf = Object.fromEntries((acc.data ?? []).map((a) => [a.accountId, a.label]));
+  const total = todo.reduce((t, s) => t + s.costEur + SHIP, 0);
+  const lines = todo.slice(0, 12).map((s, i) => [
+    `<b>${i + 1}. ${h(titleOf[s.listingId] ?? "Produit")}</b>`,
+    `   🏪 ${h(accOf[s.accountId] ?? s.accountId)} · 👤 ${h(s.buyerName ?? "Acheteur")}${s.deliveryAddress ? `, ${h(s.deliveryAddress)}` : ""}`,
+    `   💶 ${eur(s.salePriceEur)} · 🛒 Temu ${eur(s.costEur + SHIP)} · ${relDay(s.confirmedAt)}`,
+  ].join("\n"));
+  const kb = new InlineKeyboard();
+  todo.slice(0, 12).forEach((s, i) => { if (/^https:\/\//.test(s.supplierUrl ?? "")) { kb.url(`🛒 ${i + 1}`, s.supplierUrl); if ((i + 1) % 4 === 0) kb.row(); } });
+  kb.row().text(`✅ Tout est commandé (${todo.length})`, "bulk_ordered");
+  return ctx.reply([
+    `🛒 <b>À commander sur Temu · ${todo.length}</b>`, LINE, lines.join("\n\n"),
+    todo.length > 12 ? `\n+ ${todo.length - 12} autre(s)` : "", LINE,
+    `💳 Total à payer sur Temu : <b>${eur(total)}</b>`,
+    "Commande avec les boutons 🛒, puis valide tout d'un coup 👇",
+  ].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: kb });
+});
+
+bot.callbackQuery("bulk_ordered", async ctx => {
+  const ids = ctx.session.bulkIds ?? [];
+  if (!ids.length) { await ctx.answerCallbackQuery("Liste expirée : relance /acommander"); return; }
+  const r = await api.markOrderedBulk(ids);
+  if (!r.ok) { await ctx.answerCallbackQuery(`Erreur : ${r.error ?? "non enregistré"}`); return; }
+  ctx.session.bulkIds = [];
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  await ctx.answerCallbackQuery(`✅ ${r.data.done.length} validée(s)`);
+  await ctx.reply([
+    `✅ <b>${r.data.done.length} vente${r.data.done.length > 1 ? "s" : ""} passée${r.data.done.length > 1 ? "s" : ""} en « Commandée »</b>`,
+    r.data.skipped.length ? `${r.data.skipped.length} déjà traitée(s) entre-temps.` : "",
+    "📬 Ajoute les numéros de suivi dès que Temu les donne : l'acheteur reçoit ton message d'expédition automatiquement (rappel si oubli).",
+  ].filter(Boolean).join("\n"), { parse_mode: "HTML" });
+});
+
 // ─── /commande ────────────────────────────────────────────────────────────────
 
 bot.command("commande", async ctx => {
@@ -497,6 +540,7 @@ if (require.main === module) {
   if (appUrl()) bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: "Tyno", web_app: { url: appUrl() } } }).catch((e) => console.warn("[bot] menu app:", e.message));
   bot.api.setMyCommands([
     { command: "dashboard", description: "Chiffres du mois" }, { command: "ventes", description: "Ventes en cours" },
+    { command: "acommander", description: "Tout valider d'un coup" },
     { command: "app", description: "Ouvrir l'application" }, { command: "lien", description: "Analyser un produit Temu" },
     { command: "commande", description: "Référence de commande Temu" }, { command: "suivi", description: "Numéro de suivi" },
   ]).catch(() => {});

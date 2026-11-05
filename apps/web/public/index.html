@@ -1489,6 +1489,7 @@ th.sort.on { color: var(--accent); }
       <div class="grid kpis" id="temu-kpis"></div>
       <div class="toolbar">
         <div class="chips" id="temu-chips"></div>
+        <button class="btn primary" id="temu-bulk" style="margin-left:auto"><svg width="13" height="13"><use href="#i-check"/></svg>Tout marquer commandé</button>
       </div>
       <div class="to-order" id="temu-list"></div>
       <div class="note">1. « Commander sur Temu » · 2. paie avec l'adresse de l'acheteur (complète dans la conversation Leboncoin) · 3. colle la référence → « Commandé ». La vente passe en « Payée · attente du suivi » ; dès que Temu donne le n° de suivi, ajoute-le (Tyno te le rappelle sur Telegram).</div>
@@ -4037,6 +4038,14 @@ function renderTemu() {
     .map(([k, l, n]) => `<button class="chip ${temuFilter === k ? "on" : ""}" data-k="${k}">${l}<span class="n">${n}</span></button>`).join("");
   $$("#temu-chips .chip").forEach((c) => (c.onclick = () => { temuFilter = c.dataset.k; renderTemu(); }));
   const list = temuFilter === "todo" ? todo : ordered;
+  $("#temu-bulk").style.display = temuFilter === "todo" && todo.length > 1 ? "" : "none";
+  $("#temu-bulk").innerHTML = `<svg width="13" height="13"><use href="#i-check"/></svg>Tout marquer commandé (${todo.length})`;
+  $("#temu-bulk").onclick = async () => {
+    if (!confirm(`Marquer les ${todo.length} ventes comme commandées sur Temu ?\n\nFais-le seulement si tu as bien passé toutes les commandes.`)) return;
+    if (DEMO) return toast("Mode démo : rien n'a été enregistré");
+    try { const r = (await api("/api/sales/order-placed", { method: "POST", body: JSON.stringify({ saleIds: todo.map((x) => x.saleId) }) })).data; toast(`${r.done.length} vente(s) passée(s) en « Commandée » ✓`); load(); }
+    catch (e) { toast("Erreur : " + e.message); }
+  };
   const titleOf = Object.fromEntries((state.listings ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
   const byItem = itemTitles();
   const accLabel = Object.fromEntries(state.accounts.map((a) => [a.accountId, a.label]));
@@ -4509,13 +4518,15 @@ const creditNumbers = () => {
 };
 function renderAutoCard() {
   const a = SERVER() ? state.autoSettings : null;
-  const on = (k) => (a ? a.auto[k] : DEMO);
+  const on = (k) => (a ? a.auto[k] : DEMO && k !== "autoCancelOutOfStock");
   const days = a?.trackingReminderDays ?? 3;
   const rows = [
     ["🧾", "Factures automatiques", "une facture numérotée à chaque vente, sans rien cliquer", "invoices"],
     ["↩️", "Avoirs automatiques", "quand une vente facturée est annulée", "creditNotes"],
     ["⏳", "Rappel « numéro de suivi »", `sur Telegram si une commande payée n'a pas de suivi après <input class="inline-input num" style="width:48px;height:24px" type="number" min="1" max="30" value="${days}" onchange="saveAuto({ trackingReminderDays: this.value })" onclick="event.stopPropagation()"> j`, "trackingReminders"],
     ["📅", "Rappel déclaration URSSAF", "sur Telegram le 1er, le 15 et les 3 derniers jours avant l'échéance", "declarationReminders"],
+    ["⚡", "Disponibilité validée toute seule", `si Temu a du stock, que la vente est rentable et que le prix n'a pas pris plus de <input class="inline-input num" style="width:48px;height:24px" type="number" min="0" max="100" value="${a?.maxCostIncreasePct ?? 15}" onchange="saveAuto({ maxCostIncreasePct: this.value })" onclick="event.stopPropagation()"> % : l'alerte Telegram passe directement à « Commander sur Temu »`, "autoAvailability"],
+    ["🚫", "Annulation auto si rupture", "la vente est annulée et l'acheteur reçoit ton message d'annulation — à activer seulement si tu es sûr", "autoCancelOutOfStock"],
   ];
   $("#auto-list").innerHTML = (a || DEMO) ? rows.map(([ic, t, d, k]) => `<div class="auto-row"><span class="ic">${ic}</span><div style="min-width:0"><div class="t">${t}</div><div class="d">${d}</div></div>
     <label class="switch"><input type="checkbox" ${on(k) ? "checked" : ""} onchange="saveAuto({ auto: { ${k}: this.checked } })" /><span></span></label></div>`).join("")

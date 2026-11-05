@@ -80,6 +80,34 @@ function getActiveSales() {
   ).all().map(rowToSale);
 }
 
+/** Annule une vente : statut, avoir si facturée, message à l'acheteur + retrait de l'annonce (job). */
+function cancelSale(saleId) {
+  const sale = getSale(saleId);
+  if (!sale) throw { code: "NOT_FOUND", message: `Vente ${saleId} introuvable` };
+  if (sale.status === "cancelled") return { saleId, already: true };
+  db.prepare("UPDATE sales SET status = 'cancelled', updated_at = ? WHERE sale_id = ?").run(new Date().toISOString(), saleId);
+  try { require("./automation").ensureCreditNote(saleId); } catch (e) { console.warn("[auto] avoir:", e.message); }
+  const jobId = `job_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  db.prepare(`INSERT OR IGNORE INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+              VALUES (?, 'cancel_sale_lbc', ?, 'pending', ?, datetime('now'), datetime('now'))`)
+    .run(jobId, JSON.stringify({ saleId, listingId: sale.listingId }), `cancel:${saleId}`);
+  return { saleId, jobId, status: "enqueued" };
+}
+
+/** Validation groupée : plusieurs ventes passées en « commandée » d'un coup. */
+function markOrderedBulk(saleIds = []) {
+  const done = [], skipped = [];
+  for (const id of [...new Set(saleIds)].slice(0, 200)) {
+    try {
+      const before = getSale(id);
+      if (!before || before.status !== "confirmed") { skipped.push(id); continue; }
+      markOrdered(id);
+      done.push(id);
+    } catch { skipped.push(id); }
+  }
+  return { done, skipped };
+}
+
 function getAllSales() {
   return db.prepare("SELECT * FROM sales ORDER BY confirmed_at DESC").all().map(rowToSale);
 }
@@ -182,4 +210,4 @@ function rowToSale(row) {
   };
 }
 
-module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery, markOrdered, getAllSales };
+module.exports = { confirmSale, getSale, getActiveSales, getSalesNeedingAction, addTracking, confirmDelivery, markOrdered, getAllSales, cancelSale, markOrderedBulk };

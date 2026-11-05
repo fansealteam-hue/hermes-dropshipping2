@@ -89,6 +89,32 @@ function alertKeyboard(saleId) {
   ] };
 }
 
+/** Boutons quand la disponibilité est validée automatiquement : on passe directement à la commande. */
+function orderKeyboard(saleId, supplierUrl) {
+  const rows = [];
+  if (/^https:\/\//.test(supplierUrl ?? "")) rows.push([{ text: "🛒 Commander sur Temu", url: supplierUrl }]);
+  rows.push([{ text: "✅ J'ai commandé", callback_data: `confirm_payment:${saleId}` }, { text: "❌ Annuler", callback_data: `cancel_ask:${saleId}` }]);
+  return { inline_keyboard: rows };
+}
+
+/**
+ * Décision automatique à la réception d'une vente :
+ *  - "order"  : en stock, prix stable, rentable → on saute la question « disponible ? »
+ *  - "cancel" : rupture de stock et annulation auto activée
+ *  - "ask"    : sinon, on demande (comme avant)
+ */
+function decide(sale, a, settings) {
+  const fee = parseFloat(process.env.TEMU_SHIPPING_FEE ?? "2.99");
+  const cost = (a.currentCostEur ?? sale.costEur) + fee;
+  const profitable = sale.salePriceEur - cost > 0;
+  const rise = a.costChanged && a.currentCostEur != null && sale.costEur > 0 ? ((a.currentCostEur - sale.costEur) / sale.costEur) * 100 : 0;
+  const stable = rise <= (settings?.maxCostIncreasePct ?? 15);
+  if (a.available === false && settings?.auto?.autoCancelOutOfStock) return { kind: "cancel", reason: "rupture de stock" };
+  if (a.available === true && profitable && stable && settings?.auto?.autoAvailability !== false) return { kind: "order" };
+  const why = a.available === false ? "rupture de stock" : a.available == null ? "stock inconnu" : !profitable ? "vente à perte" : !stable ? `prix Temu +${Math.round(rise)} %` : "validation manuelle";
+  return { kind: "ask", reason: why };
+}
+
 async function tgCall(method, body) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
@@ -140,7 +166,7 @@ function tgUpload(chat_id, blob, name, extra) {
   const fd = new FormData();
   fd.append("chat_id", String(chat_id));
   fd.append("photo", blob, name);
-  for (const [k, v] of Object.entries(extra)) fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
+  for (const [k, v] of Object.entries(extra)) if (v !== undefined) fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
   return tgCall("sendPhoto", fd);
 }
 const visibleLength = (html) => html.replace(/<[^>]+>/g, "").replace(/&(lt|gt|amp);/g, "x").length;
@@ -154,8 +180,22 @@ async function sendSaleAlert(saleId) {
   if (!sale) throw new Error(`Vente ${saleId} introuvable`);
   const a = await checkAvailability(saleId, { refresh: process.env.NODE_ENV !== "test" });
   const acc = db.prepare("SELECT label FROM seller_accounts WHERE account_id = ?").get(sale.accountId);
-  const text = buildAlertText(sale, a, acc?.label);
-  const reply_markup = alertKeyboard(saleId);
+  let settings = null;
+  try { settings = require("./automation").getSettings(); } catch { /* réglages par défaut */ }
+  const d = decide(sale, a, settings);
+  let text = buildAlertText(sale, a, acc?.label);
+  let reply_markup;
+  if (d.kind === "order") {
+    text += "\n\n🤖 <b>Disponibilité vérifiée automatiquement</b> — commande sur Temu puis appuie sur « J'ai commandé ».";
+    reply_markup = orderKeyboard(saleId, sale.supplierUrl);
+  } else if (d.kind === "cancel") {
+    require("./sales").cancelSale(saleId);
+    text += "\n\n❌ <b>Annulée automatiquement</b> (rupture de stock) : l'acheteur a reçu ton message d'annulation.";
+    reply_markup = undefined;
+  } else {
+    text += `\n\n👉 <b>À valider par toi</b> : ${esc(d.reason)}.`;
+    reply_markup = alertKeyboard(saleId);
+  }
   const photos = photoCandidates(sale);
   const fits = visibleLength(text) <= 1024; // limite Telegram d'une légende
   let sent = 0;
@@ -179,4 +219,4 @@ async function sendSaleAlert(saleId) {
   return sent;
 }
 
-module.exports = { checkAvailability, buildAlertText, alertKeyboard, sendSaleAlert, availabilityLine, photoCandidates };
+module.exports = { checkAvailability, buildAlertText, alertKeyboard, orderKeyboard, decide, sendSaleAlert, availabilityLine, photoCandidates };
