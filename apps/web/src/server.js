@@ -248,6 +248,7 @@ app.patch("/api/accounts/:id/niche", requireAuth, (req, res) =>
 app.get("/api/automation/settings", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/settings"));
 app.put("/api/automation/settings", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/settings", "PUT", req.body));
 app.post("/api/automation/run", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/run", "POST"));
+app.post("/api/automation/preview", requireAuth, (req, res) => proxyApi(req, res, "/api/automation/preview", "POST", req.body));
 app.get("/api/invoices", requireAuth, (req, res) => proxyApi(req, res, "/api/invoices"));
 app.post("/api/invoices/import", requireAuth, (req, res) => proxyApi(req, res, "/api/invoices/import", "POST", req.body));
 app.post("/api/sales/:id/invoice", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/invoice`, "POST"));

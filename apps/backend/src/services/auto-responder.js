@@ -25,9 +25,14 @@ const AMOUNT_RE = /(\d+(?:[.,]\d+)?)\s*(?:€|euros?)/i;
  * Reply for a sold listing — always "non disponible".
  * Called automatically when the listing status is 'sold'.
  */
-function soldReply() {
+function soldReply(productTitle) {
+  let reply = "Désolé, cet article vient d'être vendu. N'hésitez pas à consulter mes autres annonces !";
+  try {
+    const auto = require("./automation");
+    reply = auto.renderTemplate(auto.getSettings().templates.sold, { itemTitle: productTitle });
+  } catch { /* modèle indisponible : texte par défaut */ }
   return {
-    reply: "Désolé, cet article vient d'être vendu. N'hésitez pas à consulter mes autres annonces !",
+    reply,
     action: "send",
     reason: "listing_sold",
   };
@@ -42,7 +47,7 @@ async function generateReply({
   listingStatus = "published",
 }) {
   // Listing already sold → always reply non disponible
-  if (listingStatus === "sold") return soldReply();
+  if (listingStatus === "sold") return soldReply(productTitle);
   const lower = buyerMessage.toLowerCase();
 
   // Litige keywords → always escalate to operator

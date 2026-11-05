@@ -103,3 +103,28 @@ test("sans Telegram configuré, le rappel n'est pas consommé", async () => {
   assert.equal(await auto.trackingReminders(), 0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM reminders").get().n, 0);
 });
+
+test("modèles de messages : variables remplies, prénom manquant géré, vide = défaut", () => {
+  const t = auto.renderTemplate("Bonjour {prenom} ! Suivi {suivi}{transporteur} → {lien_suivi} · {inconnu}", { buyerName: "Julie Martin", trackingNumber: "LX1FR", trackingCarrier: "Colissimo" });
+  assert.equal(t, "Bonjour Julie ! Suivi LX1FR (Colissimo) → https://t.17track.net/fr#nums=LX1FR · {inconnu}");
+  assert.equal(auto.renderTemplate("Bonjour {prenom} !", {}), "Bonjour !");
+  auto.saveSettings({ templates: { shipping: "Colis parti : {suivi}", cancel: "   " } });
+  const st = auto.getSettings();
+  assert.equal(st.templates.shipping, "Colis parti : {suivi}");
+  assert.match(st.templates.cancel, /n'est plus disponible/, "modèle vide → défaut");
+  assert.equal(auto.messageFor("shipping", "s2", { trackingNumber: "ZZ9" }), "Colis parti : ZZ9");
+});
+
+test("suivi ajouté → message d'expédition envoyé et visible dans les conversations", async () => {
+  require("../services/conversations");
+  const handlersQueue = require("../jobs/queue");
+  require("../jobs/handlers");
+  db.prepare(`INSERT INTO jobs (job_id, operation, payload, status, idempotency_key, run_at, created_at)
+              VALUES ('jt', 'sync_tracking', ?, 'pending', 'k-jt', datetime('now'), datetime('now'))`).run(JSON.stringify({ saleId: "s2", trackingNumber: "ZZ9", trackingCarrier: "Colissimo" }));
+  await handlersQueue.tick();
+  await new Promise((r) => setTimeout(r, 50));
+  const conv = require("../services/conversations").listConversations().find((c) => c.lastMessage?.body === "Colis parti : ZZ9");
+  assert.ok(conv, "message auto journalisé");
+  assert.equal(conv.lastMessage.action, "auto");
+  assert.equal(conv.needsYou, false);
+});

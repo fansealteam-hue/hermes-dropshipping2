@@ -15,7 +15,14 @@ const DEFAULT_SETTINGS = {
   auto: { invoices: true, creditNotes: true, trackingReminders: true, declarationReminders: true },
   trackingReminderDays: 3,
   urssaf: { mode: "month", rate: 12.3, vl: false },
+  templates: {
+    shipping: "Bonjour {prenom} ! Votre colis est en route 📦\nN° de suivi : {suivi}{transporteur}\nSuivre le colis : {lien_suivi}\nMerci pour votre achat et bonne journée !",
+    cancel: "Bonjour {prenom}, je suis désolé(e) mais « {produit} » n'est plus disponible. Votre paiement ne sera pas débité ou vous sera remboursé par Leboncoin. Toutes mes excuses pour la gêne occasionnée.",
+    sold: "Bonjour ! Désolé, « {produit} » vient d'être vendu. N'hésitez pas à regarder mes autres annonces 😊",
+    delivered: "Bonjour {prenom}, j'espère que « {produit} » vous plaît ! Si tout est bon, pensez à confirmer la réception sur Leboncoin. Merci et à bientôt !",
+  },
 };
+const TEMPLATE_KEYS = ["shipping", "cancel", "sold", "delivered"];
 
 let ready = false;
 function init() {
@@ -64,6 +71,7 @@ function getSettings() {
     seller: { ...DEFAULT_SETTINGS.seller, ...(v.seller ?? {}) },
     auto: { ...DEFAULT_SETTINGS.auto, ...(v.auto ?? {}) },
     urssaf: { ...DEFAULT_SETTINGS.urssaf, ...(v.urssaf ?? {}) },
+    templates: { ...DEFAULT_SETTINGS.templates, ...(v.templates ?? {}) },
   };
 }
 
@@ -76,7 +84,12 @@ function saveSettings(patch = {}) {
     seller: { ...cur.seller, ...clean(patch.seller, Object.keys(DEFAULT_SETTINGS.seller)) },
     auto: { ...cur.auto, ...clean(patch.auto, Object.keys(DEFAULT_SETTINGS.auto)) },
     urssaf: { ...cur.urssaf, ...clean(patch.urssaf, Object.keys(DEFAULT_SETTINGS.urssaf)) },
+    templates: { ...cur.templates, ...clean(patch.templates, TEMPLATE_KEYS) },
   };
+  for (const k of TEMPLATE_KEYS) {
+    const t = String(next.templates[k] ?? "").slice(0, 1000);
+    next.templates[k] = t.trim() ? t : DEFAULT_SETTINGS.templates[k]; // vide = modèle par défaut
+  }
   if (patch.trackingReminderDays !== undefined) next.trackingReminderDays = Math.max(1, Math.min(30, parseInt(patch.trackingReminderDays) || 3));
   for (const k of Object.keys(next.seller)) next.seller[k] = String(next.seller[k] ?? "").trim().slice(0, 200);
   for (const k of Object.keys(next.auto)) next.auto[k] = !!next.auto[k];
@@ -320,7 +333,38 @@ async function runAutomation(now = new Date()) {
   return { invoices, credits, reminders };
 }
 
+// ─── Messages automatiques (modèles) ─────────────────────────────────────────
+
+const trackingUrl = (n) => (n ? `https://t.17track.net/fr#nums=${encodeURIComponent(n)}` : "");
+
+/** Remplit un modèle : {prenom} {produit} {suivi} {transporteur} {lien_suivi} {prix} {boutique}. */
+function renderTemplate(template, ctx = {}) {
+  const first = String(ctx.buyerName ?? "").trim().split(/\s+/)[0] ?? "";
+  const vars = {
+    prenom: first, produit: ctx.itemTitle ?? "l'article", suivi: ctx.trackingNumber ?? "",
+    transporteur: ctx.trackingCarrier ? ` (${ctx.trackingCarrier})` : "", lien_suivi: trackingUrl(ctx.trackingNumber),
+    prix: ctx.priceEur != null ? `${Number(ctx.priceEur).toFixed(2).replace(".", ",")} €` : "", boutique: ctx.shop ?? "",
+  };
+  return String(template)
+    .replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m))
+    .replace(/Bonjour\s+!/g, "Bonjour !") // prénom inconnu
+    .replace(/[ \t]+\n/g, "\n").trim();
+}
+
+/** Message prêt à envoyer pour une vente (kind : shipping | cancel | sold | delivered). */
+function messageFor(kind, saleId, extra = {}) {
+  init();
+  const st = getSettings();
+  const s = saleId ? saleRow(saleId) : null;
+  const acc = s ? db.prepare("SELECT label FROM seller_accounts WHERE account_id = ?").get(s.account_id) : null;
+  return renderTemplate(st.templates[kind] ?? DEFAULT_SETTINGS.templates[kind], {
+    buyerName: s?.buyer_name, itemTitle: s?.item_title ?? extra.itemTitle, trackingNumber: extra.trackingNumber ?? s?.tracking_number,
+    trackingCarrier: extra.trackingCarrier ?? s?.tracking_carrier, priceEur: s ? s.sale_price_eur_cents / 100 : undefined, shop: acc?.label, ...extra,
+  });
+}
+
 module.exports = {
+  renderTemplate, messageFor, TEMPLATE_KEYS,
   getSettings, saveSettings, ensureInvoice, ensureCreditNote, listInvoices, importInvoices,
   declarations, setDeclared, trackingReminders, declarationReminders, runAutomation, periodsFor,
 };

@@ -168,11 +168,18 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
 
   const account = db.prepare("SELECT * FROM seller_accounts WHERE account_id = ?").get(sale.account_id);
   const isMock = process.env.NODE_ENV === "test" || (account?.credentials_ref ?? "").startsWith("mock_");
+  const auto = require("../services/automation");
+  const msg = auto.messageFor("shipping", saleId, { trackingNumber, trackingCarrier });
+  const logSent = () => {
+    try { require("../services/conversations").logAutoMessage({ listingId: sale.listing_id, accountId: sale.account_id, buyerName: sale.buyer_name, body: msg, kind: "shipping" }); }
+    catch (e) { console.warn("[jobs] journal message:", e.message); }
+  };
 
   if (isMock) {
     db.prepare("UPDATE sales SET leboncoin_delivery_confirmed = 1, manual_action_required = 0, updated_at = ? WHERE sale_id = ?")
       .run(new Date().toISOString(), saleId);
-    return { saleId, synced: true };
+    logSent();
+    return { saleId, synced: true, message: msg };
   }
 
   // Production: post tracking in Leboncoin conversation
@@ -200,9 +207,9 @@ async function handleSyncTracking({ saleId, trackingNumber, trackingCarrier }, j
 
     await page.goto(`https://www.leboncoin.fr/messagerie/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });
 
-    const msg = `Numero de suivi : ${trackingNumber}${trackingCarrier ? ` (${trackingCarrier})` : ""}`;
     await page.fill('[data-testid="message-input"]', msg);
     await page.click('[data-testid="send-message"]');
+    logSent();
 
     const newState = await context.storageState();
     const sessionDir = SESSIONS_DIR;
@@ -334,12 +341,19 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
     : null;
   const isMock = process.env.NODE_ENV === "test" || (account?.credentials_ref ?? "").startsWith("mock_");
 
+  const cancelMsg = require("../services/automation").messageFor("cancel", saleId);
+  const logCancel = () => {
+    try { require("../services/conversations").logAutoMessage({ listingId: sale.listing_id, accountId: sale.account_id, buyerName: sale.buyer_name, body: cancelMsg, kind: "cancel" }); }
+    catch (e) { console.warn("[jobs] journal message:", e.message); }
+  };
+
   if (isMock) {
     if (listing) {
       db.prepare("UPDATE listings SET status = 'cancelled', updated_at = ? WHERE listing_id = ?")
         .run(new Date().toISOString(), listingId);
     }
-    return { saleId, cancelled: true };
+    logCancel();
+    return { saleId, cancelled: true, message: cancelMsg };
   }
 
   let browser;
@@ -355,9 +369,9 @@ async function handleCancelSaleLbc({ saleId, listingId }, job) {
     // Envoyer message à l'acheteur dans la conversation LBC
     if (listing?.leboncoin_ad_id) {
       await page.goto(`https://www.leboncoin.fr/messagerie/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });
-      const cancelMsg = "Bonjour, je suis désolé(e) mais cet article n'est plus disponible à la vente. Je vous présente mes excuses pour la gêne occasionnée.";
       await page.fill('[data-testid="message-input"]', cancelMsg);
       await page.click('[data-testid="send-message"]');
+      logCancel();
 
       // Supprimer l'annonce
       await page.goto(`https://www.leboncoin.fr/mes-annonces/${listing.leboncoin_ad_id}`, { waitUntil: "domcontentloaded" });

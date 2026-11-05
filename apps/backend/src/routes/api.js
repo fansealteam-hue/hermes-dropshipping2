@@ -591,6 +591,12 @@ router.put("/automation/settings", (req, res) => {
 router.post("/automation/run", async (req, res) => {
   try { res.json({ ok: true, data: await auto.runAutomation() }); } catch (e) { autoErr(res, e); }
 });
+router.post("/automation/preview", (req, res) => {
+  const { template = "", kind = "shipping" } = req.body ?? {};
+  const sample = { buyerName: "Julie Martin", itemTitle: "Perceuse visseuse sans fil 21V", trackingNumber: "LX123456789FR", trackingCarrier: "Colissimo", priceEur: 45, shop: "Boutique Principale" };
+  const st = auto.getSettings();
+  res.json({ ok: true, data: { text: auto.renderTemplate(template || st.templates[kind] || "", sample) } });
+});
 router.get("/invoices", (req, res) => res.json({ ok: true, data: auto.listInvoices() }));
 router.post("/invoices/import", (req, res) => {
   try { res.json({ ok: true, data: { imported: auto.importInvoices(req.body?.numbers ?? {}) } }); } catch (e) { autoErr(res, e); }
