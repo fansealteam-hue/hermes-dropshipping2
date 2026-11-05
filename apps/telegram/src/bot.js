@@ -183,7 +183,7 @@ function parseTracking(text) {
 const isUrl = (u) => typeof u === "string" && /^https?:\/\//i.test(u);
 /** Photo de la variante choisie, sinon du produit. */
 function photoOf(product, variant) {
-  return [...(variant?.imageUrls ?? []), ...(product?.imageUrls ?? []), ...(product?.variants ?? []).flatMap((v) => v.imageUrls ?? [])].find(isUrl) ?? null;
+  return [...(variant?.imageUrls ?? []), ...(product?.imageUrls ?? []), ...(product?.variants ?? []).flatMap((v) => v?.imageUrls ?? [])].find(isUrl) ?? null;
 }
 /** Ajoute le bouton « 👀 Voir sur Temu » (lien du produit) en haut du clavier. */
 function withTemu(ctx, kb) {
@@ -263,7 +263,8 @@ async function handleTemuUrl(ctx, url) {
       product.warehouseStatus === "china" ? "🇨🇳 Expédié depuis la Chine : <b>inéligible</b> (livraison trop longue)" : "❔ Entrepôt inconnu : <b>inéligible</b>",
       "", "Choisis un produit en entrepôt Europe 🇪🇺"].join("\n"), new InlineKeyboard().text("🔗 Essayer un autre produit", "new:again"));
   }
-  const variants = (product.variants ?? []).filter((v) => v.stock == null || v.stock > 0);
+  const variants = (product.variants ?? []).filter((v) => v?.variantId && Number.isFinite(v.costEur) && v.costEur > 0 && (v.stock == null || v.stock > 0))
+    .map((v) => ({ ...v, label: String(v.label ?? "").trim() || "Modèle unique" }));
   if (!variants.length) return edit([...head, "🔴 Toutes les variantes sont en rupture de stock."].join("\n"), new InlineKeyboard().text("🔗 Essayer un autre produit", "new:again"));
   ctx.session.state = "awaiting_variant_choice";
   const kb = new InlineKeyboard();
@@ -286,7 +287,7 @@ bot.callbackQuery(/^variant:(.+)$/, async ctx => {
   const product = ctx.session.pendingProduct;
   if (!product) { await ctx.answerCallbackQuery("Session expirée"); return askProduct(ctx); }
   const variantId = ctx.callbackQuery.data.replace("variant:", "");
-  const variant = product.variants.find(v => v.variantId === variantId);
+  const variant = (product.variants ?? []).find(v => v?.variantId === variantId);
   if (!variant) return ctx.answerCallbackQuery("Variante introuvable");
   ctx.session.pendingVariantId = variantId;
   ctx.session.pendingListingDraft = {
@@ -650,7 +651,8 @@ async function updateCard(ctx, card, status, kb) {
 const orderKb = (saleId, url) => {
   const kb = new InlineKeyboard();
   if (/^https:\/\//.test(url ?? "")) kb.url("🛒 Commander sur Temu", url).row();
-  return kb.text("✅ J'ai commandé", `confirm_payment:${saleId}`).text("❌ Annuler", `cancel_ask:${saleId}`);
+  kb.text("✅ J'ai commandé", `confirm_payment:${saleId}`).text("❌ Annuler", `cancel_ask:${saleId}`);
+  return withSite(kb, "ventes", "🌐 Voir la vente sur le site");
 };
 
 // ─── OUI disponible → la fiche passe en « à commander » ───────────────────────
@@ -712,7 +714,7 @@ bot.callbackQuery(/^cancel_keep:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("cancel_keep:", "");
   const res = await api.getSale(saleId);
   const sale = res?.data ?? {};
-  const kb = sale.status === "order_placed" ? new InlineKeyboard().text("📬 Ajouter le suivi", `add_tracking:${saleId}`) : orderKb(saleId, sale.supplierUrl);
+  const kb = sale.status === "order_placed" ? withSite(new InlineKeyboard().text("📬 Ajouter le suivi", `add_tracking:${saleId}`), "ventes", "🌐 Voir la vente sur le site") : orderKb(saleId, sale.supplierUrl);
   await ctx.editMessageReplyMarkup({ reply_markup: kb }).catch(() => {});
   await ctx.answerCallbackQuery("Vente conservée 👍");
 });
@@ -732,7 +734,7 @@ bot.callbackQuery(/^confirm_payment:(.+)$/, async ctx => {
   const saleId = ctx.callbackQuery.data.replace("confirm_payment:", "");
   const ord = await api.markOrdered(saleId);
   if (!ord.ok) { await ctx.answerCallbackQuery(`Erreur : ${ord.error ?? "commande non enregistrée"}`); return; }
-  const kb = new InlineKeyboard().text("📬 Ajouter le numéro de suivi", `add_tracking:${saleId}`);
+  const kb = withSite(new InlineKeyboard().text("📬 Ajouter le numéro de suivi", `add_tracking:${saleId}`), "ventes", "🌐 Voir la vente sur le site");
   const status = `${STEPS.ordered}\n🛒 Commandé sur Temu · en attente du suivi`;
   const ok = await updateCard(ctx, cardRef(ctx.callbackQuery.message), status, kb);
   if (!ok) await ctx.reply(status, { reply_markup: kb });

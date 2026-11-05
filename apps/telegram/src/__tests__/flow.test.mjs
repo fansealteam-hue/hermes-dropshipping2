@@ -132,3 +132,12 @@ test("photo du produit + bouton « Voir sur Temu », photo de la variante ensuit
   assert.match(media.media.caption, /Choisis ton prix/);
   assert.ok(buttons(media).some((b) => b.url === "https://www.temu.com/miroir-g-7.html"));
 });
+
+test("variantes incomplètes (sans prix, sans nom) : ignorées sans planter", async () => {
+  api.fetchTemuProduct = async () => ({ ok: true, data: { temuItemId: "tm3", title: "Tapis", warehouseStatus: "local",
+    variants: [{ variantId: "t1", label: null, costEur: 9, stock: 3, imageUrls: [] }, { variantId: "t2", label: "Bleu", costEur: undefined, stock: 3 }, null] } });
+  await text("https://www.temu.com/tapis-g-9.html");
+  const kb = buttons(last("editMessageText")).map((b) => b.callback_data);
+  assert.ok(kb.includes("variant:t1") && !kb.includes("variant:t2"));
+  assert.ok(buttons(last("editMessageText")).some((b) => /Modèle unique/.test(b.text)));
+});

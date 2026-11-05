@@ -2298,7 +2298,12 @@ function nsCheck() {
   const seen = nsSeen();
   if (raw === null && !DEMO) { nsMark(sales.map((s) => s.saleId)); return; } // 1re visite : pas d'avalanche
   const fresh = sales.filter((s) => s.status === "confirmed" && !seen.has(s.saleId)).sort((a, b) => String(b.confirmedAt).localeCompare(String(a.confirmedAt)));
-  if (DEMO) { if (!sessionStorage.getItem("tyno_ns_demo") && fresh[0]) { sessionStorage.setItem("tyno_ns_demo", "1"); setTimeout(() => nsShow(fresh[0].saleId), 2500); } return; }
+  if (DEMO) {
+    let shown = false;
+    try { shown = !!sessionStorage.getItem("tyno_ns_demo"); sessionStorage.setItem("tyno_ns_demo", "1"); } catch { shown = !!window.__nsDemo; window.__nsDemo = true; }
+    if (!shown && fresh[0]) setTimeout(() => nsShow(fresh[0].saleId), 2500);
+    return;
+  }
   if (!fresh.length) return;
   fresh.forEach((s) => seen.add(s.saleId));
   nsMark(seen);
@@ -5290,25 +5295,6 @@ function recapMonth() {
   const n = new Date();
   const d = comptaRange === "month" ? n : new Date(n.getFullYear(), n.getMonth() - 1, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-// Ouvre le rapport (HTML noir & orange) dans un onglet : Ctrl+P → PDF
-async function openReport(month, withCsv) {
-  if (!SERVER()) { toast("📊 En mode démo : le rapport se génère avec tes vraies ventes"); return; }
-  const w = window.open("", "_blank"); // ouvert tout de suite (sinon bloqué comme pop-up)
-  try {
-    const { data } = await api(`/api/reports/monthly?month=${encodeURIComponent(month)}`);
-    if (w) { w.document.open(); w.document.write(data.html); w.document.close(); }
-    else {
-      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([data.html], { type: "text/html" })), download: data.reportName + ".html" });
-      a.click(); URL.revokeObjectURL(a.href);
-    }
-    if (withCsv) {
-      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([data.csv], { type: "text/csv;charset=utf-8" })), download: data.fileName });
-      a.click(); URL.revokeObjectURL(a.href);
-    }
-    const t = data.totals;
-    toast(`📊 ${data.period.label} : ${eur(t.caEur)} de CA · ${eur(t.netProfitEur)} net${withCsv ? " — fichier compta téléchargé ✓" : ""}`);
-  } catch (e) { w?.close(); toast("Rapport impossible : " + e.message); }
 }
 $("#recap-btn").onclick = () => { repRange = comptaRange === "month" ? "month" : "last-month"; go("reports"); };
 $("#recap-week-btn").onclick = () => { repRange = "last-week"; go("reports"); };
