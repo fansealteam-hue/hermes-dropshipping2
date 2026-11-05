@@ -5,6 +5,15 @@ const router = require("express").Router();
 const db = require("../db/db");
 const queue = require("../jobs/queue");
 
+// Même protection que /api : jeton API_SECRET_TOKEN (Bearer ou x-api-key)
+router.use((req, res, next) => {
+  const token = process.env.API_SECRET_TOKEN ?? "";
+  if (!token) return next(); // dev : pas de jeton configuré
+  const given = req.headers.authorization?.replace("Bearer ", "") ?? req.headers["x-api-key"];
+  if (given !== token) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  next();
+});
+
 // ─── Queue controls ───────────────────────────────────────────────────────────
 
 router.post("/queue/pause", (req, res) => {
