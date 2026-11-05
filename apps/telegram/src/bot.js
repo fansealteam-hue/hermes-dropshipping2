@@ -302,7 +302,7 @@ async function showDashboard(ctx) {
   const kb = new InlineKeyboard();
   if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
   if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
-  kb.row().text("🛍️ Voir les ventes", "nav:sales").text("📑 Récap compta", "recap:menu");
+  kb.row().text("🛍️ Voir les ventes", "nav:sales").text("📑 Rapport financier", "recap:menu");
   if (appUrl()) kb.row().webApp("📱 Tyno", appUrl());
   return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
 }
@@ -417,12 +417,13 @@ bot.callbackQuery("recap:menu", async (ctx) => {
   const label = (d) => d.toLocaleDateString("fr-FR", { month: "long" });
   const prev = new Date(n.getFullYear(), n.getMonth() - 1, 1);
   const kb = new InlineKeyboard()
+    .text("📊 Semaine dernière", "recap:last-week").text("📈 Cette semaine", "recap:week").row()
     .text(`📅 ${label(prev)} (à déclarer)`, `recap:${ym(prev)}`).row()
     .text(`📈 ${label(n)} (en cours)`, `recap:${ym(n)}`);
   await ctx.answerCallbackQuery();
-  await ctx.reply("📑 <b>Récap compta</b> : quel mois ?\n<i>Tu reçois le récap + le fichier compta à ouvrir dans Excel.</i>", { parse_mode: "HTML", reply_markup: kb });
+  await ctx.reply("📑 <b>Rapport financier</b> : quelle période ?\n<i>Tu reçois le récap, le rapport complet en PDF et, pour un mois, le fichier compta Excel.</i>", { parse_mode: "HTML", reply_markup: kb });
 });
-bot.callbackQuery(/^recap:(\d{4}-\d{2})$/, async (ctx) => {
+bot.callbackQuery(/^recap:(\d{4}-\d{2}|last-week|week)$/, async (ctx) => {
   await ctx.answerCallbackQuery("Préparation du récap…");
   const res = await api.sendMonthlyRecap(ctx.match[1]);
   if (!res.ok) return ctx.reply(`⚠️ Récap impossible : ${res.error ?? "erreur"}`);

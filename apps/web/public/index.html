@@ -257,7 +257,7 @@ tbody tr:hover { background: var(--surface-2); }
 @media (max-width: 700px) {
   .compta-actions { margin-left: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .compta-actions > * { justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .compta-actions > #recap-btn { grid-column: 1 / -1; }
+  .compta-actions > #recap-btn, .compta-actions > #export-btn { grid-column: 1 / -1; }
 }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { filter: brightness(1.08); color: #fff; }
@@ -1427,8 +1427,9 @@ th.sort.on { color: var(--accent); }
         <div class="compta-actions">
           <a class="btn" href="#facturation" style="text-decoration:none"><svg width="13" height="13"><use href="#i-gear"/></svg>Infos facture</a>
           <button class="btn" id="inv-batch-btn"><svg width="13" height="13"><use href="#i-file"/></svg>Factures de la période</button>
-          <button class="btn primary" id="recap-btn" title="Récap du mois + fichier compta pour ta déclaration"><svg width="13" height="13"><use href="#i-file"/></svg>Fichier compta du mois</button>
-          <button class="btn" id="recap-tg-btn" title="Envoie le récap et le fichier sur Telegram">📲 Récap sur Telegram</button>
+          <button class="btn primary" id="recap-btn" title="Rapport financier du mois + fichier compta pour ta déclaration"><svg width="13" height="13"><use href="#i-file"/></svg>Rapport du mois</button>
+          <button class="btn" id="recap-week-btn" title="Rapport financier de la semaine dernière">📅 Rapport semaine</button>
+          <button class="btn" id="recap-tg-btn" title="Envoie le rapport du mois et le fichier compta sur Telegram">📲 Sur Telegram</button>
           <button class="btn" id="export-btn"><svg width="13" height="13"><use href="#i-down"/></svg>Exporter CSV</button>
         </div>
       </div>
@@ -4534,7 +4535,8 @@ function renderAutoCard() {
     ["⏳", "Rappel « numéro de suivi »", `sur Telegram si une commande payée n'a pas de suivi après <input class="inline-input num" style="width:48px;height:24px" type="number" min="1" max="30" value="${days}" onchange="saveAuto({ trackingReminderDays: this.value })" onclick="event.stopPropagation()"> j`, "trackingReminders"],
     ["📅", "Rappel déclaration URSSAF", "sur Telegram le 1er, le 15 et les 3 derniers jours avant l'échéance", "declarationReminders"],
     ["⚡", "Disponibilité validée toute seule", `si Temu a du stock, que la vente est rentable et que le prix n'a pas pris plus de <input class="inline-input num" style="width:48px;height:24px" type="number" min="0" max="100" value="${a?.maxCostIncreasePct ?? 15}" onchange="saveAuto({ maxCostIncreasePct: this.value })" onclick="event.stopPropagation()"> % : l'alerte Telegram passe directement à « Commander sur Temu »`, "autoAvailability"],
-    ["📑", "Récap compta chaque mois", "le 1er du mois : récap (CA, achats, URSSAF, bénéfice net, par compte) + fichier compta sur Telegram ; et le fichier de la période dès que tu coches « Déclaré »", "monthlyRecap"],
+    ["📊", "Rapport chaque semaine", "le lundi matin sur Telegram : CA, bénéfice, ventes comparés à la semaine d'avant, par compte et par niche, ce qui se vend ou pas, et des conseils pour gagner plus (PDF)", "weeklyRecap"],
+    ["📑", "Récap compta chaque mois", "le 1er du mois : rapport financier complet (PDF) + fichier compta pour Excel sur Telegram ; et le fichier de la période dès que tu coches « Déclaré »", "monthlyRecap"],
     ["🚫", "Annulation auto si rupture", "la vente est annulée et l'acheteur reçoit ton message d'annulation — à activer seulement si tu es sûr", "autoCancelOutOfStock"],
   ];
   $("#auto-list").innerHTML = (a || DEMO) ? rows.map(([ic, t, d, k]) => `<div class="auto-row"><span class="ic">${ic}</span><div style="min-width:0"><div class="t">${t}</div><div class="d">${d}</div></div>
@@ -5073,20 +5075,29 @@ function recapMonth() {
   const d = comptaRange === "month" ? n : new Date(n.getFullYear(), n.getMonth() - 1, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-$("#recap-btn").onclick = async () => {
-  if (!SERVER()) { $("#export-btn").click(); return; }
+// Ouvre le rapport (HTML noir & orange) dans un onglet : Ctrl+P → PDF
+async function openReport(month, withCsv) {
+  if (!SERVER()) { toast("📊 En mode démo : le rapport se génère avec tes vraies ventes"); return; }
+  const w = window.open("", "_blank"); // ouvert tout de suite (sinon bloqué comme pop-up)
   try {
-    const { data } = await api(`/api/reports/monthly?month=${recapMonth()}`);
-    const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8" });
-    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: data.fileName });
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const { data } = await api(`/api/reports/monthly?month=${encodeURIComponent(month)}`);
+    if (w) { w.document.open(); w.document.write(data.html); w.document.close(); }
+    else {
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([data.html], { type: "text/html" })), download: data.reportName + ".html" });
+      a.click(); URL.revokeObjectURL(a.href);
+    }
+    if (withCsv) {
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([data.csv], { type: "text/csv;charset=utf-8" })), download: data.fileName });
+      a.click(); URL.revokeObjectURL(a.href);
+    }
     const t = data.totals;
-    toast(`📑 ${data.period.label} : ${eur(t.caEur)} de CA · ${eur(t.netProfitEur)} net — fichier téléchargé ✓`);
-  } catch (e) { toast("Récap impossible : " + e.message); }
-};
+    toast(`📊 ${data.period.label} : ${eur(t.caEur)} de CA · ${eur(t.netProfitEur)} net${withCsv ? " — fichier compta téléchargé ✓" : ""}`);
+  } catch (e) { w?.close(); toast("Rapport impossible : " + e.message); }
+}
+$("#recap-btn").onclick = () => openReport(recapMonth(), true);
+$("#recap-week-btn").onclick = () => openReport("last-week", false);
 $("#recap-tg-btn").onclick = async () => {
-  if (!SERVER()) { toast("📲 En mode démo : le récap part sur Telegram le 1er de chaque mois"); return; }
+  if (!SERVER()) { toast("📲 En mode démo : le rapport part sur Telegram chaque lundi (semaine) et le 1er du mois"); return; }
   try {
     const { data } = await api("/api/reports/monthly/send", { method: "POST", body: JSON.stringify({ month: recapMonth() }) });
     toast(data.sent ? "📲 Récap + fichier envoyés sur Telegram ✓" : "Telegram n'est pas configuré (token / chat autorisé)");

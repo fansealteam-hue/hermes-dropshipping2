@@ -620,17 +620,25 @@ router.post("/declarations/:key", (req, res) => {
 
 // ─── Récap compta mensuel + fichier compta ───────────────────────────────────
 const report = require("../services/monthly-report");
+// month = AAAA-MM | week:AAAA-MM-JJ | quarter:AAAA-MM  (défaut : mois dernier)
+const reportSpec = (v) => {
+  if (v === "week") return report.thisWeek();
+  if (v === "last-week") return report.prevWeek();
+  if (v === "month") return report.thisMonth();
+  return v || report.prevMonth();
+};
 router.get("/reports/monthly", (req, res) => {
   try {
-    const rep = report.buildReport(req.query.month || report.prevMonth());
-    res.json({ ok: true, data: { ...rep, csv: report.toCsv(rep), fileName: `tyno-compta-${rep.period.slug}.csv` } });
+    const rep = report.buildReport(reportSpec(req.query.month));
+    res.json({ ok: true, data: { ...rep, csv: report.toCsv(rep), html: report.toHtml(rep),
+      fileName: `tyno-compta-${rep.period.slug}.csv`, reportName: `tyno-rapport-${rep.period.slug}` } });
   } catch (e) { autoErr(res, e); }
 });
 router.post("/reports/monthly/send", async (req, res) => {
   try {
-    const month = req.body?.month || report.prevMonth();
-    report.periodOf(month);
-    res.json({ ok: true, data: { sent: await report.sendReport(month) } });
+    const spec = reportSpec(req.body?.month);
+    report.periodOf(spec);
+    res.json({ ok: true, data: { sent: await report.sendReport(spec) } });
   } catch (e) { autoErr(res, e); }
 });
 

@@ -289,7 +289,7 @@ app.post("/api/sales/:id/invoice", requireAuth, (req, res) => proxyApi(req, res,
 app.post("/api/sales/:id/credit-note", requireAuth, (req, res) => proxyApi(req, res, `/api/sales/${encodeURIComponent(req.params.id)}/credit-note`, "POST"));
 app.get("/api/declarations", requireAuth, (req, res) => proxyApi(req, res, "/api/declarations"));
 app.get("/api/reports/monthly", requireAuth, (req, res) => {
-  const m = /^(?:(?:month|quarter):)?\d{4}-\d{2}$/.test(String(req.query.month ?? "")) ? `?month=${encodeURIComponent(req.query.month)}` : "";
+  const m = /^((?:month|quarter):)?\d{4}-\d{2}$|^week:\d{4}-\d{2}-\d{2}$|^(week|last-week|month)$/.test(String(req.query.month ?? "")) ? `?month=${encodeURIComponent(req.query.month)}` : "";
   return proxyApi(req, res, `/api/reports/monthly${m}`);
 });
 app.post("/api/reports/monthly/send", requireAuth, (req, res) => proxyApi(req, res, "/api/reports/monthly/send", "POST", req.body));
