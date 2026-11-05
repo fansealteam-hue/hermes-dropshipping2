@@ -2,7 +2,7 @@
  * Hermès Telegram Bot — JavaScript runtime (no TS compilation needed on VPS).
  */
 require("dotenv").config();
-const { Bot, InlineKeyboard, session } = require("grammy");
+const { Bot, InlineKeyboard, Keyboard, session } = require("grammy");
 const { isAllowed, config } = require("./config.js");
 const api = require("./api.js");
 const msg = require("./messages.js");
@@ -50,37 +50,53 @@ function stepsLine(s) {
   return ["Payé", "Commandé", "Expédié", "Reçu"].map((l, i) => `${i <= lvl ? "✅" : i === lvl + 1 ? "🟠" : "⚪"} ${l}`).join(" ─ ");
 }
 
+// Boutons permanents en bas de Telegram (aucune commande à taper)
+const BTN = {
+  dash: "📊 Tableau de bord", sales: "🛍️ Ventes", order: "🛒 À commander",
+  track: "📬 Ajouter un suivi", product: "🔗 Nouveau produit", app: "📱 Ouvrir Tyno",
+};
+function mainKeyboard() {
+  const kb = new Keyboard().text(BTN.dash).text(BTN.sales).row().text(BTN.order).text(BTN.track).row().text(BTN.product);
+  if (appUrl()) kb.webApp(BTN.app, appUrl());
+  return kb.resized().persistent();
+}
+const navButtons = () => new InlineKeyboard().text("📊 Tableau", "nav:dash").text("🛍️ Ventes", "nav:sales").text("🛒 À commander", "nav:order");
+
 const MENU = [
   "📦 <b>Tyno Entreprise</b>",
   "Ton assistant dropshipping Temu → Leboncoin",
   LINE,
-  "📊 /dashboard — chiffres du mois",
-  "🛍️ /ventes — ventes en cours",
-  "🔗 /lien — analyser un produit Temu",
-  "🧾 /commande — référence de commande Temu",
-  "📬 /suivi — numéro de suivi",
-  "✅ /acommander — tout valider d'un coup",
-  "📱 /app — ouvrir l'application",
+  "Tout se fait avec les <b>boutons en bas</b> 👇",
+  "Les nouvelles ventes arrivent ici toutes seules.",
 ].join("\n");
 
-bot.command(["start", "aide"], ctx => ctx.reply(MENU, { parse_mode: "HTML", reply_markup: appButton() }));
+const showMenu = (ctx) => ctx.reply(MENU, { parse_mode: "HTML", reply_markup: mainKeyboard() });
+bot.command(["start", "aide", "menu"], showMenu);
 
-bot.command("app", ctx => appUrl()
-  ? ctx.reply("📱 <b>Tyno Entreprise</b>\nTes ventes, tes achats Temu et tes comptes, dans Telegram.", { parse_mode: "HTML", reply_markup: appButton() })
-  : ctx.reply("⚠️ L'application a besoin d'une adresse HTTPS : renseigne MINI_APP_URL (ex. https://tyno.mondomaine.fr) dans le fichier .env, puis redémarre le bot."));
+async function openApp(ctx) {
+  return appUrl()
+    ? ctx.reply("📱 <b>Tyno Entreprise</b>\nTes ventes, tes achats Temu et tes comptes, dans Telegram.", { parse_mode: "HTML", reply_markup: appButton() })
+    : ctx.reply("⚠️ L'application a besoin d'une adresse HTTPS : renseigne MINI_APP_URL (ex. https://tyno.mondomaine.fr) dans le fichier .env, puis redémarre le bot.");
+}
+bot.command("app", openApp);
 
 // ─── /lien ────────────────────────────────────────────────────────────────────
 
+async function askProduct(ctx) { ctx.session.state = "awaiting_temu_link"; return ctx.reply("🔗 Colle le lien du produit Temu 👇"); }
 bot.command("lien", async ctx => {
   const url = ctx.match?.trim();
-  if (!url) { ctx.session.state = "awaiting_temu_link"; return ctx.reply("📎 Envoyez le lien Temu :"); }
-  return handleTemuUrl(ctx, url);
+  return url ? handleTemuUrl(ctx, url) : askProduct(ctx);
 });
 
 // ─── Free text router ─────────────────────────────────────────────────────────
 
 bot.on("message:text", async ctx => {
   const text = ctx.message.text.trim();
+  const BTN_ACTIONS = {
+    [BTN.dash]: showDashboard, [BTN.sales]: showSales, [BTN.order]: showToOrder,
+    [BTN.track]: showTrackingList, [BTN.product]: askProduct, [BTN.app]: openApp,
+  };
+  if (BTN_ACTIONS[text]) { ctx.session.state = "idle"; return BTN_ACTIONS[text](ctx); }
   const { state } = ctx.session;
 
   if (state === "awaiting_temu_link") { ctx.session.state = "idle"; return handleTemuUrl(ctx, text); }
@@ -90,12 +106,30 @@ bot.on("message:text", async ctx => {
     ctx.session.state = "idle";
     const saleId = ctx.session.pendingTrackingSaleId;
     ctx.session.pendingTrackingSaleId = undefined;
-    const parts = text.trim().split(/\s+/);
-    const carrier = parts[0];
-    const num = parts.slice(1).join(" ");
-    return handleTracking(ctx, saleId, carrier, num);
+    const { carrier, number } = parseTracking(text);
+    return handleTracking(ctx, saleId, carrier, number);
   }
+  // Message libre : un lien Temu lance l'analyse, sinon on remontre les boutons
+  if (/temu\.com/i.test(text)) return handleTemuUrl(ctx, text);
+  return ctx.reply("👇 Utilise les boutons en bas pour tout faire.", { reply_markup: mainKeyboard() });
 });
+
+/** « LX123456789FR » ou « Colissimo LX123456789FR » → transporteur deviné si absent. */
+function parseTracking(text) {
+  const parts = String(text).trim().split(/\s+/).filter(Boolean);
+  const number = (parts.find((p) => /\d/.test(p) && p.length >= 6) ?? parts.at(-1) ?? "").toUpperCase();
+  const named = parts.filter((p) => p.toUpperCase() !== number).join(" ");
+  let carrier = named || "";
+  if (!carrier) {
+    if (/^[A-Z]{2}\d{9}FR$/.test(number)) carrier = /^(6|8|C|L)/.test(number) ? "Colissimo" : "La Poste";
+    else if (/^\d{8}$/.test(number) || /^\d{12}$/.test(number)) carrier = "Mondial Relay";
+    else if (/^1Z/.test(number)) carrier = "UPS";
+    else if (/^(XW|XY|XS)\d+/.test(number)) carrier = "Chronopost";
+    else if (/^(YT|YW)\d+/.test(number)) carrier = "Yanwen";
+    else if (/^(LP|CN)\d+/.test(number)) carrier = "Cainiao";
+  }
+  return { carrier, number };
+}
 
 // ─── Temu URL handler ────────────────────────────────────────────────────────
 
@@ -239,7 +273,7 @@ bot.callbackQuery(/^schedule:(.+)$/, async ctx => {
 
 // ─── /dashboard ───────────────────────────────────────────────────────────────
 
-bot.command("dashboard", async ctx => {
+async function showDashboard(ctx) {
   const [fin, dash] = await Promise.all([api.getFinance("30d"), api.getDashboard()]);
   if (!fin.ok || !dash.ok) return ctx.reply("❌ Tableau de bord indisponible pour le moment.");
   const s = fin.data.summary;
@@ -260,16 +294,22 @@ bot.command("dashboard", async ctx => {
     `${waitTrk ? "🟠" : "✅"} En attente du suivi : <b>${waitTrk}</b>`,
     `${action ? "⚠️" : "✅"} À traiter : <b>${action}</b>`,
   ];
-  return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: appButton("📱 Tout voir dans Tyno") });
-});
+  const kb = new InlineKeyboard();
+  if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
+  if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
+  kb.row().text("🛍️ Voir les ventes", "nav:sales");
+  if (appUrl()) kb.webApp("📱 Tyno", appUrl());
+  return ctx.reply(lines.join("\n"), { parse_mode: "HTML", reply_markup: kb });
+}
+bot.command("dashboard", showDashboard);
 
 // ─── /ventes ──────────────────────────────────────────────────────────────────
 
-bot.command("ventes", async ctx => {
+async function showSales(ctx) {
   const [res, lst, acc, inv] = await Promise.all([api.getActiveSales(), api.getListings(), api.getAccountsStats(), api.getInvoices()]);
   if (!res.ok) return ctx.reply("❌ Ventes indisponibles pour le moment.");
   const sales = (res.data ?? []).filter((s) => s.status !== "delivered" && s.status !== "cancelled");
-  if (!sales.length) return ctx.reply("✅ Aucune vente en attente : tout est livré.", { reply_markup: appButton() });
+  if (!sales.length) return ctx.reply("✅ Aucune vente en attente : tout est livré.", { reply_markup: navButtons() });
   const titleOf = Object.fromEntries((lst.data ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
   const accOf = Object.fromEntries((acc.data ?? []).map((a) => [a.accountId, a.label]));
   const invOf = Object.fromEntries((inv.data ?? []).filter((i) => i.kind === "invoice").map((i) => [i.saleId, i.invoiceNo]));
@@ -283,16 +323,22 @@ bot.command("ventes", async ctx => {
     ].join("\n");
   });
   const more = sales.length > 8 ? `\n${LINE}\n+ ${sales.length - 8} autre(s) dans l'application` : "";
-  return ctx.reply([`🛍️ <b>Ventes en attente · ${sales.length}</b>`, LINE, cards.join(`\n${LINE}\n`)].join("\n") + more, { parse_mode: "HTML", reply_markup: appButton("📱 Ouvrir les ventes") });
-});
+  const kb = new InlineKeyboard();
+  const toOrder = sales.filter((s) => s.status === "confirmed").length, waitTrk = sales.filter((s) => s.status === "order_placed").length;
+  if (toOrder) kb.text(`🛒 Commander (${toOrder})`, "nav:order");
+  if (waitTrk) kb.text(`📬 Ajouter les suivis (${waitTrk})`, "nav:track");
+  if (appUrl()) kb.row().webApp("📱 Tout voir dans Tyno", appUrl());
+  return ctx.reply([`🛍️ <b>Ventes en attente · ${sales.length}</b>`, LINE, cards.join(`\n${LINE}\n`)].join("\n") + more, { parse_mode: "HTML", reply_markup: kb });
+}
+bot.command("ventes", showSales);
 
 // ─── /acommander : tout valider d'un coup ─────────────────────────────────────
 
-bot.command(["acommander", "valider"], async ctx => {
+async function showToOrder(ctx) {
   const [res, lst, acc] = await Promise.all([api.getActiveSales(), api.getListings(), api.getAccountsStats()]);
   if (!res.ok) return ctx.reply("❌ Ventes indisponibles pour le moment.");
   const todo = (res.data ?? []).filter((s) => s.status === "confirmed").sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt));
-  if (!todo.length) return ctx.reply("✅ Rien à commander sur Temu : tout est à jour.");
+  if (!todo.length) return ctx.reply("✅ Rien à commander sur Temu : tout est à jour.", { reply_markup: navButtons() });
   ctx.session.bulkIds = todo.map((s) => s.saleId);
   const titleOf = Object.fromEntries((lst.data ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
   const accOf = Object.fromEntries((acc.data ?? []).map((a) => [a.accountId, a.label]));
@@ -303,14 +349,27 @@ bot.command(["acommander", "valider"], async ctx => {
     `   💶 ${eur(s.salePriceEur)} · 🛒 Temu ${eur(s.costEur + SHIP)} · ${relDay(s.confirmedAt)}`,
   ].join("\n"));
   const kb = new InlineKeyboard();
-  todo.slice(0, 12).forEach((s, i) => { if (/^https:\/\//.test(s.supplierUrl ?? "")) { kb.url(`🛒 ${i + 1}`, s.supplierUrl); if ((i + 1) % 4 === 0) kb.row(); } });
-  kb.row().text(`✅ Tout est commandé (${todo.length})`, "bulk_ordered");
+  todo.slice(0, 12).forEach((s, i) => {
+    if (/^https:\/\//.test(s.supplierUrl ?? "")) kb.url(`🛒 ${i + 1} · Temu`, s.supplierUrl);
+    kb.text(`✅ ${i + 1} commandé`, `order_one:${s.saleId}`).row();
+  });
+  if (todo.length > 1) kb.text(`✅ Tout est commandé (${todo.length})`, "bulk_ordered");
   return ctx.reply([
     `🛒 <b>À commander sur Temu · ${todo.length}</b>`, LINE, lines.join("\n\n"),
     todo.length > 12 ? `\n+ ${todo.length - 12} autre(s)` : "", LINE,
     `💳 Total à payer sur Temu : <b>${eur(total)}</b>`,
-    "Commande avec les boutons 🛒, puis valide tout d'un coup 👇",
+    "Commande avec les boutons 🛒, puis valide une par une ou tout d'un coup 👇",
   ].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: kb });
+}
+bot.command(["acommander", "valider"], showToOrder);
+
+// Valider une seule vente depuis la liste
+bot.callbackQuery(/^order_one:(.+)$/, async ctx => {
+  const saleId = ctx.callbackQuery.data.replace("order_one:", "");
+  const r = await api.markOrdered(saleId);
+  if (!r.ok) { await ctx.answerCallbackQuery(`Erreur : ${r.error ?? "non enregistré"}`); return; }
+  ctx.session.bulkIds = (ctx.session.bulkIds ?? []).filter((x) => x !== saleId);
+  await ctx.answerCallbackQuery("✅ Commandée — pense au suivi");
 });
 
 bot.callbackQuery("bulk_ordered", async ctx => {
@@ -327,6 +386,38 @@ bot.callbackQuery("bulk_ordered", async ctx => {
     "📬 Ajoute les numéros de suivi dès que Temu les donne : l'acheteur reçoit ton message d'expédition automatiquement (rappel si oubli).",
   ].filter(Boolean).join("\n"), { parse_mode: "HTML" });
 });
+
+// ─── Ajouter un suivi : choisir la vente avec un bouton ───────────────────────
+
+async function showTrackingList(ctx) {
+  const [res, lst] = await Promise.all([api.getActiveSales(), api.getListings()]);
+  if (!res.ok) return ctx.reply("❌ Ventes indisponibles pour le moment.");
+  const waiting = (res.data ?? []).filter((s) => s.status === "order_placed" && !s.trackingNumber)
+    .sort((a, b) => (a.orderPlacedAt ?? a.confirmedAt).localeCompare(b.orderPlacedAt ?? b.confirmedAt));
+  if (!waiting.length) return ctx.reply("✅ Aucune commande en attente de suivi.", { reply_markup: navButtons() });
+  const titleOf = Object.fromEntries((lst.data ?? []).map((l) => [l.listing_id, l.title || l.product_title]));
+  const kb = new InlineKeyboard();
+  waiting.slice(0, 15).forEach((s) => {
+    const t = (titleOf[s.listingId] ?? "Produit").slice(0, 26);
+    kb.text(`📦 ${t} · ${s.buyerName ?? "acheteur"}`, `add_tracking:${s.saleId}`).row();
+  });
+  return ctx.reply(`📬 <b>Ajouter un numéro de suivi</b>\nChoisis la commande (${waiting.length} en attente) 👇`, { parse_mode: "HTML", reply_markup: kb });
+}
+
+// Navigation par boutons (sous les messages)
+bot.callbackQuery(/^nav:(\w+)$/, async ctx => {
+  await ctx.answerCallbackQuery();
+  const k = ctx.callbackQuery.data.slice(4);
+  return ({ dash: showDashboard, sales: showSales, order: showToOrder, track: showTrackingList })[k]?.(ctx);
+});
+
+// Boutons permanents
+bot.hears(BTN.dash, showDashboard);
+bot.hears(BTN.sales, showSales);
+bot.hears(BTN.order, showToOrder);
+bot.hears(BTN.track, showTrackingList);
+bot.hears(BTN.product, askProduct);
+bot.hears(BTN.app, openApp);
 
 // ─── /commande ────────────────────────────────────────────────────────────────
 
@@ -358,8 +449,8 @@ bot.command("suivi", async ctx => {
 });
 
 async function handleTracking(ctx, saleId, carrier, tracking) {
-  if (!saleId || !tracking) return ctx.reply("❌ Format : `/suivi <id_vente> <transporteur> <numéro>`", { parse_mode: "MarkdownV2" });
-  const res = await api.addTracking(saleId, { orderRef: "", trackingNumber: tracking, trackingCarrier: carrier });
+  if (!saleId || !tracking) return ctx.reply("❌ Numéro de suivi manquant : appuie sur « 📬 Ajouter un suivi » et colle le numéro.", { reply_markup: mainKeyboard() });
+  const res = await api.addTracking(saleId, { orderRef: "", trackingNumber: tracking, trackingCarrier: carrier || undefined });
   if (!res.ok || !res.data) return ctx.reply(`❌ ${msg.escMd(res.error ?? "")}`, { parse_mode: "MarkdownV2" });
 
   // Auto-transmission du suivi à l'acheteur Leboncoin via le job queue
@@ -523,14 +614,11 @@ bot.callbackQuery(/^add_tracking:(.+)$/, async ctx => {
   ctx.session.pendingTrackingSaleId = saleId;
 
   await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
-  await ctx.reply(
-    `📬 Envoyez : \`<transporteur> <numéro>\`\n_Ex : LaPoste 1Z12345_`,
-    { parse_mode: "MarkdownV2" }
-  );
+  await ctx.reply("📬 Colle le <b>numéro de suivi</b> 👇\n<i>Le transporteur est reconnu tout seul.</i>", { parse_mode: "HTML" });
   await ctx.answerCallbackQuery();
 });
 
-module.exports = { bot, sendSaleAlert, stepsLine, relDay };
+module.exports = { bot, sendSaleAlert, stepsLine, relDay, parseTracking, mainKeyboard, BTN };
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
@@ -538,12 +626,9 @@ if (require.main === module) {
   if (!config.botToken) { console.error("[bot] TELEGRAM_BOT_TOKEN manquant"); process.exit(1); }
   // Bouton « Tyno » à côté du champ de saisie (ouvre la mini-app) + liste des commandes
   if (appUrl()) bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: "Tyno", web_app: { url: appUrl() } } }).catch((e) => console.warn("[bot] menu app:", e.message));
-  bot.api.setMyCommands([
-    { command: "dashboard", description: "Chiffres du mois" }, { command: "ventes", description: "Ventes en cours" },
-    { command: "acommander", description: "Tout valider d'un coup" },
-    { command: "app", description: "Ouvrir l'application" }, { command: "lien", description: "Analyser un produit Temu" },
-    { command: "commande", description: "Référence de commande Temu" }, { command: "suivi", description: "Numéro de suivi" },
-  ]).catch(() => {});
+  // Tout passe par les boutons : on retire la liste des commandes « / »
+  bot.api.deleteMyCommands().catch(() => {});
+  if (!appUrl()) bot.api.setChatMenuButton({ menu_button: { type: "default" } }).catch(() => {});
   bot.start();
   console.log("[bot] Tyno Entreprise — bot Telegram démarré (long polling)");
 }
